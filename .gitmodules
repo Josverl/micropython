@@ -36,3 +36,7 @@
 [submodule "lib/nxp_driver"]
 	path = lib/nxp_driver
 	url = https://github.com/hathach/nxp_driver.git
+[submodule "cmodules/ulab"]
+	path = cmodules/ulab_repo
+	url = https://github.com/v923z/micropython-ulab.git
+	branch = master
