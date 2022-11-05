@@ -311,7 +311,7 @@ _BUILTIN_COMMAND_EXPANSIONS = {
     },
     "setrtc": [
         "exec",
-        "import machine; machine.RTC().datetime((2020, 1, 1, 0, 10, 0, 0, 0))",
+        "import machine; machine.RTC().datetime({{datetime.datetime.now().timetuple()[0:7]}})",
     ],
     "--help": "help",
     "--version": "version",

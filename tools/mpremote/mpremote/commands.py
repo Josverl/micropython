@@ -1,6 +1,8 @@
 import os
 import sys
 import tempfile
+import re
+import datetime  # noqa - used by setrtc
 
 import serial.tools.list_ports
 
@@ -199,7 +201,14 @@ def _do_execbuffer(state, buf, follow):
 
 
 def do_exec(state, args):
-    _do_execbuffer(state, args.expr[0], args.follow)
+    cmd = args.expr[0]
+    # loop though all re matches in the input string and replace them with the result of the python code
+    for match in re.finditer(r"\{\{(.*?)\}\}", cmd):
+        try:
+            cmd = cmd.replace(match.group(0), str(eval(match.group(1))))
+        except Exception as e:
+            print("Error: %s" % e)
+    _do_execbuffer(state, cmd, args.follow)
 
 
 def do_eval(state, args):
