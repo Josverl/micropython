@@ -222,7 +222,8 @@ Shortcuts can be defined using the macro system.  Built-in shortcuts are::
 - ``bootloader``: make the device enter its bootloader
 
 Any user configuration, including user-defined shortcuts, can be placed in the file
-``.config/mpremote/config.py``. For example:
+``.config/mpremote/config.py``(relative to the ``XDG_CONFIG_HOME``, ``HOME``, or ``USERPROFILE`` environment variable).
+For example:
 
 .. code-block:: python3
 

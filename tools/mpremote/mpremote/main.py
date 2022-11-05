@@ -333,7 +333,12 @@ def load_user_config():
     config.commands = {}
 
     # Get config file name.
-    path = os.getenv("XDG_CONFIG_HOME")
+    if os.name == "nt":
+        path = os.getenv("USERPROFILE")
+        if path is None:
+            return config
+    else:
+        path = os.getenv("XDG_CONFIG_HOME")
     if path is None:
         path = os.getenv("HOME")
         if path is None:
