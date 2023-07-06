@@ -48,6 +48,7 @@ html_context = {
 # ones.
 extensions = [
     'autodoc_import',
+    'restore_section',
     'sphinx.ext.napoleon',
     'sphinx.ext.autodoc',
     'sphinx.ext.doctest',
