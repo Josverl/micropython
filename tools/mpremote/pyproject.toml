@@ -91,3 +91,5 @@ show_contexts = true
 # Include contexts in JSON report for programmatic analysis
 show_contexts = true
 
+[project.optional-dependencies]
+test = ["pytest", "pytest-mock"]
