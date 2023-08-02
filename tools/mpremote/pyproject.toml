@@ -46,3 +46,7 @@ packages = ["mpremote"]
 
 [tool.hatch.build.targets.sdist.force-include]
 "requirements.txt" = "requirements.txt"
+
+[project.optional-dependencies]
+dev = ["black", "pre-commit"]
+test = ["pytest", "pytest-mock"]
