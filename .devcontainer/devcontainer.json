@@ -10,7 +10,21 @@
         "ghcr.io/devcontainers/features/python:1": {
             "installTools": true,
             "version": "os-provided"
+        },
+        "ghcr.io/devcontainers-contrib/features/act:1": {
+            "version": "latest"
+        },
+        "ghcr.io/devcontainers/features/docker-in-docker:2": {
+            "moby": true,
+            "azureDnsAutoDetection": true,
+            "installDockerBuildx": true,
+            "version": "latest",
+            "dockerDashComposeVersion": "v1"
         }
+    },
+    "remoteEnv": {
+        // required to run sphinx
+        "TZ": "UTC"
     },
     // Use 'postCreateCommand' to run commands after the container is created.
     "postCreateCommand": "bash -i .devcontainer/on_create.sh",
