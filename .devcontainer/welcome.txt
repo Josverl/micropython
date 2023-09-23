@@ -1,0 +1,9 @@
+🐍 Welcome to MicroPython Codespaces
+
+You are on a custom C/C++ ubunto image defined the .devcontainer/devcontainer.json file.
+
+🛠️ If you want to setup a toolchain to compile a specific port you can run :
+.devcontainer/setup_picker.py
+
+🔍 To explore VS Code to its fullest, search using the Command Palette (Cmd/Ctrl + Shift + P)
+📝 Edit away, then run your build command to see your code running in the browser
