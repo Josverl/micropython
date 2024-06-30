@@ -396,7 +396,7 @@ class ManifestFile:
                 # python-ecosys. Add PyPI dependency instead.
                 self._pypi_dependencies.append(e.pypi_name)
             except Exception as e:
-                raise ManifestFileError("Error in manifest file: {}: {}".format(manifest_path, e))
+                raise ManifestFileError("Error in manifest file: {}: {}".format(manifest_path, e)) from e
             if is_require:
                 self._metadata.pop()
 
