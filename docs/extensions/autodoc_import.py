@@ -39,9 +39,10 @@
 
 from pathlib import Path
 import shutil
+from sphinx.application import Sphinx
 
 
-def setup(app):
+def setup(app: Sphinx):
     import sys
     from sphinx.util import logging
     import sphinx.pycode
@@ -55,8 +56,10 @@ def setup(app):
     docs_path = ext_path.parent
     stubs_path = docs_path / "_stubs"
     helpers_path = docs_path / "stubs_helpers"
+    # use the path in the correct order of priority
     autodoc_paths = [
         str(ext_path.absolute()),
+        str(docs_path.absolute()),
         str(stubs_path.absolute()),
         str(helpers_path.absolute()),
     ]
@@ -73,9 +76,16 @@ def setup(app):
             sys.path = autodoc_paths
             try:
                 logger.debug(f"[autodoc_import] importing stub {modname}")
-                module = _original_importer_import_module(modname, *args, **kwargs)
+                module = _original_importer_import_module(f"_stubs.{modname}", *args, **kwargs)
             finally:
                 sys.path = saved_sys_path
+
+            # Fix module.__name__ and module.Foo.__module__
+            module.__name__ = modname
+            for key in dir(module):
+                x = getattr(module, key)
+                if hasattr(x, "__module__") and getattr(x, "__module__") == "stubs." + modname:
+                    setattr(x, "__module__", modname)
 
         except ImportError as e:
             # This wasn't a module that we have stubs for (or the import
@@ -83,7 +93,7 @@ def setup(app):
             # happen -- we provide stubs for everything, and never want
             # to (automatically) document the CPython version instead.
             logger.error(
-                f"[autodoc_import] could find/load micropython stubs for {modname}, using system version"
+                f"[autodoc_import] could find/load micropython stub: {modname}, attempting to load the system version"
             )
             logger.exception(e)
             module = _original_importer_import_module(modname, *args, **kwargs)
