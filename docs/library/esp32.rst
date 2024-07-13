@@ -39,6 +39,14 @@ Functions
        The result of :func:`gc.mem_free()` is the total of the current "free"
        and "max new split" values printed by :func:`micropython.mem_info()`.
 
+Related constants
+~~~~~~~~~~~~~~~~~
+
+.. autodata:: HEAP_DATA
+.. autodata:: HEAP_EXEC
+
+    Used in `idf_heap_info`.
+
 
 Flash partitions
 ----------------
@@ -46,31 +54,16 @@ Flash partitions
 This class gives access to the partitions in the device's flash memory and includes
 methods to enable over-the-air (OTA) updates.
 
+.. restore_section::
+
 .. autoclass:: Partition
+   :members:
+
+
+.. restore_section::
 
 
 
-.. Constants
-.. ~~~~~~~~~
-
-.. .. autodata:: Partition.BOOT
-.. .. autodata:: Partition.RUNNING
-
-..     Used in the `Partition` constructor to fetch various partitions: ``BOOT`` is the
-..     partition that will be booted at the next reset and ``RUNNING`` is the currently
-..     running partition.
-
-.. .. autodata:: Partition.TYPE_APP
-.. .. autodata:: Partition.TYPE_DATA
-
-..     Used in `Partition.find` to specify the partition type: ``APP`` is for bootable
-..     firmware partitions (typically labelled ``factory``, ``ota_0``, ``ota_1``), and
-..     ``DATA`` is for other partitions, e.g. ``nvs``, ``otadata``, ``phy_init``, ``vfs``.
-
-.. autodata:: HEAP_DATA
-.. autodata:: HEAP_EXEC
-
-    Used in `idf_heap_info`.
 
 .. _esp32.RMT:
 
@@ -121,12 +114,6 @@ For more details see Espressif's `ESP-IDF RMT documentation.
 .. autoclass:: RMT
 
 
-Constants
----------
-
-.. data:: RMT.PULSE_MAX
-
-   Maximum integer that can be set for a pulse duration.
 
 Ultra-Low-Power co-processor
 ----------------------------
@@ -142,8 +129,9 @@ ESP32-S2 and ESP32-S3 chips.
 .. autoclass:: ULP()
 
 
-Constants
----------
+Related constants
+~~~~~~~~~~~~~~~~~
+
 
 .. autodata:: esp32.WAKEUP_ALL_LOW
 .. autodata:: esp32.WAKEUP_ANY_HIGH
