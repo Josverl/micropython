@@ -47,13 +47,13 @@
 
 from docutils import nodes
 from docutils.parsers.rst import Directive
-
+from sphinx.application import Sphinx
 class RestoreSection(Directive):
     def run(self):
         self.state.check_subsection(source="", style="-", lineno=0)
         return []
 
-def setup(app):
+def setup(app:Sphinx):
     app.add_directive("restore_section", RestoreSection)
 
     return {
