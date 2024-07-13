@@ -60,8 +60,8 @@ def setup(app: Sphinx):
     autodoc_paths = [
         str(ext_path.absolute()),
         str(docs_path.absolute()),
-        str(stubs_path.absolute()),
         str(helpers_path.absolute()),
+        str(stubs_path.absolute()),
     ]
     if not copy_and_rename_module(docs_path / "stubs", docs_path / "_stubs"):
         logger.error("[autodoc_import] failed to copy stubs to _stubs")
