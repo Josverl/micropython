@@ -28,60 +28,70 @@
 # Autodoc just does (via importlib) the equivalent of `import <modname>`, so
 # any built-in module that we try to autodoc will get the CPython version
 # instead of finding the one in `docs/stubs`. So what we do is hook autodoc's
-# importer to instead do `import stubs.modname` with sys.path set to `docs`.
-# Then we fix-up the `__name__ attribute on the module, and the `__module__`
-# attribute on any included functions, types, etc so that autodoc thinks that
-# they were imported the usual way.
+# importer to change the sys.path to include our stubs directory, and the
+# subs_helper folder that contains .py versions of the typings and
+# typings_helper modules.
 #
 # Additionally, we add the directory containing this file to sys.path so
 # our copy of `annotations.py` is used instead, which injects the necessary
 # rST code into the docstrings.
 
+
+from pathlib import Path
+import shutil
+
+
 def setup(app):
-    import os, sys
+    import sys
     from sphinx.util import logging
+    import sphinx.pycode
+    from sphinx.ext.autodoc import importer
 
     logger = logging.getLogger(__name__)
+    logger.info("[autodoc_import] setup and copy stubs to _stubs")
 
     # Patch the autodoc importer.
-    from sphinx.ext.autodoc import importer
+    ext_path = Path(__file__).parent
+    docs_path = ext_path.parent
+    stubs_path = docs_path / "_stubs"
+    helpers_path = docs_path / "stubs_helpers"
+    autodoc_paths = [
+        str(ext_path.absolute()),
+        str(stubs_path.absolute()),
+        str(helpers_path.absolute()),
+    ]
+    if not copy_and_rename_module(docs_path / "stubs", docs_path / "_stubs"):
+        logger.error("[autodoc_import] failed to copy stubs to _stubs")
+        return
+
     _original_importer_import_module = importer.import_module
 
-    def _hook_importer_import_module(modname, *args, **kwargs):
+    def _hook_importer_import_module(modname: str, *args, **kwargs):
         logger.debug("[autodoc_import] _hook_importer_import_module: %s", modname)
         try:
-            saved_path = sys.path
-            # This is directory containing this file (which contains annotations.py).
-            ext_path = os.path.dirname(__file__)
-            # This is the top-level docs directory (which contains stubs/<modname>).
-            docs_path = os.path.dirname(ext_path)
-            sys.path = [os.path.abspath(ext_path), os.path.abspath(docs_path)]
+            saved_sys_path = sys.path
+            sys.path = autodoc_paths
             try:
-                module = _original_importer_import_module("stubs." + modname, *args, **kwargs)
+                logger.debug(f"[autodoc_import] importing stub {modname}")
+                module = _original_importer_import_module(modname, *args, **kwargs)
             finally:
-                sys.path = saved_path
+                sys.path = saved_sys_path
 
-            # Fix module.__name__ and module.Foo.__module__
-            module.__name__ = modname
-            for key in dir(module):
-                x = getattr(module, key)
-                if hasattr(x, '__module__') and getattr(x, "__module__") == "stubs." + modname:
-                    setattr(x, '__module__', modname)
-
-        except ImportError:
+        except ImportError as e:
             # This wasn't a module that we have stubs for (or the import
             # failed because of an issue with the stub). This shouldn't
             # happen -- we provide stubs for everything, and never want
             # to (automatically) document the CPython version instead.
-            logger.error('[autodoc_import] could find/load micropython stubs for %s, using system version', modname)
+            logger.error(
+                f"[autodoc_import] could find/load micropython stubs for {modname}, using system version"
+            )
+            logger.exception(e)
             module = _original_importer_import_module(modname, *args, **kwargs)
         return module
 
     importer.import_module = _hook_importer_import_module
 
-    # Patch the importer used by ModuleAnalyzer.
-    import sphinx.pycode
-    _original_pycode_import_module = sphinx.pycode.import_module
+    _original_pycode_import_module = sphinx.pycode.import_module  # type: ignore
 
     def _hook_pycode_import_module(modname):
         logger.debug("[autodoc_import] _hook_pycode_import_module: %s", modname)
@@ -92,6 +102,36 @@ def setup(app):
         except:
             return _original_pycode_import_module(modname)
 
-    sphinx.pycode.import_module = _hook_pycode_import_module
+    sphinx.pycode.import_module = _hook_pycode_import_module  # type: ignore
 
-    return {'version': "1.0", "parallel_read_safe": True, 'parallel_write_safe': True,}
+    return {
+        "version": "1.0",
+        "parallel_read_safe": True,
+        "parallel_write_safe": True,
+    }
+
+
+def copy_and_rename_module(src: Path, dst: Path):
+    """Copy a module from src to dst, renaming all .pyi files to .py"""
+    if not src.is_dir():
+        return False
+    if dst.exists():
+        # clear out the destination directory
+        shutil.rmtree(dst)
+    try:
+        dst.mkdir(parents=True, exist_ok=True)
+        # add  .gitignore file
+        with open(dst.joinpath(".gitignore"), "w") as f:
+            f.write("*")
+
+        shutil.copytree(
+            src, dst, dirs_exist_ok=True, ignore=shutil.ignore_patterns(".git", "__pycache__")
+        )
+
+        # rename all .pyi files to .py so that they are picked up by autodoc
+        for f in dst.rglob("*.pyi"):
+            shutil.move(f, f.with_suffix(".py"))
+        return True
+    except Exception as e:
+        print(f"Error copying {src} to {dst}: {e}")
+        return False
