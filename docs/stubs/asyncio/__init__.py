@@ -1,8 +1,5 @@
 """
-asynchronous I/O scheduler for writing concurrent code. See: https://docs.micropython.org/en/latest/library/asyncio.html
-
-|see_cpython_module|
-`asyncio `<https://docs.python.org/3.8/library/asyncio.html>
+Asynchronous I/O scheduler for writing concurrent code.
 
 Example::
 
@@ -29,9 +26,85 @@ Example::
     asyncio.run(main(Pin(1), Pin(2)))
 """
 
-# source version: latest
-# origin module:: /home/jimmo/src/github.com/micropython/micropython3/docs/library/asyncio.rst
 from typing import Any, Coroutine, List, Tuple
+from annotations import module_availability, cpython_stdlib, Level
+
+cpython_stdlib("asyncio")
+module_availability(Level.EXTRA_FEATURES)
+
+def create_task(coro) -> "Task":
+    """
+    Create a new task from the given coroutine and schedule it to run.
+
+    Returns the corresponding `Task` object.
+    """
+    ...
+
+def current_task() -> "Task":
+    """
+    Return the `Task` object associated with the currently running task.
+    """
+    ...
+
+def run(coro) -> Any:
+    """
+    Create a new task from the given coroutine and run it until it completes.
+
+    Returns the value returned by *coro*.
+    """
+    ...
+
+def sleep(t) -> Coroutine[Any, Any, Any]:
+    """
+    Sleep for *t* seconds (can be a float).
+
+    This is a coroutine.
+    """
+    ...
+
+def sleep_ms(t) -> Coroutine[Any, Any, Any]:
+    """
+    Sleep for *t* milliseconds.
+
+    This is a coroutine, and a MicroPython extension.
+    """
+    ...
+
+def wait_for(awaitable, timeout) -> Coroutine[Any, Any, Any]:
+    """
+    Wait for the *awaitable* to complete, but cancel it if it takes longer
+    than *timeout* seconds.  If *awaitable* is not a task then a task will be
+    created from it.
+
+    If a timeout occurs, it cancels the task and raises ``asyncio.TimeoutError``:
+    this should be trapped by the caller.  The task receives
+    ``asyncio.CancelledError`` which may be ignored or trapped using ``try...except``
+    or ``try...finally`` to run cleanup code.
+
+    Returns the return value of *awaitable*.
+
+    This is a coroutine.
+    """
+    ...
+
+def wait_for_ms(awaitable, timeout) -> Coroutine[Any, Any, Any]:
+    """
+    Similar to `wait_for` but *timeout* is an integer in milliseconds.
+
+    This is a coroutine, and a MicroPython extension.
+    """
+    ...
+
+def gather(*awaitables, return_exceptions=False) -> Coroutine[List, Any, Any]:
+    """
+    Run all *awaitables* concurrently.  Any *awaitables* that are not tasks are
+    promoted to tasks.
+
+    Returns a list of return values of all *awaitables*.
+
+    This is a coroutine.
+    """
+    ...
 
 class Task:
     """
@@ -42,7 +115,6 @@ class Task:
     Tasks should not be created directly, rather use `create_task` to create them.
     """
 
-    def __init__(self) -> None: ...
     def cancel(self) -> None:
         """
         Cancel the task by injecting ``asyncio.CancelledError`` into it.  The task may
@@ -58,11 +130,13 @@ class Event:
     """
 
     def __init__(self) -> None: ...
+
     def is_set(self) -> bool:
         """
         Returns ``True`` if the event is set, ``False`` otherwise.
         """
         ...
+
     def set(self) -> None:
         """
         Set the event.  Any tasks waiting on the event will be scheduled to run.
@@ -71,11 +145,13 @@ class Event:
         from an IRQ, scheduler callback, or other thread. See `ThreadSafeFlag`.
         """
         ...
+
     def clear(self) -> None:
         """
         Clear the event.
         """
         ...
+
     def wait(self) -> Coroutine[Any, Any, Any]:
         """
         Wait for the event to be set.  If the event is already set then it returns
@@ -146,6 +222,32 @@ class Lock:
         waiting an the lock becomes unlocked.
         """
         ...
+
+
+def open_connection(host, port) -> Coroutine[Tuple, Any, Any]:
+    """
+    Open a TCP connection to the given *host* and *port*.  The *host* address will be
+    resolved using `socket.getaddrinfo`, which is currently a blocking call.
+
+    Returns a pair of streams: a reader and a writer stream.
+    Will raise a socket-specific ``OSError`` if the host could not be resolved or if
+    the connection could not be made.
+
+    This is a coroutine.
+    """
+    ...
+
+def start_server(callback, host, port, backlog=5) -> Coroutine["Server", Any, Any]:
+    """
+    Start a TCP server on the given *host* and *port*.  The *callback* will be
+    called with incoming, accepted connections, and be passed 2 arguments: reader
+    and writer streams for the connection.
+
+    Returns a `Server` object.
+
+    This is a coroutine.
+    """
+    ...
 
 class Stream:
     """
@@ -242,6 +344,21 @@ class Server:
         """
         ...
 
+def get_event_loop() -> "Loop":
+    """
+    Return the event loop used to schedule and run tasks.  See `Loop`.
+    """
+    ...
+
+def new_event_loop() -> "Loop":
+    """
+    Reset the event loop and return it.
+
+    Note: since MicroPython only has a single event loop this function just
+    resets the loop's state, it does not create a new one.
+    """
+    ...
+
 class Loop:
     """
     This represents the object which schedules and runs tasks.  It cannot be
@@ -249,7 +366,7 @@ class Loop:
     """
 
     def __init__(self) -> None: ...
-    def create_task(self, coro) -> Task:
+    def create_task(self, coro) -> "Task":
         """
         Create a task from the given *coro* and return the new `Task` object.
         """
@@ -298,117 +415,3 @@ class Loop:
         is a dictionary containing keys: ``'message'``, ``'exception'``, ``'future'``.
         """
         ...
-
-def create_task(coro) -> Task:
-    """
-    Create a new task from the given coroutine and schedule it to run.
-
-    Returns the corresponding `Task` object.
-    """
-    ...
-
-def current_task() -> Task:
-    """
-    Return the `Task` object associated with the currently running task.
-    """
-    ...
-
-def run(coro) -> Any:
-    """
-    Create a new task from the given coroutine and run it until it completes.
-
-    Returns the value returned by *coro*.
-    """
-    ...
-
-def sleep(t) -> Coroutine[Any, Any, Any]:
-    """
-    Sleep for *t* seconds (can be a float).
-
-    This is a coroutine.
-    """
-    ...
-
-def sleep_ms(t) -> Coroutine[Any, Any, Any]:
-    """
-    Sleep for *t* milliseconds.
-
-    This is a coroutine, and a MicroPython extension.
-    """
-    ...
-
-def wait_for(awaitable, timeout) -> Coroutine[Any, Any, Any]:
-    """
-    Wait for the *awaitable* to complete, but cancel it if it takes longer
-    than *timeout* seconds.  If *awaitable* is not a task then a task will be
-    created from it.
-
-    If a timeout occurs, it cancels the task and raises ``asyncio.TimeoutError``:
-    this should be trapped by the caller.  The task receives
-    ``asyncio.CancelledError`` which may be ignored or trapped using ``try...except``
-    or ``try...finally`` to run cleanup code.
-
-    Returns the return value of *awaitable*.
-
-    This is a coroutine.
-    """
-    ...
-
-def wait_for_ms(awaitable, timeout) -> Coroutine[Any, Any, Any]:
-    """
-    Similar to `wait_for` but *timeout* is an integer in milliseconds.
-
-    This is a coroutine, and a MicroPython extension.
-    """
-    ...
-
-def gather(*awaitables, return_exceptions=False) -> Coroutine[List, Any, Any]:
-    """
-    Run all *awaitables* concurrently.  Any *awaitables* that are not tasks are
-    promoted to tasks.
-
-    Returns a list of return values of all *awaitables*.
-
-    This is a coroutine.
-    """
-    ...
-
-def open_connection(host, port) -> Coroutine[Tuple, Any, Any]:
-    """
-    Open a TCP connection to the given *host* and *port*.  The *host* address will be
-    resolved using `socket.getaddrinfo`, which is currently a blocking call.
-
-    Returns a pair of streams: a reader and a writer stream.
-    Will raise a socket-specific ``OSError`` if the host could not be resolved or if
-    the connection could not be made.
-
-    This is a coroutine.
-    """
-    ...
-
-def start_server(callback, host, port, backlog=5) -> Coroutine[Server, Any, Any]:
-    """
-    Start a TCP server on the given *host* and *port*.  The *callback* will be
-    called with incoming, accepted connections, and be passed 2 arguments: reader
-    and writer streams for the connection.
-
-    Returns a `Server` object.
-
-    This is a coroutine.
-    """
-    ...
-
-def get_event_loop() -> Any:
-    """
-    Return the event loop used to schedule and run tasks.  See `Loop`.
-    """
-    ...
-
-def new_event_loop() -> Any:
-    """
-    Reset the event loop and return it.
-
-    Note: since MicroPython only has a single event loop this function just
-    resets the loop's state, it does not create a new one.
-    """
-    ...
