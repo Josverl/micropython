@@ -13,13 +13,13 @@ from __future__ import annotations
 from typing import Any, List, Optional, Tuple, Union
 from _typeshed import Incomplete
 
-HEAP_DATA: Incomplete
+HEAP_DATA: int = 4
 """Used in `idf_heap_info`."""
-HEAP_EXEC: Incomplete
+HEAP_EXEC: int = 1
 """Used in `idf_heap_info`."""
-WAKEUP_ALL_LOW: Incomplete
+WAKEUP_ALL_LOW: bool = False
 """Selects the wake level for pins."""
-WAKEUP_ANY_HIGH: Incomplete
+WAKEUP_ANY_HIGH: bool = True
 """Selects the wake level for pins."""
 
 class Partition:
@@ -29,25 +29,25 @@ class Partition:
     *block_size* specifies the byte size of an individual block.
     """
 
-    BOOT: Incomplete
+    BOOT: str = "BOOT"
     """\
     Used in the `Partition` constructor to fetch various partitions: ``BOOT`` is the
     partition that will be booted at the next reset and ``RUNNING`` is the currently
     running partition.
     """
-    RUNNING: Incomplete
+    RUNNING: str = "RUNNING"
     """\
     Used in the `Partition` constructor to fetch various partitions: ``BOOT`` is the
     partition that will be booted at the next reset and ``RUNNING`` is the currently
     running partition.
     """
-    TYPE_APP: Incomplete
+    TYPE_APP: str = "APP"
     """\
     Used in `Partition.find` to specify the partition type: ``APP`` is for bootable
     firmware partitions (typically labelled ``factory``, ``ota_0``, ``ota_1``), and
     ``DATA`` is for other partitions, e.g. ``nvs``, ``otadata``, ``phy_init``, ``vfs``.
     """
-    TYPE_DATA: Incomplete
+    TYPE_DATA: str = "DATA"
     """\
     Used in `Partition.find` to specify the partition type: ``APP`` is for bootable
     firmware partitions (typically labelled ``factory``, ``ota_0``, ``ota_1``), and
@@ -138,7 +138,9 @@ class RMT:
 
     PULSE_MAX: int
     """Maximum integer that can be set for a pulse duration."""
-    def __init__(self, channel, *, pin=None, clock_div=8, idle_level=False, tx_carrier=None) -> None: ...
+    def __init__(
+        self, channel, *, pin=None, clock_div=8, idle_level=False, tx_carrier=None
+    ) -> None: ...
     @classmethod
     def source_freq(cls) -> Incomplete:
         """

@@ -13,7 +13,7 @@ from __future__ import annotations
 from typing import Any, Optional
 from _typeshed import Incomplete
 
-MONO_VLSB: bytes
+MONO_VLSB: int = 0
 """\
 Monochrome (1-bit) color format
 This defines a mapping where the bits in a byte are vertically mapped with
@@ -22,7 +22,7 @@ bit 0 being nearest the top of the screen. Consequently each byte occupies
 locations until the rightmost edge is reached. Further bytes are rendered
 at locations starting at the leftmost edge, 8 pixels lower.
 """
-MONO_HLSB: bytes
+MONO_HLSB: int = 3
 """\
 Monochrome (1-bit) color format
 This defines a mapping where the bits in a byte are horizontally mapped.
@@ -31,7 +31,7 @@ Subsequent bytes appear at successive horizontal locations until the
 rightmost edge is reached. Further bytes are rendered on the next row, one
 pixel lower.
 """
-MONO_HMSB: bytes
+MONO_HMSB: int = 4
 """\
 Monochrome (1-bit) color format
 This defines a mapping where the bits in a byte are horizontally mapped.
@@ -40,13 +40,13 @@ Subsequent bytes appear at successive horizontal locations until the
 rightmost edge is reached. Further bytes are rendered on the next row, one
 pixel lower.
 """
-RGB565: Incomplete
+RGB565: int = 1
 """Red Green Blue (16-bit, 5+6+5) color format"""
-GS2_HMSB: Incomplete
+GS2_HMSB: int = 5
 """Grayscale (2-bit) color format"""
-GS4_HMSB: Incomplete
+GS4_HMSB: int = 2
 """Grayscale (4-bit) color format"""
-GS8: Incomplete
+GS8: int = 6
 """Grayscale (8-bit) color format"""
 
 class FrameBuffer:

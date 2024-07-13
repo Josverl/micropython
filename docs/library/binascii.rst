@@ -2,4 +2,6 @@
 ===========================================
 
 .. automodule:: binascii
-   :members:
+    :members:
+    :undoc-members:
+    :show-inheritance:

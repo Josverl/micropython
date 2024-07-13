@@ -18,9 +18,9 @@ from __future__ import annotations
 from typing import Tuple
 from _typeshed import Incomplete
 
-e: float
+e: float = 2.718281828459045
 """base of the natural logarithm"""
-pi: float
+pi: float = 3.141592653589793
 """the ratio of a circle's circumference to its diameter"""
 
 def cos(z) -> float:

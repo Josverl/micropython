@@ -1,8 +1,6 @@
 """
 Low-level Bluetooth radio functionality.
 
-MicroPython module: https://docs.micropython.org/en/v1.23.0/library/bluetooth.html
-
 This module provides an interface to a Bluetooth controller on a board.
 Currently this supports Bluetooth Low Energy (BLE) in Central, Peripheral,
 Broadcaster, and Observer roles, as well as GATT Server and Client and L2CAP
@@ -307,7 +305,9 @@ class BLE:
         """
         ...
 
-    def gap_advertise(self, interval_us, adv_data=None, *, resp_data=None, connectable=True) -> Incomplete:
+    def gap_advertise(
+        self, interval_us, adv_data=None, *, resp_data=None, connectable=True
+    ) -> Incomplete:
         """
         Starts advertising at the specified interval (in **micro** seconds). This
         interval will be rounded down to the nearest 625us. To stop advertising, set

@@ -159,6 +159,9 @@ and ``_IRQ_SET_SECRET`` events.
 **Note:** This is currently only supported when using the NimBLE stack on
 STM32 and Unix (not ESP32).
 
+Classes
+-------
+
 .. restore_section::
 
 .. autoclass:: BLE
