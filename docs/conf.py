@@ -19,7 +19,8 @@ import os
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-sys.path.insert(0, os.path.abspath("."))
+TOP_DIR = os.path.abspath(os.path.dirname(__file__))
+sys.path.insert(0, os.path.join(TOP_DIR, "extensions"))
 
 # The MICROPY_VERSION env var should be "vX.Y.Z" (or unset).
 micropy_version = os.getenv("MICROPY_VERSION") or "latest"
@@ -52,6 +53,8 @@ extensions = [
     "sphinx.ext.todo",
     "sphinx.ext.coverage",
     "sphinxcontrib.jquery",
+    "autodoc_import",
+    "sphinx.ext.napoleon",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -122,6 +125,11 @@ pygments_style = "sphinx"
 rst_epilog = """
 .. include:: /templates/replace.inc
 """
+
+# -- Options for autodoc --------------------------------------------------
+
+autodoc_member_order = "bysource"
+autodoc_typehints = "signature"
 
 # -- Options for HTML output ----------------------------------------------
 
