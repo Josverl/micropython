@@ -132,6 +132,16 @@ rst_epilog = """
 
 autodoc_member_order = "bysource"
 autodoc_typehints = "signature"
+autodoc_typehints_format = "short"
+
+autodoc_default_options = {
+    "members": True,
+    "member-order": "bysource",
+    "undoc-members": True,
+    # "special-members": "",
+    "exclude-members": "__weakref__, __dict__, __module__",
+    "show-inheritance": True,
+}
 
 # -- Options for HTML output ----------------------------------------------
 
