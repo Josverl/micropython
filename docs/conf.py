@@ -55,6 +55,8 @@ extensions = [
     "sphinxcontrib.jquery",
     "autodoc_import",
     "sphinx.ext.napoleon",
+    "autodoc_import",
+    "restore_section",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
