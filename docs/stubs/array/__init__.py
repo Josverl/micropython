@@ -1,91 +1,141 @@
 """
-efficient arrays of numeric data. See: https://docs.micropython.org/en/latest/library/array.html
+This module provides a type that allows for efficient and compact
+representation of lists of numeric values. They work like lists, except all
+elements must be of the same numeric type, and they also implement the
+:term:`buffer protocol`.
 
-|see_cpython_module| :mod:`python:array` https://docs.python.org/3/library/array.html .
+The supported format codes are ``b``, ``B``, ``h``, ``H``, ``i``, ``I``,
+``l``, ``L``, ``q``, ``Q``,
 
-Supported format codes: ``b``, ``B``, ``h``, ``H``, ``i``, ``I``, ``l``,
-``L``, ``q``, ``Q``, ``f``, ``d`` (the latter 2 depending on the
-floating-point support).
+This documentation uses `int` as a placeholder for the numeric type. If
+floating point support is enabled, the array type may also hold floating-point
+values elements (corresponding to type codes ``f`` and ``d``).
 """
 
-# source version: latest
-# origin module:: /home/jimmo/src/github.com/micropython/micropython3/docs/library/array.rst
-from typing import Any, List, Optional
+from typing import Iterable, overload
+from annotations import availability, overload_availability, cpython_stdlib, Level
 
+cpython_stdlib("array")
+
+
+@availability(Level.CORE_FEATURES)
 class array:
     """
-    Create array with elements of given type. Initial contents of the
-    array are given by *iterable*. If it is not provided, an empty
-    array is created.
+    Creates an array with elements of given numeric type.
+
+    Arguments:
+        typecode:
+            A single character from the list above defining the numeric type
+            for elements in this array.
+        initializer:
+            An object that can be iterated to generate the initial values for
+            this array. For example, a `list`, `tuple`, `bytes`, or other
+            sequence. If the initializer is not provided, then the array will
+            be empty.
     """
 
-    def __init__(self, typecode, iterable: Optional[Any] = None) -> None: ...
-    def append(self, val) -> Any:
+    def __init__(self, typecode, initializer: Iterable[int]=None) -> None:
+        ...
+
+    def append(self, val: int) -> None:
         """
         Append new element *val* to the end of array, growing it.
         """
         ...
-    def extend(self, iterable) -> Any:
-        """
-        Append new elements as contained in *iterable* to the end of
-        array, growing it.
-        """
-        ...
-    def __getitem__(self, index) -> List[int]:
-        """
-        Indexed read of the array, called as ``a[index]`` (where ``a`` is an ``array``).
-        Returns a value if *index* is an ``int`` and an ``array`` if *index* is a slice.
-        Negative indices count from the end and ``IndexError`` is thrown if the index is
-        out of range.
 
-        **Note:** ``__getitem__`` cannot be called directly (``a.__getitem__(index)`` fails) and
-        is not present in ``__dict__``, however ``a[index]`` does work.
+    def extend(self, source: Iterable[int]) -> None:
+        """
+        Append new elements from *source* to the end of array, growing it.
         """
         ...
-    def __setitem__(self, index, value) -> Any:
-        """
-        Indexed write into the array, called as ``a[index] = value`` (where ``a`` is an ``array``).
-        ``value`` is a single value if *index* is an ``int`` and an ``array`` if *index* is a slice.
-        Negative indices count from the end and ``IndexError`` is thrown if the index is out of range.
 
-        **Note:** ``__setitem__`` cannot be called directly (``a.__setitem__(index, value)`` fails) and
-        is not present in ``__dict__``, however ``a[index] = value`` does work.
+    @overload
+    def __getitem__(self, index: int) -> int:
+        ...
+
+    @overload
+    def __getitem__(self, index: slice) -> "array":
+        ...
+
+    def __getitem__(self, index):
+        """
+        Implements the subscript operator with both integer and slice
+        arguments to get a single element or a range of elements.
+
+        Returns:
+            Either a numeric value or an array containing the range of
+            elements.
         """
         ...
+
+    @overload
+    def __setitem__(self, index: slice, value: "array") -> None:
+        ...
+
+    @overload
+    def __setitem__(self, index: int, value: int) -> None:
+        ...
+
+    @overload_availability(Level.EXTRA_FEATURES, details="slice")
+    def __setitem__(self, index, value):
+        """
+        Implements the subscript operator with both integer and slice
+        arguments to set either a single element or a range of elements.
+        """
+        ...
+
     def __len__(self) -> int:
         """
-        Returns the number of items in the array, called as ``len(a)`` (where ``a`` is an ``array``).
+        Supports the ``len(a)`` operator.
 
-        **Note:** ``__len__`` cannot be called directly (``a.__len__()`` fails) and the
-        method is not present in ``__dict__``, however ``len(a)`` does work.
+        Returns:
+            The number of elements in the array.
         """
         ...
-    def __add__(self, other) -> Any:
-        """
-        Return a new ``array`` that is the concatenation of the array with *other*, called as
-        ``a + other`` (where ``a`` and *other* are both ``arrays``).
 
-        **Note:** ``__add__`` cannot be called directly (``a.__add__(other)`` fails) and
-        is not present in ``__dict__``, however ``a + other`` does work.
+    def __add__(self, other: "array") -> "array":
+        """
+        Array instances can be concatenated together using the ``+`` operator.
+
+        Parameters:
+            other: An `array.array` instance.
+
+        Returns:
+            The concatenation of the two arrays.
+
+        Notes:
+            This is implemented by concatenating the underlying bytes, which
+            may produce unexpected results if the numeric types of the two
+            arrays are different.
         """
         ...
-    def __iadd__(self, other) -> Any:
-        """
-        Concatenates the array with *other* in-place, called as ``a += other`` (where ``a`` and *other*
-        are both ``arrays``).  Equivalent to ``extend(other)``.
 
-        **Note:** ``__iadd__`` cannot be called directly (``a.__iadd__(other)`` fails) and
-        is not present in ``__dict__``, however ``a += other`` does work.
+    def __iadd__(self, other: "array") -> "array":
+        """
+        Array instances can be concatenated in-place using the ``+=`` operator.
+
+        Parameters:
+            other: An `array.array` instance.
+
+        Returns:
+            The array instance that has now been extended with the items from
+            *other*.
+
+        Notes:
+            This is implemented by concatenating the underlying bytes, which
+            may produce unexpected results if the numeric types of the two
+            arrays are different.
         """
         ...
+
     def __repr__(self) -> str:
         """
-        Returns the string representation of the array, called as ``str(a)`` or ``repr(a)```
-        (where ``a`` is an ``array``).  Returns the string ``"array(<type>, [<elements>])"``,
-        where ``<type>`` is the type code letter for the array and ``<elements>`` is a comma
-        separated list of the elements of the array.
+        Supports the ``repr(a)`` operator.
 
-        **Note:** ``__repr__`` cannot be called directly (``a.__repr__()`` fails) and
-        is not present in ``__dict__``, however ``str(a)`` and ``repr(a)`` both work.
+        Returns:
+            The string representation of the array in the form
+            ``"array(<type>, [<elements>])"``, where ``<type>`` is the type
+            code letter for the array and ``<elements>`` is a comma separated
+            list of the elements of the array.
         """
         ...
