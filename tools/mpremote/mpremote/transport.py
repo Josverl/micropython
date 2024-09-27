@@ -183,7 +183,7 @@ class Transport:
         except TransportExecError as e:
             raise _convert_filesystem_error(e, path) from None
 
-    def fs_hashfile(self, path, chunk_size=256, algo="sha256"):
+    def fs_hashfile(self, path, algo, chunk_size=256):
         try:
             self.exec("import hashlib\nh = hashlib.{algo}()".format(algo=algo))
         except TransportExecError:

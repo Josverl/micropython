@@ -162,7 +162,7 @@ def do_filesystem_cp(state, src, dest, multiple, check_hash=False):
         # Skip copy if the destination file is identical.
         if check_hash:
             try:
-                remote_hash = state.transport.fs_hashfile(dest[1:])
+                remote_hash = state.transport.fs_hashfile(dest[1:], "sha256")
                 source_hash = hashlib.sha256(data).digest()
                 # remote_hash will be None if the device doesn't support
                 # hashlib.sha256 (and therefore won't match).
@@ -347,8 +347,8 @@ def do_filesystem(state, args):
                 state.transport.fs_rmdir(path)
             elif command == "touch":
                 state.transport.fs_touchfile(path)
-            elif command == "hash":
-                digest = state.transport.fs_hashfile(path, algo=args.algorithm)
+            elif command.endswith("sum") and command[-4].isdigit():
+                digest = state.transport.fs_hashfile(path, command[:-3])
                 print(digest.hex())
             elif command == "cp":
                 if args.recursive:

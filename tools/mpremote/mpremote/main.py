@@ -182,16 +182,6 @@ def argparse_rtc():
 def argparse_filesystem():
     cmd_parser = argparse.ArgumentParser(description="execute filesystem commands on the device")
     _bool_flag(cmd_parser, "recursive", "r", False, "recursive copy (for 'cp' command only)")
-    cmd_parser.add_argument(
-        "--algorithm",
-        "-a",
-        type=str,
-        default="sha256",
-        metavar="ALGO",
-        choices=list(hashlib.algorithms_guaranteed),
-        help="hash algorithm to use (for 'hash' command only): "
-        + ", ".join(sorted(hashlib.algorithms_guaranteed)),
-    )
     _bool_flag(
         cmd_parser,
         "verbose",
@@ -200,7 +190,9 @@ def argparse_filesystem():
         "enable verbose output (defaults to True for all commands except cat)",
     )
     cmd_parser.add_argument(
-        "command", nargs=1, help="filesystem command (e.g. cat, cp, hash, ls, rm, rmdir, touch)"
+        "command",
+        nargs=1,
+        help="filesystem command (e.g. cat, cp, sha256sum, ls, rm, rmdir, touch)",
     )
     cmd_parser.add_argument("path", nargs="+", help="local and remote paths")
     return cmd_parser
@@ -319,7 +311,7 @@ _BUILTIN_COMMAND_EXPANSIONS = {
     # Filesystem shortcuts (use `cp` instead of `fs cp`).
     "cat": "fs cat",
     "cp": "fs cp",
-    "hash": "fs hash",
+    "sha256sum": "fs sha256sum",
     "ls": "fs ls",
     "mkdir": "fs mkdir",
     "rm": "fs rm",
