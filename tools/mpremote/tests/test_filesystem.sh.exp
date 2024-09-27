@@ -6,7 +6,7 @@ touch :b.py
 ls :
            0 a.py
            0 b.py
-hash :a.py
+sha256sum :a.py
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  -
 -----
@@ -25,7 +25,7 @@ Hello
 World
 Hello
 World
-hash :a.py
+sha256sum :a.py
 50f0a701dd6cd6125387b96515300c9d5294c006518f8e62fa9eea3b66587f21
 50f0a701dd6cd6125387b96515300c9d5294c006518f8e62fa9eea3b66587f21  -
 -----
@@ -54,7 +54,7 @@ ls :
           30 d.py
 -----
 edit :d.py
-hash :d.py
+sha256sum :d.py
 612c7ddb88390ac86b4174b26a6e5b52fc2f2838b234efd8f6f7c41631a49d04
 Goodbye
 World
