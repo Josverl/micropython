@@ -145,7 +145,7 @@ def do_filesystem_cp(state, src, dest, multiple, check_hash=False):
     try:
         if src.startswith(":"):
             data = state.transport.fs_readfile(src[1:], progress_callback=show_progress_bar)
-            filename = _remote_path_basename(src)
+            filename = _remote_path_basename(src[1:])
         else:
             with open(src, "rb") as f:
                 data = f.read()
