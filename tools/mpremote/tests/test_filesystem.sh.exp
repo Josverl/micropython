@@ -64,11 +64,11 @@ ls :
            0 package/
 ls :package
            0 subpackage/
-          22 x.py
           43 __init__.py
+          22 x.py
 ls :package/subpackage
-          22 y.py
           17 __init__.py
+          22 y.py
 x
 y
 -----
@@ -77,11 +77,11 @@ ls :
            0 package2/
 ls :package2
            0 subpackage/
-          22 x.py
           43 __init__.py
+          22 x.py
 ls :package2/subpackage
-          22 y.py
           17 __init__.py
+          22 y.py
 x
 y
 -----
@@ -91,11 +91,11 @@ ls :test
            0 package/
 ls :test/package
            0 subpackage/
-          22 x.py
           43 __init__.py
+          22 x.py
 ls :test/package/subpackage
-          22 y.py
           17 __init__.py
+          22 y.py
 -----
 cp ${TMP}/package :test/package2
 ls :test
@@ -103,11 +103,11 @@ ls :test
            0 package2/
 ls :test/package2
            0 subpackage/
-          22 x.py
           43 __init__.py
+          22 x.py
 ls :test/package2/subpackage
-          22 y.py
           17 __init__.py
+          22 y.py
 -----
 cp :test/package ${TMP}/copy
 ${TMP}/copy:
@@ -143,11 +143,11 @@ ls :
            0 package3/
 ls :package3
            0 subpackage/
-          22 x.py
           43 __init__.py
+          22 x.py
 ls :package3/subpackage
-          22 y.py
           17 __init__.py
+          22 y.py
 -----
 cp ${TMP}/package :
 mkdir :package4
@@ -159,25 +159,25 @@ ls :package4
            0 package/
 ls :package4/package
            0 subpackage/
-          22 x.py
           43 __init__.py
+          22 x.py
 ls :package4/package/subpackage
-          22 y.py
           17 __init__.py
+          22 y.py
 -----
 cp ${TMP}/package :
-Up to date: ./package/x.py
 Up to date: ./package/__init__.py
 Up to date: ./package/subpackage/__init__.py
+Up to date: ./package/x.py
 ls :
            0 package/
            0 package4/
 ls :package
            0 subpackage/
-          22 x.py
           43 __init__.py
+          22 x.py
 ls :package/subpackage
-          23 y.py
           17 __init__.py
+          23 y.py
 x
 y2
