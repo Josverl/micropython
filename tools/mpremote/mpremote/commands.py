@@ -276,7 +276,8 @@ def do_filesystem_recursive_cp(state, src, dest, multiple):
     for d in dirs:
         _mkdir(dest, *d)
 
-    # Copy all files.
+    # Copy all files, in sorted order to help it be deterministic.
+    files.sort()
     for dest_path_split, src_path_joined in files:
         if src.startswith(":"):
             src_path_joined = ":" + src_path_joined
