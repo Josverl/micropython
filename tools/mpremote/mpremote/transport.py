@@ -28,6 +28,16 @@ import ast, hashlib, os, sys
 from collections import namedtuple
 
 
+def stdout_write_bytes(b):
+    b = b.replace(b"\x04", b"")
+    if hasattr(sys.stdout, "buffer"):
+        sys.stdout.buffer.write(b)
+        sys.stdout.buffer.flush()
+    else:
+        text = b.decode(sys.stdout.encoding, "strict")
+        sys.stdout.write(text)
+
+
 class TransportError(Exception):
     pass
 
@@ -101,11 +111,6 @@ class Transport:
             return False
 
     def fs_printfile(self, src, chunk_size=256):
-        def stdout_write_bytes(b):
-            b = b.replace(b"\x04", b"")
-            sys.stdout.buffer.write(b)
-            sys.stdout.buffer.flush()
-
         cmd = (
             "with open('%s') as f:\n while 1:\n"
             "  b=f.read(%u)\n  if not b:break\n  print(b,end='')" % (src, chunk_size)

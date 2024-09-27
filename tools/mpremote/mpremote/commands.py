@@ -5,7 +5,7 @@ import tempfile
 
 import serial.tools.list_ports
 
-from .transport import TransportError
+from .transport import TransportError, stdout_write_bytes
 from .transport_serial import SerialTransport
 
 
@@ -392,11 +392,6 @@ def do_edit(state, args):
 def _do_execbuffer(state, buf, follow):
     state.ensure_raw_repl()
     state.did_action()
-
-    def stdout_write_bytes(b):
-        b = b.replace(b"\x04", b"")
-        sys.stdout.buffer.write(b)
-        sys.stdout.buffer.flush()
 
     try:
         state.transport.exec_raw_no_follow(buf)
