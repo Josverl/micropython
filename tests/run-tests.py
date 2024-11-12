@@ -862,9 +862,27 @@ def run_tests(pyb, tests, args, result_dir, num_threads=1):
             skipped_tests.append(test_name)
             return
 
+        # detect use of unittest
+        uses_unittest = False
+        with open(test_file) as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    pass
+                elif line.startswith("#"):
+                    pass
+                elif line == "import unittest":
+                    uses_unittest = True
+                    break
+                else:
+                    break
+
         # get expected output
         test_file_expected = test_file + ".exp"
-        if os.path.isfile(test_file_expected):
+        if uses_unittest:
+            # expected output is result of running unittest
+            output_expected = None
+        elif os.path.isfile(test_file_expected):
             # expected output given by a file, so read that in
             with open(test_file_expected, "rb") as f:
                 output_expected = f.read()
@@ -880,7 +898,8 @@ def run_tests(pyb, tests, args, result_dir, num_threads=1):
                 output_expected = b"CPYTHON3 CRASH"
 
         # canonical form for all host platforms is to use \n for end-of-line
-        output_expected = output_expected.replace(b"\r\n", b"\n")
+        if output_expected is not None:
+            output_expected = output_expected.replace(b"\r\n", b"\n")
 
         # run MicroPython
         output_mupy = run_micropython(pyb, args, test_file, test_file_abspath)
@@ -896,22 +915,50 @@ def run_tests(pyb, tests, args, result_dir, num_threads=1):
             skipped_tests.append(test_name)
             return
 
-        testcase_count.add(len(output_expected.splitlines()))
+        # work out if test passed or not
+        test_passed = False
+        extra_info = ""
+        if uses_unittest:
+            output = [str(l, "ascii") for l in output_mupy.splitlines()[-4:]]
+            ran_match = None
+            result_match = None
+            if len(output) == 4:
+                # look for unittest summary
+                ran_match = re.match(r"Ran (\d+) tests$", output[1])
+                if output[3].startswith("OK"):
+                    result_match = re.match(r"(OK)( \(skipped=(\d+)\))?$", output[3])
+                else:
+                    result_match = re.match(
+                        r"(FAILED) \(failures=(\d+), errors=(\d+)\)$", output[3]
+                    )
+            if not (ran_match and result_match):
+                # bad output, eg missing unittest module
+                extra_info = "(unittest crashed)"
+            else:
+                # unittest ran successfully
+                extra_info = "(unittest)"
+                testcase_count.add(int(ran_match.group(1)))
+                test_passed = result_match.group(1) == "OK"
+        else:
+            testcase_count.add(len(output_expected.splitlines()))
+            test_passed = output_expected == output_mupy
 
         filename_expected = os.path.join(result_dir, test_basename + ".exp")
         filename_mupy = os.path.join(result_dir, test_basename + ".out")
 
-        if output_expected == output_mupy:
-            print("pass ", test_file)
+        # print test summary, update counters, and save .exp/.out files if needed
+        if test_passed:
+            print("pass ", test_file, extra_info)
             passed_count.increment()
             rm_f(filename_expected)
             rm_f(filename_mupy)
         else:
-            with open(filename_expected, "wb") as f:
-                f.write(output_expected)
+            print("FAIL ", test_file, extra_info)
+            if output_expected is not None:
+                with open(filename_expected, "wb") as f:
+                    f.write(output_expected)
             with open(filename_mupy, "wb") as f:
                 f.write(output_mupy)
-            print("FAIL ", test_file)
             failed_tests.append((test_name, test_file))
 
         test_count.increment()
