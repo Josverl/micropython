@@ -124,6 +124,17 @@ Functions and types
 
 .. function:: range()
 
+   .. method:: index(value)
+
+      Return the index of the first occurrence of *value* in the range.
+      If the value is not in the range, a `ValueError` is raised.
+
+      Example:
+      ::
+         >>> r = range(5, 50, 5)
+         >>> r.index(25)
+         4
+
 .. function:: repr()
 
 .. function:: reversed()

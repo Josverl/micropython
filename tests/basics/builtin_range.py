@@ -58,3 +58,18 @@ try:
     range(1)[0] = 1
 except TypeError:
     print("TypeError")
+
+# index method
+print(range(5, 50, 5).index(25))  # should print 4
+
+# index method with value not in range
+try:
+    print(range(5, 50, 5).index(30))
+except ValueError:
+    print("ValueError")
+
+# index method with empty range
+try:
+    print(range(0).index(0))
+except ValueError:
+    print("ValueError")
