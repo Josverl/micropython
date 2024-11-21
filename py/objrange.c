@@ -27,6 +27,7 @@
 #include <stdlib.h>
 
 #include "py/runtime.h"
+#include "extmod/modrangeutils.c"
 
 /******************************************************************************/
 /* range iterator                                                             */
@@ -206,6 +207,10 @@ static void range_attr(mp_obj_t o_in, qstr attr, mp_obj_t *dest) {
 }
 #endif
 
+static mp_obj_t range_index(mp_obj_t self_in, mp_obj_t value) {
+    return mp_range_index(self_in, value);
+}
+
 #if MICROPY_PY_BUILTINS_RANGE_BINOP
 #define RANGE_TYPE_BINOP binary_op, range_binary_op,
 #else
@@ -228,5 +233,12 @@ MP_DEFINE_CONST_OBJ_TYPE(
     print, range_print,
     unary_op, range_unary_op,
     subscr, range_subscr,
-    iter, range_getiter
+    iter, range_getiter,
+    locals_dict, &range_locals_dict
     );
+
+STATIC const mp_rom_map_elem_t range_locals_dict_table[] = {
+    { MP_ROM_QSTR(MP_QSTR_index), MP_ROM_PTR(&range_index_obj) },
+};
+
+STATIC MP_DEFINE_CONST_DICT(range_locals_dict, range_locals_dict_table);
