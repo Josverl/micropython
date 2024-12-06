@@ -2,16 +2,30 @@ import hashlib
 import os
 import sys
 import tempfile
+import time
 
 import serial.tools.list_ports
 
 from .transport import TransportError, stdout_write_bytes
 from .transport_serial import SerialTransport
 
-
 class CommandError(Exception):
     pass
 
+def wait_for_device(state, device, timeout=None):
+    start_time = time.time()
+    while True:
+        for p in sorted(serial.tools.list_ports.comports()):
+            if p.device == device:
+                try:
+                    state.transport = SerialTransport(p.device, baudrate=115200)
+                    return
+                except TransportError as er:
+                    if not er.args[0].startswith("failed to access"):
+                        raise er
+        if timeout and time.time() - start_time > timeout:
+            raise CommandError(f"Timeout waiting for device {device}")
+        time.sleep(1)
 
 def do_connect(state, args=None):
     dev = args.device[0] if args else "auto"
@@ -57,14 +71,13 @@ def do_connect(state, args=None):
             # Connect to the given device.
             if dev.startswith("port:"):
                 dev = dev[len("port:") :]
-            state.transport = SerialTransport(dev, baudrate=115200)
+            wait_for_device(state, dev)
             return
     except TransportError as er:
         msg = er.args[0]
         if msg.startswith("failed to access"):
             msg += " (it may be in use by another program)"
         raise CommandError(msg)
-
 
 def do_disconnect(state, _args=None):
     if not state.transport:
@@ -86,7 +99,6 @@ def do_disconnect(state, _args=None):
     state.transport = None
     state._auto_soft_reset = True
 
-
 def show_progress_bar(size, total_size, op="copying"):
     if not sys.stdout.isatty():
         return
@@ -105,7 +117,6 @@ def show_progress_bar(size, total_size, op="copying"):
             end="",
         )
 
-
 def _remote_path_join(a, *b):
     if not a:
         a = "./"
@@ -114,7 +125,6 @@ def _remote_path_join(a, *b):
         result += "/" + x.strip("/")
     return result
 
-
 def _remote_path_dirname(a):
     a = a.rsplit("/", 1)
     if len(a) == 1:
@@ -122,10 +132,8 @@ def _remote_path_dirname(a):
     else:
         return a[0]
 
-
 def _remote_path_basename(a):
     return a.rsplit("/", 1)[-1]
-
 
 def do_filesystem_cp(state, src, dest, multiple, check_hash=False):
     if dest.startswith(":"):
@@ -189,7 +197,6 @@ def do_filesystem_cp(state, src, dest, multiple, check_hash=False):
         # Write to local file.
         with open(dest, "wb") as f:
             f.write(data)
-
 
 def do_filesystem_recursive_cp(state, src, dest, multiple, check_hash):
     # Ignore trailing / on both src and dest. (Unix cp ignores them too)
@@ -296,7 +303,6 @@ def do_filesystem_recursive_cp(state, src, dest, multiple, check_hash):
 
         do_filesystem_cp(state, src_path_joined, dest_path_joined, False, check_hash)
 
-
 def do_filesystem(state, args):
     state.ensure_raw_repl()
     state.did_action()
@@ -373,7 +379,6 @@ def do_filesystem(state, args):
     except TransportError as er:
         raise CommandError("Error with transport:\n{}".format(er.args[0]))
 
-
 def do_edit(state, args):
     state.ensure_raw_repl()
     state.did_action()
@@ -397,7 +402,6 @@ def do_edit(state, args):
         finally:
             os.unlink(dest)
 
-
 def _do_execbuffer(state, buf, follow):
     state.ensure_raw_repl()
     state.did_action()
@@ -414,15 +418,12 @@ def _do_execbuffer(state, buf, follow):
     except KeyboardInterrupt:
         sys.exit(1)
 
-
 def do_exec(state, args):
     _do_execbuffer(state, args.expr[0], args.follow)
-
 
 def do_eval(state, args):
     buf = "print(" + args.expr[0] + ")"
     _do_execbuffer(state, buf, True)
-
 
 def do_run(state, args):
     filename = args.path[0]
@@ -433,27 +434,22 @@ def do_run(state, args):
         raise CommandError(f"could not read file '{filename}'")
     _do_execbuffer(state, buf, args.follow)
 
-
 def do_mount(state, args):
     state.ensure_raw_repl()
     path = args.path[0]
     state.transport.mount_local(path, unsafe_links=args.unsafe_links)
     print(f"Local directory {path} is mounted at /remote")
 
-
 def do_umount(state, path):
     state.ensure_raw_repl()
     state.transport.umount_local()
 
-
 def do_resume(state, _args=None):
     state._auto_soft_reset = False
-
 
 def do_soft_reset(state, _args=None):
     state.ensure_raw_repl(soft_reset=True)
     state.did_action()
-
 
 def do_rtc(state, args):
     state.ensure_raw_repl()

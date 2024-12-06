@@ -14,6 +14,9 @@ The full list of supported commands are:
     mpremote connect <device>         -- connect to given device
                                          device may be: list, auto, id:x, port:x
                                          or any valid device name/path
+                                         options:
+                                             --wait <timeout>  # wait for device connection
+                                             --reconnect       # automatically reconnect after disconnection
     mpremote disconnect               -- disconnect current device
     mpremote mount <local-dir>        -- mount local directory on device
     mpremote eval <string>            -- evaluate and print the string

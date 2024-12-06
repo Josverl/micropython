@@ -27,3 +27,16 @@ jobs:
         name: mpremote
         path: |
           tools/mpremote/dist/mpremote*.whl
+
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+    - name: Install dependencies
+      run: pip install -r tools/mpremote/requirements.txt
+    - name: Run tests
+      run: tools/mpremote/tests/run-mpremote-tests.sh
