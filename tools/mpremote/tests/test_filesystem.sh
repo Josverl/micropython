@@ -170,3 +170,20 @@ EOF
 $MPREMOTE resume cp -r "${TMP}/package" :
 $MPREMOTE resume ls : :package :package/subpackage
 $MPREMOTE resume exec "import package; package.x(); package.y()"
+
+# Test rm -r functionality
+echo -----
+$MPREMOTE resume mkdir :testdir
+$MPREMOTE resume cp -r "${TMP}/package" :testdir/package
+$MPREMOTE resume ls :testdir
+$MPREMOTE resume rm -r :testdir/package
+$MPREMOTE resume ls :testdir
+
+# Test rm -r on non-existent path
+echo -----
+$MPREMOTE resume rm -r :nonexistent || echo "expect error"
+
+# Test rm -r on read-only filesystem
+echo -----
+$MPREMOTE resume exec "import os; os.mount(os.VfsFat(RAMBlockDev(512, 50)), '/readonly', readonly=True)"
+$MPREMOTE resume rm -r :readonly || echo "expect error"

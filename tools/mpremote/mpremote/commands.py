@@ -300,6 +300,15 @@ def do_filesystem_recursive_cp(state, src, dest, multiple, check_hash):
         do_filesystem_cp(state, src_path_joined, dest_path_joined, False, check_hash)
 
 
+def do_filesystem_recursive_rm(state, path):
+    if state.transport.fs_isdir(path):
+        for entry in state.transport.fs_listdir(path):
+            do_filesystem_recursive_rm(state, _remote_path_join(path, entry.name))
+        state.transport.fs_rmdir(path)
+    else:
+        state.transport.fs_rmfile(path)
+
+
 def do_filesystem(state, args):
     state.ensure_raw_repl()
     state.did_action()
@@ -352,7 +361,17 @@ def do_filesystem(state, args):
             elif command == "mkdir":
                 state.transport.fs_mkdir(path)
             elif command == "rm":
-                state.transport.fs_rmfile(path)
+                if args.recursive:
+                    if path == "":
+                        confirm = input(
+                            "Are you sure you want to delete all files and directories in the root directory? This action cannot be undone. (yes/no): "
+                        )
+                        if confirm.lower() != "yes":
+                            print("Aborted")
+                            return
+                    do_filesystem_recursive_rm(state, path)
+                else:
+                    state.transport.fs_rmfile(path)
             elif command == "rmdir":
                 state.transport.fs_rmdir(path)
             elif command == "touch":
