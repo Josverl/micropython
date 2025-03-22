@@ -1,0 +1,6 @@
+pytest
+
+requests
+
+essential_generators
+keyboard
