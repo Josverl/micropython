@@ -229,7 +229,7 @@ The full list of supported commands are:
   - ``ls`` to list the current directory
   - ``ls <dirs...>`` to list the given directories
   - ``cp [-rf] <src...> <dest>`` to copy files
-  - ``rm <src...>`` to remove files on the device
+  - ``rm [-r] <src...>`` to remove files or folders on the device
   - ``mkdir <dirs...>`` to create directories on the device
   - ``rmdir <dirs...>`` to remove directories on the device
   - ``touch <file..>`` to create the files (if they don't already exist)
@@ -238,9 +238,17 @@ The full list of supported commands are:
   The ``cp`` command uses a convention where a leading ``:`` represents a remote
   path. Without a leading ``:`` means a local path. This is based on the
   convention used by the `Secure Copy Protocol (scp) client
-  <https://en.wikipedia.org/wiki/Secure_copy_protocol>`_. All other commands
-  implicitly assume the path is a remote path, but the ``:`` can be optionally
-  used for clarity.
+  <https://en.wikipedia.org/wiki/Secure_copy_protocol>`_. 
+  
+  The ``rm -r`` command accepts ``:`` to refer to the current remote path to allow a 
+  directory tree to be removed from the default path of the device (e.g. 
+  ``/flash`` or ``/``).
+  Attempt to remove a mounted ```vfs`` will result in a non-blocking warning. 
+  The mount's content will be removed, but the mount itself will remain.
+  Attempting to remove the root directory (``/``) will result in an error.
+  
+  All other commands implicitly assume the path is a remote path, but the ``:`` 
+  can be optionally used for clarity.
 
   So for example, ``mpremote fs cp main.py :main.py`` copies ``main.py`` from
   the current local directory to the remote filesystem, whereas
