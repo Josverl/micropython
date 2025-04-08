@@ -239,21 +239,33 @@ The full list of supported commands are:
   path. Without a leading ``:`` means a local path. This is based on the
   convention used by the `Secure Copy Protocol (scp) client
   <https://en.wikipedia.org/wiki/Secure_copy_protocol>`_. 
-  
-  The ``rm -r`` command accepts ``:`` to refer to the current remote path to allow a 
-  directory tree to be removed from the default path of the device (e.g. 
-  ``/flash`` or ``/``).
-  Attempt to remove a mounted ```vfs`` will result in a non-blocking warning. 
-  The mount's content will be removed, but the mount itself will remain.
-  Attempting to remove the root directory (``/``) will result in an error.
-  
-  All other commands implicitly assume the path is a remote path, but the ``:`` 
-  can be optionally used for clarity.
 
   So for example, ``mpremote fs cp main.py :main.py`` copies ``main.py`` from
   the current local directory to the remote filesystem, whereas
   ``mpremote fs cp :main.py main.py`` copies ``main.py`` from the device back
   to the current directory.
+
+  The ``mpremote rm -r`` command accepts both relative and absolute paths. 
+  Use ``:`` to refer to the current remote working directory (cwd) to 
+  allow a  directory tree to be removed from the device's default path(``/flash``, ``/``).
+  Use ``-v/--verbose`` to see the files being removed.
+
+  For example: 
+
+  - ``mpremote rm -r :libs`` will remove the ``libs`` directory and all its 
+    child items from the device. 
+  - ``mpremote rm -rv :/sd`` will remove all files from a mounted SDCard and result
+    in a non-blocking warning. The mount will   be retained.
+  - ``mpremote rm -rv :/`` will remove all files on the device, including any 
+    located in mounted vfs such as ``/sd`` or ``/flash``. After removing all folders 
+    and files, this will  also return an error to mimic unix ``rm -rf /`` behaviour.
+ 
+  .. warning::
+    There is no supported way to undelete files removed by ``mpremote rm -r :``
+    Please use with caution.
+
+  All other commands implicitly assume the path is a remote path, but the ``:`` 
+  can be optionally used for clarity.
 
   All of the filesystem sub-commands take multiple path arguments, so if there
   is another command in the sequence, you must use ``+`` to terminate the

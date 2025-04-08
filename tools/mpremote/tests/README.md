@@ -5,6 +5,7 @@ This directory contains a set of tests for `mpremote`.
 Requirements:
 - A device running MicroPython connected to a serial port on the host.
 - The device you are testing against must be flashed with a firmware of the same build as `mpremote`.
+- If the device has an SDcard or other vfs mounted, the vfs's filesystem must be empty to pass the filesystem test. 
 - Python 3.x, `bash` and various Unix tools such as `find`, `mktemp`, `sed`, `sort`, `tr`.
 - To test on Windows, you can either:
     - Run the (Linux) tests in WSL2 against a USB device that is passed though to WSL2.
@@ -20,7 +21,6 @@ To run the tests do:
 
 To run a single test do:
 
-    $ ./run-mpremote-tests.sh <test_name>
     $ ./run-mpremote-tests.sh test_filesystem.sh
 
 
