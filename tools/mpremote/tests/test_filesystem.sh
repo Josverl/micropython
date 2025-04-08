@@ -203,12 +203,13 @@ $MPREMOTE resume rm -r :nonexistent || echo "expect error"
 
 echo -----
 # rm -r absolute root
+# no -v to generate same output on stm32 and other ports
 $MPREMOTE run "${TMP}/ramdisk.py"
 $MPREMOTE resume touch :a.py
 $MPREMOTE resume touch :b.py
 $MPREMOTE resume cp -r "${TMP}/package" :
 $MPREMOTE resume cp -r "${TMP}/package" :package2
-$MPREMOTE resume rm -r -v :/ || echo "expect error"
+$MPREMOTE resume rm -r :/ || echo "expect error"
 $MPREMOTE resume ls :
 $MPREMOTE resume ls :/ramdisk
 

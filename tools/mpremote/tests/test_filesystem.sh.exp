@@ -195,7 +195,7 @@ y2
 touch :a.py
 touch :b.py
 cp ${TMP}/package :
-rm -r :
+rm :
 removed: './a.py'
 removed: './b.py'
 removed: './package/subpackage/__init__.py'
@@ -216,14 +216,14 @@ ls :testdir/package
            0 subpackage/
           43 __init__.py
           22 x.py
-rm -r :testdir/package
+rm :testdir/package
 ls :/ramdisk
            0 a.py
            0 testdir/
 ls :testdir
 -----
 ls :
-rm -r :nonexistent
+rm :nonexistent
 mpremote: rm: nonexistent: No such file or directory.
 expect error
 -----
@@ -231,22 +231,7 @@ touch :a.py
 touch :b.py
 cp ${TMP}/package :
 cp ${TMP}/package :package2
-rm -r :/
-removed: '/ramdisk/a.py'
-removed: '/ramdisk/b.py'
-removed: '/ramdisk/package/subpackage/__init__.py'
-removed: '/ramdisk/package/subpackage/y.py'
-removed directory: '/ramdisk/package/subpackage'
-removed: '/ramdisk/package/__init__.py'
-removed: '/ramdisk/package/x.py'
-removed directory: '/ramdisk/package'
-removed: '/ramdisk/package2/subpackage/__init__.py'
-removed: '/ramdisk/package2/subpackage/y.py'
-removed directory: '/ramdisk/package2/subpackage'
-removed: '/ramdisk/package2/__init__.py'
-removed: '/ramdisk/package2/x.py'
-removed directory: '/ramdisk/package2'
-skipped: '/ramdisk' (vfs mountpoint)
+rm :/
 mpremote: rm -r: cannnot remove :/ Operation not permitted
 expect error
 ls :
@@ -255,7 +240,7 @@ ls :/ramdisk
 touch :a.py
 touch :b.py
 cp ${TMP}/package :
-rm -r :ramdisk
+rm :ramdisk
 removed: 'ramdisk/a.py'
 removed: 'ramdisk/b.py'
 removed: 'ramdisk/package/subpackage/__init__.py'
@@ -270,7 +255,7 @@ ls :/ramdisk
 touch :a.py
 touch :b.py
 cp ${TMP}/package :
-rm -r :/ramdisk
+rm :/ramdisk
 removed: '/ramdisk/a.py'
 removed: '/ramdisk/b.py'
 removed: '/ramdisk/package/subpackage/__init__.py'
