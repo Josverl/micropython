@@ -24,8 +24,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-import ast, hashlib, os, sys
-import errno
+import ast, errno, hashlib, os, sys
 from collections import namedtuple
 
 

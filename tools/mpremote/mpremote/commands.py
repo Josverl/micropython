@@ -359,7 +359,7 @@ def do_filesystem(state, args):
                 if command == "cp":
                     print("{} {} {}".format(command, path, cp_dest))
                 else:
-                    print("{} {}:{}".format(command, "-r " if args.recursive else "", path))
+                    print("{} :{}".format(command, path))
 
             if command == "cat":
                 state.transport.fs_printfile(path)
