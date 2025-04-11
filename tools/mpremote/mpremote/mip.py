@@ -5,7 +5,6 @@
 import urllib.error
 import urllib.request
 import json
-import tempfile
 import os
 import os.path
 
@@ -161,11 +160,22 @@ def do_mip(state, args):
     state.did_action()
 
     if args.command[0] == "install":
+        packages = []
+        if args.requirement:
+            packages = parse_requirements_file(args.packages)
+        else:
+            packages = args.packages
+
         state.ensure_raw_repl()
 
-        for package in args.packages:
+        for package in packages:
             version = None
-            if "@" in package:
+            if "==" in package:
+                # mip does not recognize https://packaging.python.org/en/latest/specifications/dependency-specifiers/#dependency-specifiers
+                # version_cmp   = wsp* '<' | '<=' | '!=' | '==' | '>=' | '>' | '~=' | '==='
+                package, version = package.split("==")
+            elif "@" in package:
+                # OK git github/gitlab urls, deprecated for others ?
                 package, version = package.split("@")
 
             print("Install", package)
@@ -202,6 +212,56 @@ def do_mip(state, args):
             except CommandError:
                 print("Package may be partially installed")
                 raise
-            print("Done")
+        print("Done")
     else:
         raise CommandError(f"mip: '{args.command[0]}' is not a command")
+
+
+def parse_requirements_file(requirements: list[str]):
+    """Load a list of packages from a requirements.txt or pyproject.toml file"""
+    # just in time import
+    import sys
+    from pathlib import Path
+
+    packages = []
+    requirements_file = requirements[0]
+
+    requirements_file = Path(requirements_file)
+    if not requirements_file.exists() and requirements_file.is_file():
+        raise CommandError(f"Requirements file not found: {requirements_file}")
+
+    if requirements_file.suffix == '.toml':
+        if sys.version_info >= (3, 11):
+            import tomllib
+        else:
+            import tomli as tomllib
+
+        # read
+        try:
+            with open(requirements_file, "rb") as f:
+                toml_data = tomllib.load(f)
+        except tomllib.TOMLDecodeError as e:
+            raise CommandError("Unable to read requirements file") from e
+        try:
+            packages = toml_data['tool']['mpremote']['mip']
+        except KeyError as e:
+            raise CommandError(f"No mpremote mip requirements could be located in: {f}") from e
+
+    else:
+        # assume plain text format
+        with open(requirements_file, "r") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    packages.append(line)
+
+    return packages
+
+    # from urllib.parse import urlparse
+    # if requirements_file.startswith("http://") or requirements_file.startswith("https://"):
+    #     with urllib.request.urlopen(requirements_file) as f:
+    #         for line in f:
+    #             line = line.decode().strip()
+    #             if line and not line.startswith("#"):
+    #                 packages.append(line)
+    #     return packages

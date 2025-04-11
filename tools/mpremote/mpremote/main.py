@@ -211,6 +211,7 @@ def argparse_mip():
         description="install packages from micropython-lib or third-party sources"
     )
     _bool_flag(cmd_parser, "mpy", "m", True, "download as compiled .mpy files (default)")
+    _bool_flag(cmd_parser, "requirement", "r", False, "install from the given requirements file")
     cmd_parser.add_argument(
         "--target", type=str, required=False, help="destination direction on the device"
     )
