@@ -7,6 +7,7 @@ import urllib.request
 import json
 import os
 import os.path
+from pathlib import Path
 
 from .commands import CommandError, show_progress_bar
 
@@ -162,7 +163,9 @@ def do_mip(state, args):
     if args.command[0] == "install":
         packages = []
         if args.requirement:
-            packages = parse_requirements_file(args.packages)
+            if len(args.packages) != 1:
+                raise CommandError("Only a single requirements file can be specified")
+            packages = parse_requirements_file(Path(args.packages[0]))
         else:
             packages = args.packages
 
@@ -171,8 +174,6 @@ def do_mip(state, args):
         for package in packages:
             version = None
             if "==" in package:
-                # mip does not recognize https://packaging.python.org/en/latest/specifications/dependency-specifiers/#dependency-specifiers
-                # version_cmp   = wsp* '<' | '<=' | '!=' | '==' | '>=' | '>' | '~=' | '==='
                 package, version = package.split("==")
             elif "@" in package:
                 # OK git github/gitlab urls, deprecated for others ?
@@ -217,16 +218,12 @@ def do_mip(state, args):
         raise CommandError(f"mip: '{args.command[0]}' is not a command")
 
 
-def parse_requirements_file(requirements: list[str]):
+def parse_requirements_file(requirements_file: Path):
     """Load a list of packages from a requirements.txt or pyproject.toml file"""
     # just in time import
     import sys
-    from pathlib import Path
 
     packages = []
-    requirements_file = requirements[0]
-
-    requirements_file = Path(requirements_file)
     if not requirements_file.exists() and requirements_file.is_file():
         raise CommandError(f"Requirements file not found: {requirements_file}")
 
@@ -248,11 +245,20 @@ def parse_requirements_file(requirements: list[str]):
             raise CommandError(f"No mpremote mip requirements could be located in: {f}") from e
 
     else:
-        # assume plain text format
+        # simplified requirements format , no options
+        # https://pip.pypa.io/en/stable/reference/requirements-file-format/
         with open(requirements_file, "r") as f:
             for line in f:
                 line = line.strip()
                 if line and not line.startswith("#"):
+                    if line.startswith("-"):
+                        raise CommandError("Global options are not supported")
+                    if any(seq in line for seq in ("<", "<=", "!=", ">=", ">", "!=", "~=", "===")):
+                        # only '=='
+                        # mip does not recognize https://packaging.python.org/en/latest/specifications/dependency-specifiers/#dependency-specifiers
+                        raise CommandError("Only == is supported")
+                    if any(seq in line for seq in ("[", "]", ";")):
+                        raise CommandError("no extras or environment markers are supported")
                     packages.append(line)
 
     return packages
