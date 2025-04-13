@@ -2,6 +2,8 @@
 # Ported from micropython-lib/micropython/mip/mip.py.
 # MIT license; Copyright (c) 2022 Jim Mussared
 
+import fnmatch
+from typing import List
 import urllib.error
 import urllib.request
 import json
@@ -157,10 +159,36 @@ def _install_package(transport, package, index, target, version, mpy):
     _install_json(transport, package, index, target, version, mpy)
 
 
+def _do_mip_search(index: str, filter: List[str]):
+    """
+    Search for packages in the package index.
+    Args:
+        index (str): The URL of the package index.
+        filter (List[str]): List of patterns to filter packages.
+    """
+    try:
+        with urllib.request.urlopen(index) as response:
+            index_data = json.load(response)
+    except Exception as e:
+        raise CommandError(f"Error loading package index: {index}") from e
+
+    print("Available packages:")
+    for p in index_data['packages']:
+        if not any(fnmatch.fnmatch(p["name"], pattern) for pattern in filter):
+            continue
+        print(f"{p['name']:<20} {p['version']:>8} {p['description']}")
+
+
 def do_mip(state, args):
     state.did_action()
 
-    if args.command[0] == "install":
+    if args.command[0] == "search":
+        index = (args.index or _PACKAGE_INDEX).rstrip('/') + "/index.json"
+        filter = args.packages or ["*"]
+        _do_mip_search(index, filter)
+
+    elif args.command[0] == "install":
+        state.ensure_raw_repl()
         packages = []
         if args.requirement:
             if len(args.packages) != 1:

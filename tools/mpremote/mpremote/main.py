@@ -213,7 +213,7 @@ def argparse_mip():
     _bool_flag(cmd_parser, "mpy", "m", True, "download as compiled .mpy files (default)")
     _bool_flag(cmd_parser, "requirement", "r", False, "install from the given requirements file")
     cmd_parser.add_argument(
-        "--target", type=str, required=False, help="destination direction on the device"
+        "--target", type=str, required=False, help="destination directory on the device"
     )
     cmd_parser.add_argument(
         "--index",
@@ -221,11 +221,11 @@ def argparse_mip():
         required=False,
         help="package index to use (defaults to micropython-lib)",
     )
-    cmd_parser.add_argument("command", nargs=1, help="mip command (e.g. install)")
+    cmd_parser.add_argument("command", nargs=1, help="mip command (e.g. install, search)")
     cmd_parser.add_argument(
         "packages",
-        nargs="+",
-        help="list package specifications, e.g. name, name@version, github:org/repo, github:org/repo@branch, gitlab:org/repo, gitlab:org/repo@branch",
+        nargs="*",
+        help="list package specifications (for install, e.g. name, name@version, github:org/repo, etc.)",
     )
     return cmd_parser
 
