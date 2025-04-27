@@ -29,7 +29,7 @@ if [ "$COVERAGE" = true ]; then
         exit 1
     fi
     echo "Start coverage"
-    coverage erase
+    # coverage erase
 fi
 
 for t in $TESTS; do
@@ -37,7 +37,6 @@ for t in $TESTS; do
     echo -n "${t}: "
     if [ "$COVERAGE" = true ]; then
         MPREMOTE="coverage run --append --context=${t} ${TEST_DIR}/../mpremote.py"
-        echo ${MPREMOTE}
     fi
     # Strip CR and replace the random temp dir with a token.
     if env MPREMOTE="${MPREMOTE}" TMP="${TMP}" "${t}" 2>&1 | tr -d '\r' | sed "s,${TMP},"'${TMP},g' > "${t}.out"; then
