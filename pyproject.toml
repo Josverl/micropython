@@ -67,3 +67,17 @@ mccabe.max-complexity = 40
 #   viper_args: uses f(*)
 exclude = ["tests/basics/*.py", "tests/*/repl_*.py", "tests/micropython/viper_args.py"]
 quote-style = "preserve"
+
+[tool.coverage.run]
+branch = true
+
+[tool.coverage.report]
+# Regexes for lines to exclude from consideration
+exclude_also = [
+    # Don't complain about missing imports:
+    "except PackageNotFoundError:",
+    "except ImportError:",
+    #  transport.py
+    "except TransportExecError as e:",
+
+    ]
