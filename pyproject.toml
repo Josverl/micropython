@@ -68,8 +68,29 @@ mccabe.max-complexity = 40
 exclude = ["tests/basics/*.py", "tests/*/repl_*.py", "tests/micropython/viper_args.py"]
 quote-style = "preserve"
 
+
+[tool.pytest.ini_options]
+# https://docs.pytest.org/en/stable/reference/reference.html#ini-options-ref
+addopts = "--cov-report term"
+testpaths = [
+    "tools/mpremote/tests",
+]
+
+
 [tool.coverage.run]
+# https://coverage.readthedocs.io/en/latest/config.html
 branch = true
+include = [
+    # Include 
+    "*/tools/mpremote/*",
+
+]
+omit = [
+    # Exclude third-party code
+    "*/lib/*",
+    # Exclude test files
+    "*/tests/*",
+]
 
 [tool.coverage.report]
 # Regexes for lines to exclude from consideration

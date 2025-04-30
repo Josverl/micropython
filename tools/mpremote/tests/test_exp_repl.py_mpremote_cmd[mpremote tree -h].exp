@@ -1,0 +1,15 @@
+tree :
+:/
+├── [  20 B] file1.txt
+├── [  1.1K] file3.txt
+├── lib
+│   ├── [ 202 B] __future__.mpy
+│   ├── [ 165 B] __future__.py
+│   ├── [ 13.8K] createstubs.py
+│   ├── [ 11.6K] createstubs_db.py
+│   ├── [ 11.1K] createstubs_mem.py
+│   └── [  2.6K] modulelist.txt
+└── rom
+    ├── [  20 B] file1.txt
+    ├── [ 204 B] file2.txt
+    └── [  1.1K] file3.txt

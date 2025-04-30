@@ -1,0 +1,15 @@
+tree :
+:/
+├── file1.txt
+├── file3.txt
+├── lib
+│   ├── __future__.mpy
+│   ├── __future__.py
+│   ├── createstubs.py
+│   ├── createstubs_db.py
+│   ├── createstubs_mem.py
+│   └── modulelist.txt
+└── rom
+    ├── file1.txt
+    ├── file2.txt
+    └── file3.txt
