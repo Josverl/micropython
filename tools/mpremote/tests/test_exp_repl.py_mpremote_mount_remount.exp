@@ -1,0 +1,13 @@
+Local directory . is mounted at /remote
+Connected to MicroPython at /dev/ttyUSB0
+Use Ctrl-] or Ctrl-x to exit this shell
+>
+MicroPython v1.25.0 on 2025-04-15; ESP module with ESP8266
+Type "help()" for more information.
+>>> 
+MPY: soft reboot
+MicroPython v1.25.0 on 2025-04-15; ESP module with ESP8266
+Type "help()" for more information.
+>>> 
+Remount local directory ./ at /remote
+>>> 
