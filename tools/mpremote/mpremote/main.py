@@ -18,7 +18,9 @@ MicroPython device over a serial connection.  Commands supported are:
 """
 
 import argparse
-import os, sys, time
+import os
+import sys
+import time
 from collections.abc import Mapping
 from textwrap import dedent
 
@@ -26,19 +28,19 @@ from .commands import (
     CommandError,
     do_connect,
     do_disconnect,
-    do_reconnect,
-    do_reconnect_cmd,
     do_edit,
+    do_eval,
+    do_exec,
     do_filesystem,
     do_mount,
-    do_umount,
-    do_exec,
-    do_eval,
-    do_run,
+    do_reconnect,
+    do_reconnect_cmd,
     do_resume,
-    do_rtc,
-    do_soft_reset,
     do_romfs,
+    do_rtc,
+    do_run,
+    do_soft_reset,
+    do_umount,
 )
 from .mip import do_mip
 from .repl import do_repl

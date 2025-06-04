@@ -13,7 +13,7 @@ def do_repl_main_loop(
         try:
             console_in.waitchar(state.transport.serial)
             c = console_in.readchar()
-        except serial.SerialException as e:
+        except OSError as e:
             if "Device disconnected" in str(e) or "ClearCommError failed" in str(e):
                 disconnected = True
                 break
@@ -85,7 +85,7 @@ def do_repl_main_loop(
                 break
         except Exception as er:
             # Handle Windows serial exception
-            if isinstance(er, serial.SerialException) and "ClearCommError failed" in str(er):
+            if isinstance(er, OSError) and "ClearCommError failed" in str(er):
                 disconnected = True
                 break
             else:
