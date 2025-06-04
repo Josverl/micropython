@@ -24,6 +24,8 @@ import time
 from collections.abc import Mapping
 from textwrap import dedent
 
+import platformdirs
+
 from .commands import (
     CommandError,
     do_connect,
@@ -425,18 +427,8 @@ def load_user_config():
     # Create empty config object.
     config = __build_class__(lambda: None, "Config")()
     config.commands = {}
-
-    # Get config file name.
-    path = os.getenv("XDG_CONFIG_HOME")
-    if path is None:
-        path = os.getenv("HOME")
-        if path is None:
-            return config
-        path = os.path.join(path, ".config")
-    path = os.path.join(path, _PROG)
+    path = platformdirs.user_config_dir(appname=_PROG, appauthor=False)
     config_file = os.path.join(path, "config.py")
-
-    # Check if config file exists.
     if not os.path.exists(config_file):
         return config
 
@@ -445,9 +437,11 @@ def load_user_config():
         config_data = f.read()
     prev_cwd = os.getcwd()
     os.chdir(path)
+    # pass in the config path so that the config file can use it
+    config.__dict__["config_path"] = path
+    config.__dict__["__file__"] = config_file
     exec(config_data, config.__dict__)
     os.chdir(prev_cwd)
-
     return config
 
 
