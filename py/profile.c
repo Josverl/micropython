@@ -86,12 +86,21 @@ static void frame_print(const mp_print_t *print, mp_obj_t o_in, mp_print_kind_t 
 }
 
 static void frame_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
-    if (dest[0] != MP_OBJ_NULL) {
+    mp_obj_frame_t *o = MP_OBJ_TO_PTR(self_in);
+
+    if (dest[0] == MP_OBJ_SENTINEL) {
+        // store attr
+        switch (attr) {
+            case MP_QSTR_f_trace:
+                o->trace_obj = dest[1];
+                dest[0] = MP_OBJ_NULL;
+                break;
+        }
+        return;
+    } else if (dest[0] != MP_OBJ_NULL) {
         // not load attribute
         return;
     }
-
-    mp_obj_frame_t *o = MP_OBJ_TO_PTR(self_in);
 
     switch (attr) {
         case MP_QSTR_f_back:
@@ -111,6 +120,12 @@ static void frame_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
             break;
         case MP_QSTR_f_lineno:
             dest[0] = MP_OBJ_NEW_SMALL_INT(o->lineno);
+            break;
+        case MP_QSTR_f_trace:
+            dest[0] = o->trace_obj;
+            break;
+        case MP_QSTR_f_locals:
+            dest[0] = MP_OBJ_FROM_PTR(o->code->dict_locals);
             break;
     }
 }
@@ -148,6 +163,7 @@ mp_obj_t mp_obj_new_frame(const mp_code_state_t *code_state) {
     o->lineno = mp_prof_bytecode_lineno(rc, o->lasti);
     o->trace_opcodes = false;
     o->callback = MP_OBJ_NULL;
+    o->trace_obj = MP_OBJ_NULL;
 
     return MP_OBJ_FROM_PTR(o);
 }
