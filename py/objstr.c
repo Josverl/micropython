@@ -201,7 +201,7 @@ mp_obj_t mp_obj_str_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_
         }
 
         default: // 2 or 3 args
-            // TODO: validate 2nd/3rd args
+            // TODO: validate 2nd args
             if (mp_obj_is_type(args[0], &mp_type_bytes)) {
                 GET_STR_DATA_LEN(args[0], str_data, str_len);
                 GET_STR_HASH(args[0], str_hash);
@@ -210,7 +210,12 @@ mp_obj_t mp_obj_str_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_
                 }
                 #if MICROPY_PY_BUILTINS_STR_UNICODE_CHECK
                 if (!utf8_check(str_data, str_len)) {
-                    mp_raise_msg(&mp_type_UnicodeError, NULL);
+                    if (n_args == 3) {
+                        // if 3rd arg is "ignore" then we ignore invalid utf-8
+                        if (mp_obj_str_get_qstr(args[2]) != MP_QSTR_ignore) {
+                            mp_raise_msg(&mp_type_UnicodeError, NULL);
+                        }
+                    }
                 }
                 #endif
 
