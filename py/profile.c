@@ -422,6 +422,9 @@ mp_obj_t mp_prof_instr_tick(mp_code_state_t *code_state, bool is_exception) {
 
     mp_obj_t top = mp_const_none;
     mp_obj_t callback = code_state->frame->callback;
+    if (callback == MP_OBJ_NULL) {
+        return top;
+    }
 
     prof_callback_args_t _args, *args = &_args;
     args->frame = code_state->frame;
@@ -441,7 +444,17 @@ mp_obj_t mp_prof_instr_tick(mp_code_state_t *code_state, bool is_exception) {
     const mp_raw_code_t *rc = code_state->fun_bc->rc;
     const mp_bytecode_prelude_t *prelude = &rc->prelude;
     size_t prev_line_no = args->frame->lineno;
-    size_t current_line_no = mp_prof_bytecode_lineno(rc, code_state->ip - prelude->opcodes);
+
+    // Cache the last calculated line number to avoid redundant calls
+    static size_t cached_line_no = 0;
+    static const byte *cached_ip = NULL;
+
+    if (code_state->ip != cached_ip) {
+        cached_ip = code_state->ip;
+        cached_line_no = mp_prof_bytecode_lineno(rc, code_state->ip - prelude->opcodes);
+    }
+
+    size_t current_line_no = cached_line_no;
     if (prev_line_no != current_line_no) {
         args->frame->lineno = current_line_no;
         args->event = MP_OBJ_NEW_QSTR(MP_QSTR_line);
