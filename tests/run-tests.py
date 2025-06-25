@@ -890,6 +890,7 @@ def run_tests(pyb, tests, args, result_dir, num_threads=1):
         is_io_module = test_name.startswith("io_")
         is_fstring = test_name.startswith("string_fstring")
         is_inlineasm = test_name.startswith("asm")
+        is_settrace = test_name.startswith("sys_settrace")
 
         skip_it = test_file in skip_tests
         skip_it |= skip_native and is_native
@@ -911,7 +912,10 @@ def run_tests(pyb, tests, args, result_dir, num_threads=1):
             return
 
         # Run the test on the MicroPython target.
-        output_mupy = run_micropython(pyb, args, test_file, test_file_abspath)
+        # sys.settrace tests are special and should not be modified.
+        output_mupy = run_micropython(
+            pyb, args, test_file, test_file_abspath, is_special=is_settrace
+        )
 
         # Check if the target requested to skip this test.
         if output_mupy == b"SKIP\n":
