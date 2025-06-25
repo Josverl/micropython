@@ -11,16 +11,8 @@ except AttributeError:
 
 def print_stacktrace(frame, level=0):
     print(
-        "%2d: %s@%s:%s => %s:%d"
-        % (
-            level,
-            "  ",
-            frame.f_globals["__name__"],
-            frame.f_code.co_name,
-            # Keep just the filename.
-            "sys_settrace_" + frame.f_code.co_filename.split("sys_settrace_")[-1],
-            frame.f_lineno,
-        )
+        f"{level:2d}:   @{frame.f_globals['__name__']}:{frame.f_code.co_name} => "
+        f"sys_settrace_{frame.f_code.co_filename.split('sys_settrace_')[-1]}:{frame.f_lineno}"
     )
 
     if frame.f_back:

@@ -1,0 +1,26 @@
+Testing nested call stack frames with sys.settrace
+
+EVENT: call in level1
+( fuzzy , 0 ) f_locals=dict_items([])
+( fuzzy , 0 ) f_locals=dict_items([])
+( fuzzy , 0 ) f_locals=dict_items([('name', 'top_level')])
+
+EVENT: call in level2
+( fuzzy , 0 ) f_locals=dict_items([])
+( fuzzy , 0 ) f_locals=dict_items([])
+( fuzzy , 0 ) f_locals=dict_items([('result', 30), ('numbers', [10, 20, 30])])
+
+EVENT: call in level3
+( fuzzy , 0 ) f_locals=dict_items([])
+( fuzzy , 0 ) f_locals=dict_items([])
+( fuzzy , 0 ) f_locals=dict_items([('local_var', 'level3 local')])
+( fuzzy , 0 ) f_locals=dict_items([('local_var', 'level3 local')])
+( fuzzy , 12 ) f_locals=dict_items([('result', {'param': 'top_level.from_level2', 'level': 3, 'local': 'level3 local'}), ('numbers', [10, 20, 30])])
+( fuzzy , 12 ) f_locals=dict_items([('result', {'param': 'top_level.from_level2', 'level': 3, 'local': 'level3 local'}), ('numbers', [10, 20, 30])])
+( fuzzy , 6 ) f_locals=dict_items([('result', {'inner_result': {'param': 'top_level.from_level2', 'level': 3, 'local': 'level3 local'}, 'level': 2, 'numbers': [10, 20, 30]}), ('name', 'top_level')])
+( fuzzy , 6 ) f_locals=dict_items([('result', {'inner_result': {'param': 'top_level.from_level2', 'level': 3, 'local': 'level3 local'}, 'level': 2, 'numbers': [10, 20, 30]}), ('name', 'top_level')])
+
+Final result of nested calls: {'name': 'top_level', 'level': 1, 'inner_result': {'inner_result': {'param': 'top_level.from_level2', 'level': 3, 'local': 'level3 local'}, 'level': 2, 'numbers': [10, 20, 30]}}
+Total unique frames seen: 0
+
+Stack frame tests complete

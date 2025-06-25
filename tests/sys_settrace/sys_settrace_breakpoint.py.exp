@@ -1,0 +1,53 @@
+Starting sys.settrace tests for breakpoints and frame access
+TRACE call: Entering test_function
+
+*** BREAKPOINT HIT ***
+Event: line
+Function: test_function
+Line: 80
+Last instruction: 0
+TRACE return: Leaving test_function with value: None
+Test function result: 35633
+Breakpoint was hit: True
+Testing stack frames with nested calls:
+TRACE call: Entering nested_function
+TRACE call: Entering nested_function
+TRACE call: Entering nested_function
+
+*** STACK FRAMES ***
+
+Current frame:
+  Name: nested_function
+  Line: 93
+  Local variables:
+TRACE call: Entering simplified_repr
+TRACE return: Leaving simplified_repr with value: None
+    current_frame = <object>
+TRACE call: Entering simplified_repr
+TRACE return: Leaving simplified_repr with value: None
+    key = 93
+TRACE call: Entering simplified_repr
+TRACE return: Leaving simplified_repr with value: None
+    parent_frame = <object>
+
+Parent frame:
+  Name: nested_function
+  Line: 122
+  Local variables:
+TRACE call: Entering simplified_repr
+TRACE return: Leaving simplified_repr with value: None
+    current_frame = 0
+TRACE call: Entering simplified_repr
+TRACE return: Leaving simplified_repr with value: None
+    level_data = 'data at level 1'
+TRACE call: Entering simplified_repr
+TRACE return: Leaving simplified_repr with value: None
+    level_number = 10
+TRACE call: Entering simplified_repr
+TRACE return: Leaving simplified_repr with value: None
+    parent_frame = 1
+TRACE return: Leaving nested_function with value: None
+TRACE return: Leaving nested_function with value: None
+TRACE return: Leaving nested_function with value: None
+Nested result: Bottom of recursion
+Tests complete
