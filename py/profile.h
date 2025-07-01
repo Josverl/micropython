@@ -59,6 +59,9 @@ mp_obj_t mp_prof_get_frame(size_t depth);
 mp_obj_t mp_prof_frame_enter(mp_code_state_t *code_state);
 mp_obj_t mp_prof_frame_update(const mp_code_state_t *code_state);
 
+// Add function to set local variable in frame for debugging support
+mp_obj_t mp_prof_frame_set_local(mp_obj_t frame_obj, mp_obj_t name, mp_obj_t value);
+
 // For every VM instruction tick this function deduces events from the state
 mp_obj_t mp_prof_instr_tick(mp_code_state_t *code_state, bool is_exception);
 

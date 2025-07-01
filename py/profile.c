@@ -287,6 +287,74 @@ mp_obj_t mp_obj_new_frame(const mp_code_state_t *code_state) {
     return MP_OBJ_FROM_PTR(o);
 }
 
+mp_obj_t mp_prof_frame_set_local(mp_obj_t frame_obj, mp_obj_t name, mp_obj_t value) {
+    // Validate frame object
+    if (!mp_obj_is_type(frame_obj, &mp_type_frame)) {
+        mp_raise_TypeError(MP_ERROR_TEXT("expected frame"));
+    }
+    
+    mp_obj_frame_t *frame = MP_OBJ_TO_PTR(frame_obj);
+    mp_code_state_t *code_state = (mp_code_state_t*)frame->code_state;
+    if (code_state == NULL) {
+        mp_raise_ValueError(MP_ERROR_TEXT("frame has no code state"));
+    }
+    
+    // Get variable name as qstr
+    qstr name_qstr = mp_obj_str_get_qstr(name);
+    const mp_raw_code_t *raw_code = code_state->fun_bc->rc;
+    
+    // Find the variable slot using local names
+    #if MICROPY_PY_SYS_SETTRACE_SAVE_NAMES
+    // First check function parameters (they have fixed slot assignments)
+    uint16_t n_pos_args = raw_code->prelude.n_pos_args;
+    uint16_t n_kwonly_args = raw_code->prelude.n_kwonly_args;
+    uint16_t param_count = n_pos_args + n_kwonly_args;
+    
+    // Check parameters first
+    for (uint16_t i = 0; i < param_count && i < MICROPY_PY_SYS_SETTRACE_NAMES_MAX; i++) {
+        qstr var_name = mp_local_names_get_name(&raw_code->local_names, i);
+        if (var_name == name_qstr && i < code_state->n_state) {
+            code_state->state[i] = value;
+            return mp_const_none;
+        }
+    }
+    
+    // Then check local variables with reverse slot assignment
+    for (uint16_t order_idx = 0; order_idx < raw_code->local_names.order_count; order_idx++) {
+        uint16_t local_num = mp_local_names_get_local_num(&raw_code->local_names, order_idx);
+        
+        // Skip parameters and invalid entries
+        if (local_num == UINT16_MAX || local_num < param_count) {
+            continue;
+        }
+        
+        qstr var_name = mp_local_names_get_name(&raw_code->local_names, local_num);
+        if (var_name == name_qstr) {
+            // Found the variable, use reverse slot assignment
+            uint16_t total_locals = code_state->n_state;
+            uint16_t reverse_slot = total_locals - 1 - order_idx;
+            
+            if (reverse_slot >= param_count && reverse_slot < total_locals) {
+                code_state->state[reverse_slot] = value;
+                return mp_const_none;
+            }
+            
+            // Fallback: try runtime slot mapping
+            uint16_t runtime_slot = mp_local_names_get_runtime_slot(&raw_code->local_names, local_num);
+            if (runtime_slot != UINT16_MAX && runtime_slot < total_locals) {
+                code_state->state[runtime_slot] = value;
+                return mp_const_none;
+            }
+        }
+    }
+    #else
+    // Fallback when variable names aren't saved - cannot set variables by name
+    mp_raise_ValueError(MP_ERROR_TEXT("local variable names not available - rebuild with MICROPY_PY_SYS_SETTRACE_SAVE_NAMES"));
+    #endif
+    
+    mp_raise_ValueError(MP_ERROR_TEXT("local variable not found"));
+}
+
 
 /******************************************************************************/
 // Trace logic
