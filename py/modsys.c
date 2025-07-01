@@ -253,12 +253,6 @@ static mp_obj_t mp_sys__getframe(size_t n_args, const mp_obj_t *args) {
     return mp_prof_get_frame(depth);
 }
 MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mp_sys_getframe_obj, 0, 1, mp_sys__getframe);
-
-// _set_local_var(frame, name, value): Set local variable in frame (for debugging)
-static mp_obj_t mp_sys__set_local_var(mp_obj_t frame, mp_obj_t name, mp_obj_t value) {
-    return mp_prof_frame_set_local(frame, name, value);
-}
-MP_DEFINE_CONST_FUN_OBJ_3(mp_sys_set_local_var_obj, mp_sys__set_local_var);
 #endif // MICROPY_PY_SYS_SETTRACE
 
 #if MICROPY_PY_SYS_PATH && !MICROPY_PY_SYS_ATTR_DELEGATION
@@ -345,7 +339,6 @@ static const mp_rom_map_elem_t mp_module_sys_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_settrace), MP_ROM_PTR(&mp_sys_settrace_obj) },
     { MP_ROM_QSTR(MP_QSTR_gettrace), MP_ROM_PTR(&mp_sys_gettrace_obj) },
     { MP_ROM_QSTR(MP_QSTR__getframe), MP_ROM_PTR(&mp_sys_getframe_obj) },
-    { MP_ROM_QSTR(MP_QSTR__set_local_var), MP_ROM_PTR(&mp_sys_set_local_var_obj) },
     #endif
 
     #if MICROPY_PY_SYS_STDFILES

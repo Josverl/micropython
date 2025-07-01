@@ -90,6 +90,12 @@ static void frame_print(const mp_print_t *print, mp_obj_t o_in, mp_print_kind_t 
 
 static mp_obj_t frame_f_locals(mp_obj_t self_in); // Forward declaration
 
+// Frame method wrapper for set_local
+static mp_obj_t frame_set_local(mp_obj_t self_in, mp_obj_t name, mp_obj_t value) {
+    return mp_prof_frame_set_local(self_in, name, value);
+}
+static MP_DEFINE_CONST_FUN_OBJ_3(frame_set_local_obj, frame_set_local);
+
 static void frame_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
     mp_obj_frame_t *o = MP_OBJ_TO_PTR(self_in);
 
@@ -131,6 +137,9 @@ static void frame_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
             break;
         case MP_QSTR_f_locals:
             dest[0] = frame_f_locals(self_in);
+            break;
+        case MP_QSTR__set_local:
+            dest[0] = mp_obj_new_bound_meth(MP_OBJ_FROM_PTR(&frame_set_local_obj), self_in);
             break;
     }
 }
