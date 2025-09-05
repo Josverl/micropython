@@ -7,6 +7,8 @@ try:
 except ImportError:
     mpy_cross_run = None
 
+from .verbose import verbose_print
+
 
 class VfsRomWriter:
     ROMFS_HEADER = b"\xd2\xcd\x31"
@@ -126,15 +128,19 @@ def copy_recursively(vfs, src_dir, print_prefix, mpy_cross):
     return mpy_cross_missed
 
 
-def make_romfs(src_dir, *, mpy_cross):
+def make_romfs(src_dir, *, mpy_cross, state=None):
     if not src_dir.endswith("/"):
         src_dir += "/"
 
     vfs = VfsRomWriter()
 
     # Build the filesystem recursively.
-    print("Building romfs filesystem, source directory: {}".format(src_dir))
-    print("/")
+    if state:
+        verbose_print("Building romfs filesystem, source directory: {}".format(src_dir))
+        verbose_print("/")
+    else:
+        print("Building romfs filesystem, source directory: {}".format(src_dir), file=sys.stderr)
+        print("/", file=sys.stderr)
     try:
         mpy_cross_missed = copy_recursively(vfs, src_dir, "", mpy_cross)
     except OSError as er:
@@ -142,7 +148,10 @@ def make_romfs(src_dir, *, mpy_cross):
         sys.exit(1)
 
     if mpy_cross_missed:
-        print("Warning: `mpy_cross` module not found, .py files were not precompiled")
+        if state:
+            verbose_print("Warning: `mpy_cross` module not found, .py files were not precompiled")
+        else:
+            print("Warning: `mpy_cross` module not found, .py files were not precompiled", file=sys.stderr)
         mpy_cross = False
 
     return vfs.finalise()
