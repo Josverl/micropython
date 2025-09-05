@@ -7,11 +7,7 @@ try:
 except ImportError:
     mpy_cross_run = None
 
-
-def verbose_print(state, message, **kwargs):
-    """Print a message only if not in quiet mode, to stderr"""
-    if not state.quiet:
-        print(message, file=sys.stderr, **kwargs)
+from .verbose import verbose_print
 
 
 class VfsRomWriter:
@@ -140,8 +136,8 @@ def make_romfs(src_dir, *, mpy_cross, state=None):
 
     # Build the filesystem recursively.
     if state:
-        verbose_print(state, "Building romfs filesystem, source directory: {}".format(src_dir))
-        verbose_print(state, "/")
+        verbose_print("Building romfs filesystem, source directory: {}".format(src_dir))
+        verbose_print("/")
     else:
         print("Building romfs filesystem, source directory: {}".format(src_dir), file=sys.stderr)
         print("/", file=sys.stderr)
@@ -153,7 +149,7 @@ def make_romfs(src_dir, *, mpy_cross, state=None):
 
     if mpy_cross_missed:
         if state:
-            verbose_print(state, "Warning: `mpy_cross` module not found, .py files were not precompiled")
+            verbose_print("Warning: `mpy_cross` module not found, .py files were not precompiled")
         else:
             print("Warning: `mpy_cross` module not found, .py files were not precompiled", file=sys.stderr)
         mpy_cross = False
