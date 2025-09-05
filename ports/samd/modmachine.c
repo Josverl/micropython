@@ -49,18 +49,18 @@
 #define LIGHTSLEEP_CPU_FREQ 200000
 
 #define MICROPY_PY_MACHINE_EXTRA_GLOBALS \
-    { MP_ROM_QSTR(MP_QSTR_Pin),                 MP_ROM_PTR(&machine_pin_type) }, \
-    { MP_ROM_QSTR(MP_QSTR_Timer),               MP_ROM_PTR(&machine_timer_type) }, \
-    { MP_ROM_QSTR(MP_QSTR_RTC),                 MP_ROM_PTR(&machine_rtc_type) }, \
+        { MP_ROM_QSTR(MP_QSTR_Pin),                 MP_ROM_PTR(&machine_pin_type) }, \
+        { MP_ROM_QSTR(MP_QSTR_Timer),               MP_ROM_PTR(&machine_timer_type) }, \
+        { MP_ROM_QSTR(MP_QSTR_RTC),                 MP_ROM_PTR(&machine_rtc_type) }, \
     \
-    /* Class constants. */ \
-    /* Use numerical constants instead of the symbolic names, */ \
-    /* since the names differ between SAMD21 and SAMD51. */ \
-    { MP_ROM_QSTR(MP_QSTR_PWRON_RESET),         MP_ROM_INT(0x01) }, \
-    { MP_ROM_QSTR(MP_QSTR_HARD_RESET),          MP_ROM_INT(0x10) }, \
-    { MP_ROM_QSTR(MP_QSTR_WDT_RESET),           MP_ROM_INT(0x20) }, \
-    { MP_ROM_QSTR(MP_QSTR_SOFT_RESET),          MP_ROM_INT(0x40) }, \
-    { MP_ROM_QSTR(MP_QSTR_DEEPSLEEP_RESET),     MP_ROM_INT(0x80) }, \
+        /* Class constants. */ \
+        /* Use numerical constants instead of the symbolic names, */ \
+        /* since the names differ between SAMD21 and SAMD51. */ \
+        { MP_ROM_QSTR(MP_QSTR_PWRON_RESET),         MP_ROM_INT(0x01) }, \
+        { MP_ROM_QSTR(MP_QSTR_HARD_RESET),          MP_ROM_INT(0x10) }, \
+        { MP_ROM_QSTR(MP_QSTR_WDT_RESET),           MP_ROM_INT(0x20) }, \
+        { MP_ROM_QSTR(MP_QSTR_SOFT_RESET),          MP_ROM_INT(0x40) }, \
+        { MP_ROM_QSTR(MP_QSTR_DEEPSLEEP_RESET),     MP_ROM_INT(0x80) }, \
 
 extern bool EIC_occured;
 extern uint32_t _dbl_tap_addr;

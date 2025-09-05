@@ -84,14 +84,14 @@ uint cyw43_get_pin_wl(cyw43_pin_index_t pin_id);
 #endif
 
 #define CYW43_SDPCM_SEND_COMMON_WAIT \
-    if (get_core_num() == 0) { \
-        cyw43_yield(); \
-    } \
+        if (get_core_num() == 0) { \
+            cyw43_yield(); \
+        } \
 
 #define CYW43_DO_IOCTL_WAIT \
-    if (get_core_num() == 0) { \
-        cyw43_yield(); \
-    } \
+        if (get_core_num() == 0) { \
+            cyw43_yield(); \
+        } \
 
 // Bluetooth requires dynamic memory allocation to load its firmware (the allocation
 // call is made from pico-sdk).  This allocation is always done at thread-level, not

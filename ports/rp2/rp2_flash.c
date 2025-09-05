@@ -375,12 +375,12 @@ MP_DEFINE_CONST_OBJ_TYPE(
 #if MICROPY_VFS_ROM_IOCTL
 mp_obj_t mp_vfs_rom_ioctl(size_t n_args, const mp_obj_t *args) {
     switch (mp_obj_get_int(args[0])) {
-        #if MICROPY_HW_ROMFS_BYTES > 0
+    #if MICROPY_HW_ROMFS_BYTES > 0
         case MP_VFS_ROM_IOCTL_GET_NUMBER_OF_SEGMENTS:
             return MP_OBJ_NEW_SMALL_INT(1);
         case MP_VFS_ROM_IOCTL_GET_SEGMENT:
             return MP_OBJ_FROM_PTR(&rp2_flash_romfs_obj);
-        #endif
+    #endif
         default:
             return MP_OBJ_NEW_SMALL_INT(-MP_EINVAL);
     }

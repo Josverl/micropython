@@ -44,18 +44,18 @@ extern uint8_t _micropy_hw_external_flash_storage_start;
 extern uint8_t _micropy_hw_external_flash_storage_end;
 
 #define FLASH_MEM_SEG1_START_ADDR \
-    ((long)&_micropy_hw_external_flash_storage_start)
+        ((long)&_micropy_hw_external_flash_storage_start)
 #define FLASH_MEM_SEG1_NUM_BLOCKS \
-    ((&_micropy_hw_external_flash_storage_end - &_micropy_hw_external_flash_storage_start) / 512)
+        ((&_micropy_hw_external_flash_storage_end - &_micropy_hw_external_flash_storage_start) / 512)
 #else
 // The linker script specifies flash storage locations.
 extern uint8_t _micropy_hw_internal_flash_storage_start;
 extern uint8_t _micropy_hw_internal_flash_storage_end;
 
 #define FLASH_MEM_SEG1_START_ADDR \
-    ((long)&_micropy_hw_internal_flash_storage_start)
+        ((long)&_micropy_hw_internal_flash_storage_start)
 #define FLASH_MEM_SEG1_NUM_BLOCKS \
-    ((&_micropy_hw_internal_flash_storage_end - &_micropy_hw_internal_flash_storage_start) / 512)
+        ((&_micropy_hw_internal_flash_storage_end - &_micropy_hw_internal_flash_storage_start) / 512)
 #endif
 
 #if defined(RA4M1) | defined(RA4M3) | defined(RA4W1)

@@ -187,11 +187,11 @@
 #ifndef __HAL_ADC_IS_CHANNEL_INTERNAL
 #if defined(STM32L1)
 #define __HAL_ADC_IS_CHANNEL_INTERNAL(channel) \
-    (channel == ADC_CHANNEL_VREFINT \
+        (channel == ADC_CHANNEL_VREFINT \
     || channel == ADC_CHANNEL_TEMPSENSOR)
 #else
 #define __HAL_ADC_IS_CHANNEL_INTERNAL(channel) \
-    (channel == ADC_CHANNEL_VBAT \
+        (channel == ADC_CHANNEL_VBAT \
     || channel == ADC_CHANNEL_VREFINT \
     || channel == ADC_CHANNEL_TEMPSENSOR)
 #endif
@@ -846,11 +846,11 @@ float adc_read_core_vref(ADC_HandleTypeDef *adcHandle);
 void adc_init_all(pyb_adc_all_obj_t *adc_all, uint32_t resolution, uint32_t en_mask) {
 
     switch (resolution) {
-        #if !defined(STM32H7)
+    #if !defined(STM32H7)
         case 6:
             resolution = ADC_RESOLUTION_6B;
             break;
-        #endif
+    #endif
         case 8:
             resolution = ADC_RESOLUTION_8B;
             break;
@@ -892,10 +892,10 @@ int adc_get_resolution(ADC_HandleTypeDef *adcHandle) {
     #endif
 
     switch (res_reg) {
-        #if !defined(STM32H7)
+    #if !defined(STM32H7)
         case ADC_RESOLUTION_6B:
             return 6;
-        #endif
+    #endif
         case ADC_RESOLUTION_8B:
             return 8;
         case ADC_RESOLUTION_10B:

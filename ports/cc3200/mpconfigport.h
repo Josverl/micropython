@@ -139,15 +139,15 @@
 
 // We define our own list of errno constants to include in errno module
 #define MICROPY_PY_ERRNO_LIST \
-    X(EPERM) \
-    X(EIO) \
-    X(ENODEV) \
-    X(EINVAL) \
-    X(ETIMEDOUT) \
+        X(EPERM) \
+        X(EIO) \
+        X(ENODEV) \
+        X(EINVAL) \
+        X(ETIMEDOUT) \
 
 // extra constants
 #define MICROPY_PORT_CONSTANTS \
-    { MP_ROM_QSTR(MP_QSTR_machine),     MP_ROM_PTR(&mp_module_machine) },  \
+        { MP_ROM_QSTR(MP_QSTR_machine),     MP_ROM_PTR(&mp_module_machine) },  \
 
 #define MP_STATE_PORT MP_STATE_VM
 

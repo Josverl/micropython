@@ -41,11 +41,11 @@
 // Note that we don't delay for the full TIMEOUT_MS, as execution
 // can't be woken from the delay.
 #define MICROPY_INTERNAL_WFE(TIMEOUT_MS) \
-    do { \
-        MP_THREAD_GIL_EXIT(); \
-        mp_hal_delay_us(500); \
-        MP_THREAD_GIL_ENTER(); \
-    } while (0)
+        do { \
+            MP_THREAD_GIL_EXIT(); \
+            mp_hal_delay_us(500); \
+            MP_THREAD_GIL_ENTER(); \
+        } while (0)
 
 void mp_hal_set_interrupt_char(char c);
 
@@ -88,25 +88,25 @@ static inline void mp_hal_delay_us(mp_uint_t us) {
 
 // This macro is used to implement PEP 475 to retry specified syscalls on EINTR
 #define MP_HAL_RETRY_SYSCALL(ret, syscall, raise) { \
-        for (;;) { \
-            MP_THREAD_GIL_EXIT(); \
-            ret = syscall; \
-            MP_THREAD_GIL_ENTER(); \
-            if (ret == -1) { \
-                int err = errno; \
-                if (err == EINTR) { \
-                    mp_handle_pending(true); \
-                    continue; \
+            for (;;) { \
+                MP_THREAD_GIL_EXIT(); \
+                ret = syscall; \
+                MP_THREAD_GIL_ENTER(); \
+                if (ret == -1) { \
+                    int err = errno; \
+                    if (err == EINTR) { \
+                        mp_handle_pending(true); \
+                        continue; \
+                    } \
+                    raise; \
                 } \
-                raise; \
+                break; \
             } \
-            break; \
-        } \
 }
 
 #define RAISE_ERRNO(err_flag, error_val) \
-    { if (err_flag == -1) \
-      { mp_raise_OSError(error_val); } }
+        { if (err_flag == -1) \
+          { mp_raise_OSError(error_val); } }
 
 void mp_hal_get_random(size_t n, void *buf);
 

@@ -54,12 +54,12 @@ enum {
 
 #if defined(NRF51) || defined(NRF52_SERIES)
 #define PIN_DEFS_PORT_AF_UNION \
-    NRF_UART_Type *UART;
+        NRF_UART_Type *UART;
 //  NRF_SPI_Type  *SPIM;
 //  NRF_SPIS_Type *SPIS;
 #elif defined(NRF91_SERIES)
 #define PIN_DEFS_PORT_AF_UNION \
-    NRF_UARTE_Type *UART;
+        NRF_UARTE_Type *UART;
 #endif
 
 enum {

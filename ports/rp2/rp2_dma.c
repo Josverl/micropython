@@ -304,11 +304,11 @@ static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(rp2_dma_active_obj, 1, 2, rp2_dma_act
 
 // Default is quiet, unpaced, read and write incrementing, word transfers, enabled
 #define DEFAULT_DMA_CONFIG (1 << DMA_CH0_CTRL_TRIG_IRQ_QUIET_LSB) | \
-    (DMA_CH0_CTRL_TRIG_TREQ_SEL_VALUE_PERMANENT << DMA_CH0_CTRL_TRIG_TREQ_SEL_LSB) | \
-    (1 << DMA_CH0_CTRL_TRIG_INCR_WRITE_LSB) | \
-    (1 << DMA_CH0_CTRL_TRIG_INCR_READ_LSB) | \
-    (2 << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB) | \
-    (1 << DMA_CH0_CTRL_TRIG_EN_LSB)
+        (DMA_CH0_CTRL_TRIG_TREQ_SEL_VALUE_PERMANENT << DMA_CH0_CTRL_TRIG_TREQ_SEL_LSB) | \
+        (1 << DMA_CH0_CTRL_TRIG_INCR_WRITE_LSB) | \
+        (1 << DMA_CH0_CTRL_TRIG_INCR_READ_LSB) | \
+        (2 << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB) | \
+        (1 << DMA_CH0_CTRL_TRIG_EN_LSB)
 
 // DMA.pack_ctrl(...)
 static mp_obj_t rp2_dma_pack_ctrl(size_t n_pos_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {

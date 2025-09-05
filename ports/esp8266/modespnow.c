@@ -85,7 +85,7 @@ static const size_t MAX_PACKET_LEN = (
 // Enough for 2 full-size packets: 2 * (6 + 2 + 250) = 516 bytes
 // Will allocate an additional 7 bytes for buffer overhead
 #define DEFAULT_RECV_BUFFER_SIZE \
-    (2 * (sizeof(espnow_pkt_t) + ESP_NOW_MAX_DATA_LEN))
+        (2 * (sizeof(espnow_pkt_t) + ESP_NOW_MAX_DATA_LEN))
 
 // Default timeout (millisec) to wait for incoming ESPNow messages (5 minutes).
 #define DEFAULT_RECV_TIMEOUT_MS (5 * 60 * 1000)

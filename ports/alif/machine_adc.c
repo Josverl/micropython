@@ -159,8 +159,8 @@ void ADC122_DONE1_IRQHandler(void) {
 // MicroPython bindings for machine.ADC
 
 #define MICROPY_PY_MACHINE_ADC_CLASS_CONSTANTS \
-    { MP_ROM_QSTR(MP_QSTR_CORE_TEMP), MP_ROM_INT(ADC_CHANNEL_TEMP_SENSOR) }, \
-    { MP_ROM_QSTR(MP_QSTR_CORE_VREF), MP_ROM_INT(ADC_CHANNEL_INT_VREF) }, \
+        { MP_ROM_QSTR(MP_QSTR_CORE_TEMP), MP_ROM_INT(ADC_CHANNEL_TEMP_SENSOR) }, \
+        { MP_ROM_QSTR(MP_QSTR_CORE_VREF), MP_ROM_INT(ADC_CHANNEL_INT_VREF) }, \
 
 typedef struct _machine_adc_obj_t {
     mp_obj_base_t base;

@@ -135,55 +135,55 @@ bool uart_exists(int uart_id) {
         return false;
     }
     switch (uart_id) {
-        #if defined(MICROPY_HW_UART0_TX) && defined(MICROPY_HW_UART0_RX)
+    #if defined(MICROPY_HW_UART0_TX) && defined(MICROPY_HW_UART0_RX)
         case HW_UART_0:
             return true;
-        #endif
+    #endif
 
-        #if defined(MICROPY_HW_UART1_TX) && defined(MICROPY_HW_UART1_RX)
+    #if defined(MICROPY_HW_UART1_TX) && defined(MICROPY_HW_UART1_RX)
         case HW_UART_1:
             return true;
-        #endif
+    #endif
 
-        #if defined(MICROPY_HW_UART2_TX) && defined(MICROPY_HW_UART2_RX)
+    #if defined(MICROPY_HW_UART2_TX) && defined(MICROPY_HW_UART2_RX)
         case HW_UART_2:
             return true;
-        #endif
+    #endif
 
-        #if defined(MICROPY_HW_UART3_TX) && defined(MICROPY_HW_UART3_RX)
+    #if defined(MICROPY_HW_UART3_TX) && defined(MICROPY_HW_UART3_RX)
         case HW_UART_3:
             return true;
-        #endif
+    #endif
 
-        #if defined(MICROPY_HW_UART4_TX) && defined(MICROPY_HW_UART4_RX)
+    #if defined(MICROPY_HW_UART4_TX) && defined(MICROPY_HW_UART4_RX)
         case HW_UART_4:
             return true;
-        #endif
+    #endif
 
-        #if defined(MICROPY_HW_UART5_TX) && defined(MICROPY_HW_UART5_RX)
+    #if defined(MICROPY_HW_UART5_TX) && defined(MICROPY_HW_UART5_RX)
         case HW_UART_5:
             return true;
-        #endif
+    #endif
 
-        #if defined(MICROPY_HW_UART6_TX) && defined(MICROPY_HW_UART6_RX)
+    #if defined(MICROPY_HW_UART6_TX) && defined(MICROPY_HW_UART6_RX)
         case HW_UART_6:
             return true;
-        #endif
+    #endif
 
-        #if defined(MICROPY_HW_UART7_TX) && defined(MICROPY_HW_UART7_RX)
+    #if defined(MICROPY_HW_UART7_TX) && defined(MICROPY_HW_UART7_RX)
         case HW_UART_7:
             return true;
-        #endif
+    #endif
 
-        #if defined(MICROPY_HW_UART8_TX) && defined(MICROPY_HW_UART8_RX)
+    #if defined(MICROPY_HW_UART8_TX) && defined(MICROPY_HW_UART8_RX)
         case HW_UART_8:
             return true;
-        #endif
+    #endif
 
-        #if defined(MICROPY_HW_UART9_TX) && defined(MICROPY_HW_UART9_RX)
+    #if defined(MICROPY_HW_UART9_TX) && defined(MICROPY_HW_UART9_RX)
         case HW_UART_9:
             return true;
-        #endif
+    #endif
 
         default:
             return false;
@@ -202,7 +202,7 @@ bool uart_init(machine_uart_obj_t *uart_obj,
     const machine_pin_obj_t *pins[4] = {0};
 
     switch (uart_obj->uart_id) {
-        #if defined(MICROPY_HW_UART0_TX) && defined(MICROPY_HW_UART0_RX)
+    #if defined(MICROPY_HW_UART0_TX) && defined(MICROPY_HW_UART0_RX)
         case HW_UART_0:
             pins[0] = MICROPY_HW_UART0_TX;
             pins[1] = MICROPY_HW_UART0_RX;
@@ -217,9 +217,9 @@ bool uart_init(machine_uart_obj_t *uart_obj,
             }
             #endif
             break;
-        #endif
+    #endif
 
-        #if defined(MICROPY_HW_UART1_TX) && defined(MICROPY_HW_UART1_RX)
+    #if defined(MICROPY_HW_UART1_TX) && defined(MICROPY_HW_UART1_RX)
         case HW_UART_1:
             pins[0] = MICROPY_HW_UART1_TX;
             pins[1] = MICROPY_HW_UART1_RX;
@@ -234,9 +234,9 @@ bool uart_init(machine_uart_obj_t *uart_obj,
             }
             #endif
             break;
-        #endif
+    #endif
 
-        #if defined(MICROPY_HW_UART2_TX) && defined(MICROPY_HW_UART2_RX)
+    #if defined(MICROPY_HW_UART2_TX) && defined(MICROPY_HW_UART2_RX)
         case HW_UART_2:
             pins[0] = MICROPY_HW_UART2_TX;
             pins[1] = MICROPY_HW_UART2_RX;
@@ -251,9 +251,9 @@ bool uart_init(machine_uart_obj_t *uart_obj,
             }
             #endif
             break;
-        #endif
+    #endif
 
-        #if defined(MICROPY_HW_UART3_TX) && defined(MICROPY_HW_UART3_RX)
+    #if defined(MICROPY_HW_UART3_TX) && defined(MICROPY_HW_UART3_RX)
         case HW_UART_3:
             pins[0] = MICROPY_HW_UART3_TX;
             pins[1] = MICROPY_HW_UART3_RX;
@@ -268,9 +268,9 @@ bool uart_init(machine_uart_obj_t *uart_obj,
             }
             #endif
             break;
-        #endif
+    #endif
 
-        #if defined(MICROPY_HW_UART4_TX) && defined(MICROPY_HW_UART4_RX)
+    #if defined(MICROPY_HW_UART4_TX) && defined(MICROPY_HW_UART4_RX)
         case HW_UART_4:
             pins[0] = MICROPY_HW_UART4_TX;
             pins[1] = MICROPY_HW_UART4_RX;
@@ -285,9 +285,9 @@ bool uart_init(machine_uart_obj_t *uart_obj,
             }
             #endif
             break;
-        #endif
+    #endif
 
-        #if defined(MICROPY_HW_UART5_TX) && defined(MICROPY_HW_UART5_RX)
+    #if defined(MICROPY_HW_UART5_TX) && defined(MICROPY_HW_UART5_RX)
         case HW_UART_5:
             pins[0] = MICROPY_HW_UART5_TX;
             pins[1] = MICROPY_HW_UART5_RX;
@@ -302,9 +302,9 @@ bool uart_init(machine_uart_obj_t *uart_obj,
             }
             #endif
             break;
-        #endif
+    #endif
 
-        #if defined(MICROPY_HW_UART6_TX) && defined(MICROPY_HW_UART6_RX)
+    #if defined(MICROPY_HW_UART6_TX) && defined(MICROPY_HW_UART6_RX)
         case HW_UART_6:
             pins[0] = MICROPY_HW_UART6_TX;
             pins[1] = MICROPY_HW_UART6_RX;
@@ -319,9 +319,9 @@ bool uart_init(machine_uart_obj_t *uart_obj,
             }
             #endif
             break;
-        #endif
+    #endif
 
-        #if defined(MICROPY_HW_UART7_TX) && defined(MICROPY_HW_UART7_RX)
+    #if defined(MICROPY_HW_UART7_TX) && defined(MICROPY_HW_UART7_RX)
         case HW_UART_7:
             pins[0] = MICROPY_HW_UART7_TX;
             pins[1] = MICROPY_HW_UART7_RX;
@@ -336,9 +336,9 @@ bool uart_init(machine_uart_obj_t *uart_obj,
             }
             #endif
             break;
-        #endif
+    #endif
 
-        #if defined(MICROPY_HW_UART8_TX) && defined(MICROPY_HW_UART8_RX)
+    #if defined(MICROPY_HW_UART8_TX) && defined(MICROPY_HW_UART8_RX)
         case HW_UART_8:
             pins[0] = MICROPY_HW_UART8_TX;
             pins[1] = MICROPY_HW_UART8_RX;
@@ -353,9 +353,9 @@ bool uart_init(machine_uart_obj_t *uart_obj,
             }
             #endif
             break;
-        #endif
+    #endif
 
-        #if defined(MICROPY_HW_UART9_TX) && defined(MICROPY_HW_UART9_RX)
+    #if defined(MICROPY_HW_UART9_TX) && defined(MICROPY_HW_UART9_RX)
         case HW_UART_9:
             pins[0] = MICROPY_HW_UART9_TX;
             pins[1] = MICROPY_HW_UART9_RX;
@@ -370,7 +370,7 @@ bool uart_init(machine_uart_obj_t *uart_obj,
             }
             #endif
             break;
-        #endif
+    #endif
 
         default:
             // UART does not exist or is not configured for this board

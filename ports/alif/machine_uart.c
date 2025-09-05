@@ -172,15 +172,15 @@ MP_REGISTER_ROOT_POINTER(struct _machine_uart_obj_t *machine_uart_obj_all[UART_M
 // MicroPython bindings for UART
 
 #define MICROPY_PY_MACHINE_UART_CLASS_CONSTANTS \
-    { MP_ROM_QSTR(MP_QSTR___del__), MP_ROM_PTR(&machine_uart___del___obj) }, \
-    { MP_ROM_QSTR(MP_QSTR_RTS), MP_ROM_INT(UART_FLOW_CONTROL_RTS) }, \
-    { MP_ROM_QSTR(MP_QSTR_CTS), MP_ROM_INT(UART_FLOW_CONTROL_CTS) }, \
-    { MP_ROM_QSTR(MP_QSTR_IRQ_RX), MP_ROM_INT(MP_UART_IRQ_RX) }, \
-    { MP_ROM_QSTR(MP_QSTR_IRQ_RXIDLE), MP_ROM_INT(MP_UART_IRQ_RXIDLE) }, \
-    { MP_ROM_QSTR(MP_QSTR_IRQ_TXIDLE), MP_ROM_INT(MP_UART_IRQ_TXIDLE) }, \
+        { MP_ROM_QSTR(MP_QSTR___del__), MP_ROM_PTR(&machine_uart___del___obj) }, \
+        { MP_ROM_QSTR(MP_QSTR_RTS), MP_ROM_INT(UART_FLOW_CONTROL_RTS) }, \
+        { MP_ROM_QSTR(MP_QSTR_CTS), MP_ROM_INT(UART_FLOW_CONTROL_CTS) }, \
+        { MP_ROM_QSTR(MP_QSTR_IRQ_RX), MP_ROM_INT(MP_UART_IRQ_RX) }, \
+        { MP_ROM_QSTR(MP_QSTR_IRQ_RXIDLE), MP_ROM_INT(MP_UART_IRQ_RXIDLE) }, \
+        { MP_ROM_QSTR(MP_QSTR_IRQ_TXIDLE), MP_ROM_INT(MP_UART_IRQ_TXIDLE) }, \
 
 #define GET_PIN_WITH_DEFAULT(uart_id_, pin_name, pin_selection) \
-    (pin_selection == mp_const_none ? machine_uart_default_pins[uart_id_].pin_name : mp_hal_get_pin_obj(pin_selection))
+        (pin_selection == mp_const_none ? machine_uart_default_pins[uart_id_].pin_name : mp_hal_get_pin_obj(pin_selection))
 
 static void machine_uart_set_bits(machine_uart_obj_t *self, mp_int_t bits) {
     if (!(5 <= bits && bits <= 8)) {

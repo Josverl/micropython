@@ -187,8 +187,8 @@ extern const struct _mp_obj_type_t network_lan_type;
 #endif
 
 #define MICROPY_PORT_NETWORK_INTERFACES \
-    MICROPY_HW_NIC_ETH  \
-    MICROPY_BOARD_NETWORK_INTERFACES \
+        MICROPY_HW_NIC_ETH  \
+            MICROPY_BOARD_NETWORK_INTERFACES \
 
 #ifndef MICROPY_BOARD_ROOT_POINTERS
 #define MICROPY_BOARD_ROOT_POINTERS
@@ -212,21 +212,21 @@ extern const struct _mp_obj_type_t network_lan_type;
 
 #ifndef  MICROPY_EVENT_POLL_HOOK
 #define MICROPY_EVENT_POLL_HOOK \
-    do { \
-        extern void mp_handle_pending(bool); \
-        mp_handle_pending(true); \
-        __WFE(); \
-    } while (0);
+        do { \
+            extern void mp_handle_pending(bool); \
+            mp_handle_pending(true); \
+            __WFE(); \
+        } while (0);
 #endif
 
 #define MICROPY_MAKE_POINTER_CALLABLE(p) ((void *)((mp_uint_t)(p) | 1))
 
 #define MP_HAL_CLEANINVALIDATE_DCACHE(addr, size) \
-    (SCB_CleanInvalidateDCache_by_Addr((uint32_t *)((uint32_t)addr & ~0x1f), \
+        (SCB_CleanInvalidateDCache_by_Addr((uint32_t *)((uint32_t)addr & ~0x1f), \
     ((uint32_t)((uint8_t *)addr + size + 0x1f) & ~0x1f) - ((uint32_t)addr & ~0x1f)))
 
 #define MP_HAL_CLEAN_DCACHE(addr, size) \
-    (SCB_CleanDCache_by_Addr((uint32_t *)((uint32_t)addr & ~0x1f), \
+        (SCB_CleanDCache_by_Addr((uint32_t *)((uint32_t)addr & ~0x1f), \
     ((uint32_t)((uint8_t *)addr + size + 0x1f) & ~0x1f) - ((uint32_t)addr & ~0x1f)))
 
 #define MP_SSIZE_MAX (0x7fffffff)

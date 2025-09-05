@@ -53,8 +53,8 @@ typedef struct _ivt_ {
 #define IVT_MINOR_VERSION_MASK      0xF
 
 #define IVT_VERSION(major, minor)   \
-    ((((major) & IVT_MAJOR_VERSION_MASK) << IVT_MAJOR_VERSION_SHIFT) |  \
-    (((minor) & IVT_MINOR_VERSION_MASK) << IVT_MINOR_VERSION_SHIFT))
+        ((((major)&IVT_MAJOR_VERSION_MASK) << IVT_MAJOR_VERSION_SHIFT) |  \
+    (((minor)&IVT_MINOR_VERSION_MASK) << IVT_MINOR_VERSION_SHIFT))
 
 /* IVT header */
 #define IVT_TAG_HEADER        0xD1       /**< Image Vector Table */

@@ -82,7 +82,7 @@
 // CH 5 = status LED - blue
 
 #define FMPI2C_CONVERT_TIMINGS(PRESC, SCLDEL, SDADEL, SCLH, SCLL) \
-    (((PRESC) << FMPI2C_TIMINGR_PRESC_Pos) | \
+        (((PRESC) << FMPI2C_TIMINGR_PRESC_Pos) | \
     ((SCLDEL) << FMPI2C_TIMINGR_SCLDEL_Pos) | \
     ((SDADEL) << FMPI2C_TIMINGR_SDADEL_Pos) | \
     ((SCLH) << FMPI2C_TIMINGR_SCLH_Pos) | \

@@ -200,14 +200,14 @@
 
 #if MICROPY_PY_MACHINE
 #define MACHINE_BUILTIN_MODULE_CONSTANTS \
-    { MP_ROM_QSTR(MP_QSTR_machine), MP_ROM_PTR(&mp_module_machine) },
+        { MP_ROM_QSTR(MP_QSTR_machine), MP_ROM_PTR(&mp_module_machine) },
 #else
 #define MACHINE_BUILTIN_MODULE_CONSTANTS
 #endif
 
 // extra constants
 #define MICROPY_PORT_CONSTANTS \
-    MACHINE_BUILTIN_MODULE_CONSTANTS \
+        MACHINE_BUILTIN_MODULE_CONSTANTS \
 
 #define MP_STATE_PORT MP_STATE_VM
 
@@ -216,7 +216,7 @@
 #endif
 
 #define MICROPY_PORT_NETWORK_INTERFACES \
-    MICROPY_BOARD_NETWORK_INTERFACES \
+        MICROPY_BOARD_NETWORK_INTERFACES \
 
 // Miscellaneous settings
 
@@ -243,13 +243,13 @@ typedef long mp_off_t;
 
 #if MICROPY_PY_THREAD
 #define MICROPY_INTERNAL_EVENT_HOOK \
-    do { \
-        if (pyb_thread_enabled) { \
-            MP_THREAD_GIL_EXIT(); \
-            pyb_thread_yield(); \
-            MP_THREAD_GIL_ENTER(); \
-        } \
-    } while (0);
+        do { \
+            if (pyb_thread_enabled) { \
+                MP_THREAD_GIL_EXIT(); \
+                pyb_thread_yield(); \
+                MP_THREAD_GIL_ENTER(); \
+            } \
+        } while (0);
 
 #define MICROPY_THREAD_YIELD() pyb_thread_yield()
 #else

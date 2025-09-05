@@ -353,18 +353,18 @@ bool sdcard_power_on(void) {
 
     HAL_StatusTypeDef status = HAL_ERROR;
     switch (pyb_sdmmc_flags) {
-        #if MICROPY_HW_ENABLE_SDCARD
+    #if MICROPY_HW_ENABLE_SDCARD
         case PYB_SDMMC_FLAG_SD:
             if (sdcard_is_present()) {
                 status = sdmmc_init_sd();
             }
             break;
-        #endif
-        #if MICROPY_HW_ENABLE_MMCARD
+    #endif
+    #if MICROPY_HW_ENABLE_MMCARD
         case PYB_SDMMC_FLAG_MMC:
             status = sdmmc_init_mmc();
             break;
-        #endif
+    #endif
     }
 
     if (status == HAL_OK) {
@@ -377,36 +377,36 @@ bool sdcard_power_on(void) {
 
 void sdcard_power_off(void) {
     switch (pyb_sdmmc_flags) {
-        #if MICROPY_HW_ENABLE_SDCARD
+    #if MICROPY_HW_ENABLE_SDCARD
         case PYB_SDMMC_FLAG_ACTIVE | PYB_SDMMC_FLAG_SD:
             HAL_SD_DeInit(&sdmmc_handle.sd);
             break;
-        #endif
-        #if MICROPY_HW_ENABLE_MMCARD
+    #endif
+    #if MICROPY_HW_ENABLE_MMCARD
         case PYB_SDMMC_FLAG_ACTIVE | PYB_SDMMC_FLAG_MMC:
             HAL_MMC_DeInit(&sdmmc_handle.mmc);
             break;
-        #endif
+    #endif
     }
     pyb_sdmmc_flags &= ~PYB_SDMMC_FLAG_ACTIVE;
 }
 
 uint64_t sdcard_get_capacity_in_bytes(void) {
     switch (pyb_sdmmc_flags) {
-        #if MICROPY_HW_ENABLE_SDCARD
+    #if MICROPY_HW_ENABLE_SDCARD
         case PYB_SDMMC_FLAG_ACTIVE | PYB_SDMMC_FLAG_SD: {
             HAL_SD_CardInfoTypeDef cardinfo;
             HAL_SD_GetCardInfo(&sdmmc_handle.sd, &cardinfo);
             return (uint64_t)cardinfo.LogBlockNbr * (uint64_t)cardinfo.LogBlockSize;
         }
-        #endif
-        #if MICROPY_HW_ENABLE_MMCARD
+    #endif
+    #if MICROPY_HW_ENABLE_MMCARD
         case PYB_SDMMC_FLAG_ACTIVE | PYB_SDMMC_FLAG_MMC: {
             HAL_MMC_CardInfoTypeDef cardinfo;
             HAL_MMC_GetCardInfo(&sdmmc_handle.mmc, &cardinfo);
             return (uint64_t)cardinfo.LogBlockNbr * (uint64_t)cardinfo.LogBlockSize;
         }
-        #endif
+    #endif
         default:
             return 0;
     }
@@ -414,16 +414,16 @@ uint64_t sdcard_get_capacity_in_bytes(void) {
 
 static void sdmmc_irq_handler(void) {
     switch (pyb_sdmmc_flags) {
-        #if MICROPY_HW_ENABLE_SDCARD
+    #if MICROPY_HW_ENABLE_SDCARD
         case PYB_SDMMC_FLAG_ACTIVE | PYB_SDMMC_FLAG_SD:
             HAL_SD_IRQHandler(&sdmmc_handle.sd);
             break;
-        #endif
-        #if MICROPY_HW_ENABLE_MMCARD
+    #endif
+    #if MICROPY_HW_ENABLE_MMCARD
         case PYB_SDMMC_FLAG_ACTIVE | PYB_SDMMC_FLAG_MMC:
             HAL_MMC_IRQHandler(&sdmmc_handle.mmc);
             break;
-        #endif
+    #endif
     }
 }
 

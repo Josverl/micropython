@@ -251,7 +251,7 @@
 #endif
 
 #define MICROPY_PORT_NETWORK_INTERFACES \
-    MICROPY_BOARD_NETWORK_INTERFACES \
+        MICROPY_BOARD_NETWORK_INTERFACES \
 
 // Additional entries for use with pendsv_schedule_dispatch.
 #ifndef MICROPY_BOARD_PENDSV_ENTRIES

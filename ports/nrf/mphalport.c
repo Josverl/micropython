@@ -90,9 +90,9 @@ void mp_nrf_start_lfclk(void) {
 #define RTC_TICK_INCREASE_MSEC (33)
 
 #define RTC_RESCHEDULE_CC(rtc, cc_nr, ticks) \
-    do { \
-        nrfx_rtc_cc_set(&rtc, cc_nr, nrfx_rtc_counter_get(&rtc) + ticks, true); \
-    } while (0);
+        do { \
+            nrfx_rtc_cc_set(&rtc, cc_nr, nrfx_rtc_counter_get(&rtc) + ticks, true); \
+        } while (0);
 
 // RTC overflow irq handling notes:
 // - If has_overflowed is set it could be before or after COUNTER is read.
@@ -103,16 +103,16 @@ void mp_nrf_start_lfclk(void) {
 // - The extra check for counter is to distinguish these cases. 1<<23 because it's halfway
 //   between min and max values of COUNTER.
 #define RTC1_GET_TICKS_ATOMIC(rtc, overflows, counter) \
-    do { \
-        rtc.p_reg->INTENCLR = RTC_INTENCLR_OVRFLW_Msk; \
-        overflows = rtc_overflows; \
-        counter = rtc.p_reg->COUNTER; \
-        uint32_t has_overflowed = rtc.p_reg->EVENTS_OVRFLW; \
-        if (has_overflowed && counter < (1 << 23)) { \
-            overflows += 1; \
-        } \
-        rtc.p_reg->INTENSET = RTC_INTENSET_OVRFLW_Msk; \
-    } while (0);
+        do { \
+            rtc.p_reg->INTENCLR = RTC_INTENCLR_OVRFLW_Msk; \
+            overflows = rtc_overflows; \
+            counter = rtc.p_reg->COUNTER; \
+            uint32_t has_overflowed = rtc.p_reg->EVENTS_OVRFLW; \
+            if (has_overflowed && counter < (1 << 23)) { \
+                overflows += 1; \
+            } \
+            rtc.p_reg->INTENSET = RTC_INTENSET_OVRFLW_Msk; \
+        } while (0);
 
 nrfx_rtc_t rtc1 = NRFX_RTC_INSTANCE(1);
 volatile mp_uint_t rtc_overflows = 0;

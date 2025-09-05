@@ -47,10 +47,10 @@ ringbuf_t stdin_ringbuf = { stdin_ringbuf_array, sizeof(stdin_ringbuf_array), 0,
 // Explicitly run the USB stack in case the scheduler is locked (eg we are in an
 // interrupt handler) and there is in/out data pending on the USB CDC interface.
 #define MICROPY_EVENT_POLL_HOOK_WITH_USB \
-    do { \
-        MICROPY_EVENT_POLL_HOOK; \
-        mp_usbd_task(); \
-    } while (0)
+        do { \
+            MICROPY_EVENT_POLL_HOOK; \
+            mp_usbd_task(); \
+        } while (0)
 
 void mp_hal_set_pin_mux(mp_hal_pin_obj_t pin, uint8_t mux) {
     int pin_grp = pin / 32;
