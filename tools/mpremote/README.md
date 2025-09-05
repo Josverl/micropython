@@ -22,6 +22,7 @@ The full list of supported commands are:
     mpremote fs <command> <args...>   -- execute filesystem commands on the device
                                          command may be: cat, ls, cp, rm, mkdir, rmdir, sha256sum
                                          use ":" as a prefix to specify a file on the device
+                                         (recommended for all device paths, especially on Windows/Git Bash)
     mpremote repl                     -- enter REPL
                                          options:
                                              --capture <file>
