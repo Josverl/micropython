@@ -1,6 +1,13 @@
+import sys
 from .console import Console, ConsolePosix
 
 from .transport import TransportError
+
+
+def verbose_print(state, message, **kwargs):
+    """Print a message only if not in quiet mode, to stderr"""
+    if not state.quiet:
+        print(message, file=sys.stderr, **kwargs)
 
 
 def do_repl_main_loop(
@@ -65,18 +72,18 @@ def do_repl(state, args):
     code_to_inject = args.inject_code
     file_to_inject = args.inject_file
 
-    print("Connected to MicroPython at %s" % state.transport.device_name)
-    print("Use Ctrl-] or Ctrl-x to exit this shell")
+    verbose_print(state, "Connected to MicroPython at %s" % state.transport.device_name)
+    verbose_print(state, "Use Ctrl-] or Ctrl-x to exit this shell")
     if escape_non_printable:
-        print("Escaping non-printable bytes/characters by printing their hex code")
+        verbose_print(state, "Escaping non-printable bytes/characters by printing their hex code")
     if capture_file is not None:
-        print('Capturing session to file "%s"' % capture_file)
+        verbose_print(state, 'Capturing session to file "%s"' % capture_file)
         capture_file = open(capture_file, "wb")
     if code_to_inject is not None:
         code_to_inject = bytes(code_to_inject.replace("\\n", "\r\n"), "utf8")
-        print("Use Ctrl-J to inject", code_to_inject)
+        verbose_print(state, "Use Ctrl-J to inject", code_to_inject)
     if file_to_inject is not None:
-        print('Use Ctrl-K to inject file "%s"' % file_to_inject)
+        verbose_print(state, 'Use Ctrl-K to inject file "%s"' % file_to_inject)
 
     console = Console()
     console.enter()

@@ -17,6 +17,12 @@ class CommandError(Exception):
     pass
 
 
+def verbose_print(state, message, **kwargs):
+    """Print a message only if not in quiet mode, to stderr"""
+    if not state.quiet:
+        print(message, file=sys.stderr, **kwargs)
+
+
 def do_connect(state, args=None):
     dev = args.device[0] if args else "auto"
     do_disconnect(state)
@@ -178,7 +184,7 @@ def do_filesystem_cp(state, src, dest, multiple, check_hash=False):
                 # remote_hash will be None if the device doesn't support
                 # hashlib.sha256 (and therefore won't match).
                 if remote_hash == source_hash:
-                    print("Up to date:", dest[1:])
+                    verbose_print(state, f"Up to date: {dest[1:]}")
                     return
             except OSError:
                 pass
@@ -320,18 +326,18 @@ def do_filesystem_recursive_rm(state, path, args):
             try:
                 state.transport.fs_rmdir(path)
                 if args.verbose:
-                    print(f"removed directory: '{path}'")
+                    print(f"removed directory: '{path}'", file=sys.stderr)
             except OSError as e:
                 if e.errno != errno.EINVAL:  # not vfs mountpoint
                     raise CommandError(
                         f"rm -r: cannot remove :{path} {os.strerror(e.errno) if e.errno else ''}"
                     ) from e
                 if args.verbose:
-                    print(f"skipped: '{path}' (vfs mountpoint)")
+                    print(f"skipped: '{path}' (vfs mountpoint)", file=sys.stderr)
     else:
         state.transport.fs_rmfile(path)
         if args.verbose:
-            print(f"removed: '{path}'")
+            print(f"removed: '{path}'", file=sys.stderr)
 
 
 def human_size(size, decimals=1):
@@ -413,9 +419,9 @@ def do_filesystem(state, args):
         for path in paths:
             if verbose:
                 if command == "cp":
-                    print("{} {} {}".format(command, path, cp_dest))
+                    print("{} {} {}".format(command, path, cp_dest), file=sys.stderr)
                 else:
-                    print("{} :{}".format(command, path))
+                    print("{} :{}".format(command, path), file=sys.stderr)
 
             if command == "cat":
                 state.transport.fs_printfile(path)
@@ -465,7 +471,7 @@ def do_edit(state, args):
         src = src.lstrip(":")
         dest_fd, dest = tempfile.mkstemp(suffix=os.path.basename(src))
         try:
-            print("edit :%s" % (src,))
+            verbose_print(state, f"edit :{src}")
             state.transport.fs_touchfile(src)
             data = state.transport.fs_readfile(src, progress_callback=show_progress_bar)
             with open(dest_fd, "wb") as f:
@@ -519,7 +525,7 @@ def do_mount(state, args):
     state.ensure_raw_repl()
     path = args.path[0]
     state.transport.mount_local(path, unsafe_links=args.unsafe_links)
-    print(f"Local directory {path} is mounted at /remote")
+    verbose_print(state, f"Local directory {path} is mounted at /remote")
 
 
 def do_umount(state, path):
@@ -614,9 +620,9 @@ def _do_romfs_build(state, args):
     else:
         output_file = args.output
 
-    romfs = make_romfs(input_directory, mpy_cross=args.mpy)
+    romfs = make_romfs(input_directory, mpy_cross=args.mpy, state=state)
 
-    print(f"Writing {len(romfs)} bytes to output file {output_file}")
+    verbose_print(state, f"Writing {len(romfs)} bytes to output file {output_file}")
     with open(output_file, "wb") as f:
         f.write(romfs)
 

@@ -62,6 +62,12 @@ def do_help(state, _args=None):
 
     print(_PROG, "-- MicroPython remote control")
     print("See https://docs.micropython.org/en/latest/reference/mpremote.html")
+    print()
+    print("Usage:")
+    print(f"  {_PROG} [-q/--quiet] <command> [<args>] [+ <command> [<args>] ...]")
+    print()
+    print("Global options:")
+    print("  -q, --quiet     suppress verbose output (send to stderr instead of stdout)")
 
     print("\nList of commands:")
     print_commands_help(
@@ -533,6 +539,7 @@ class State:
         self.transport = None
         self._did_action = False
         self._auto_soft_reset = True
+        self.quiet = False
 
     def did_action(self):
         self._did_action = True
@@ -561,8 +568,17 @@ def main():
     config = load_user_config()
     prepare_command_expansions(config)
 
+    # Parse global arguments first
     remaining_args = sys.argv[1:]
+    quiet = False
+    
+    # Check for global quiet flag
+    if remaining_args and remaining_args[0] in ("-q", "--quiet"):
+        quiet = True
+        remaining_args = remaining_args[1:]
+    
     state = State()
+    state.quiet = quiet
 
     try:
         while remaining_args:
