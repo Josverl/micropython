@@ -246,6 +246,11 @@ The full list of supported commands are:
   ``mpremote fs cp :main.py main.py`` copies ``main.py`` from the device back
   to the current directory.
 
+  **Important**: Always use the ``:`` prefix when specifying device paths,
+  especially when using shells like Git Bash on Windows, which may
+  automatically translate absolute paths. See
+  :ref:`platform-specific considerations <mpremote_platform_notes>` for more details.
+
   The ``mpremote rm -r`` command accepts both relative and absolute paths.
   Use ``:`` to refer to the current remote working directory (cwd) to allow a
   directory tree to be removed from the device's default path (eg ``/flash``, ``/``).
@@ -273,7 +278,9 @@ The full list of supported commands are:
   the output.
 
   All other commands implicitly assume the path is a remote path, but the ``:``
-  can be optionally used for clarity.
+  can be optionally used for clarity. For compatibility with different shells,
+  especially on Windows, it is recommended to always use the ``:`` prefix for
+  device paths.
 
   All of the filesystem sub-commands take multiple path arguments, so if there
   is another command in the sequence, you must use ``+`` to terminate the
@@ -447,6 +454,50 @@ The full list of supported commands are:
 
   This will make the device enter its bootloader. The bootloader is port- and
   board-specific (e.g. DFU on stm32, UF2 on rp2040/Pico).
+
+.. _mpremote_platform_notes:
+
+Platform-specific considerations
+--------------------------------
+
+When using ``mpremote`` on different platforms, there are some considerations
+to be aware of:
+
+**Windows (Git Bash / MSYS2)**
+
+If you are using Git Bash or other MSYS2-based shells on Windows, be aware that
+these shells automatically translate Unix-style absolute paths (those starting with ``/``)
+to Windows paths by prepending the installation directory. For example,
+``/ramdisk/lib`` might be translated to ``C:/Program Files/Git/ramdisk/lib``.
+
+This can cause issues with ``mpremote`` filesystem commands when you intend to
+specify an absolute path on the MicroPython device. To work around this, always
+use the ``:`` prefix when specifying device paths:
+
+.. code-block:: bash
+
+    # This may fail in Git Bash due to path translation:
+    $ mpremote mkdir /flash/mydir
+
+    # Use this instead to ensure the path refers to the device:
+    $ mpremote mkdir :/flash/mydir
+
+    # Similarly for other filesystem operations:
+    $ mpremote cp myfile.py :/flash/myfile.py
+    $ mpremote ls :/flash
+
+The ``:`` prefix explicitly indicates that the path refers to the remote device
+filesystem, preventing unwanted path translation by the shell.
+
+Alternatively, you can disable MSYS2 path conversion for specific commands by
+setting the ``MSYS2_ARG_CONV_EXCL`` environment variable:
+
+.. code-block:: bash
+
+    $ MSYS2_ARG_CONV_EXCL=/ mpremote mkdir /flash/mydir
+
+For more information, see the `MSYS2 documentation on path conversion
+<https://www.msys2.org/docs/filesystem-paths/#windows-unix-path-conversion>`_.
 
 .. _mpremote_reset:
 
