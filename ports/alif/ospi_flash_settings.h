@@ -31,52 +31,52 @@
 
 // Macronix MX25
 #define OSPI_FLASH_SETTINGS_MX25 \
-    .flash_init = ospi_flash_mx_init, \
-    .octal_mode = OSPI_FLASH_OCTAL_MODE_DDD, \
-    .rxds = true, \
-    .bswap16 = true, \
-    .inst_len = OSPI_INST_L_16bit, \
-    .xip_data_len = OSPI_DATA_L_16bit, \
-    .read_sr = 0x05fa, \
-    .read_sr_dummy_cycles = 4, \
-    .write_en = 0x06f9, \
-    .read_id = 0x9f60, \
-    .read_id_dummy_cycles = 4, \
-    .read_command = 0xee11, \
-    .write_command = 0x12ed, \
-    .erase_command = 0x21de
+        .flash_init = ospi_flash_mx_init, \
+        .octal_mode = OSPI_FLASH_OCTAL_MODE_DDD, \
+        .rxds = true, \
+        .bswap16 = true, \
+        .inst_len = OSPI_INST_L_16bit, \
+        .xip_data_len = OSPI_DATA_L_16bit, \
+        .read_sr = 0x05fa, \
+        .read_sr_dummy_cycles = 4, \
+        .write_en = 0x06f9, \
+        .read_id = 0x9f60, \
+        .read_id_dummy_cycles = 4, \
+        .read_command = 0xee11, \
+        .write_command = 0x12ed, \
+        .erase_command = 0x21de
 
 // Everspin EM.
 #define OSPI_FLASH_SETTINGS_EM \
-    .flash_init = ospi_flash_issi_init, \
-    .octal_mode = OSPI_FLASH_OCTAL_MODE_DDD, \
-    .rxds = false, \
-    .bswap16 = false, \
-    .inst_len = OSPI_INST_L_8bit, \
-    .xip_data_len = OSPI_DATA_L_8bit, \
-    .read_sr = 0x05, \
-    .read_sr_dummy_cycles = 8, \
-    .write_en = 0x06, \
-    .read_id = 0x9f, \
-    .read_id_dummy_cycles = 8, \
-    .read_command = 0xfd, \
-    .write_command = 0xc2, \
-    .erase_command = 0x21
+        .flash_init = ospi_flash_issi_init, \
+        .octal_mode = OSPI_FLASH_OCTAL_MODE_DDD, \
+        .rxds = false, \
+        .bswap16 = false, \
+        .inst_len = OSPI_INST_L_8bit, \
+        .xip_data_len = OSPI_DATA_L_8bit, \
+        .read_sr = 0x05, \
+        .read_sr_dummy_cycles = 8, \
+        .write_en = 0x06, \
+        .read_id = 0x9f, \
+        .read_id_dummy_cycles = 8, \
+        .read_command = 0xfd, \
+        .write_command = 0xc2, \
+        .erase_command = 0x21
 
 // ISSI IS25.
 #define OSPI_FLASH_SETTINGS_IS25 \
-    .flash_init = ospi_flash_issi_init, \
-    .octal_mode = OSPI_FLASH_OCTAL_MODE_DDD, \
-    .rxds = false, \
-    .bswap16 = false, \
-    .inst_len = OSPI_INST_L_8bit, \
-    .xip_data_len = OSPI_DATA_L_8bit, \
-    .read_sr = 0x05, \
-    .read_sr_dummy_cycles = 8, \
-    .write_en = 0x06, \
-    .read_id = 0x9f, \
-    .read_id_dummy_cycles = 8, \
-    .read_command = 0xfd, \
-    .write_command = 0xc2, \
-    .erase_command = 0x21
+        .flash_init = ospi_flash_issi_init, \
+        .octal_mode = OSPI_FLASH_OCTAL_MODE_DDD, \
+        .rxds = false, \
+        .bswap16 = false, \
+        .inst_len = OSPI_INST_L_8bit, \
+        .xip_data_len = OSPI_DATA_L_8bit, \
+        .read_sr = 0x05, \
+        .read_sr_dummy_cycles = 8, \
+        .write_en = 0x06, \
+        .read_id = 0x9f, \
+        .read_id_dummy_cycles = 8, \
+        .read_command = 0xfd, \
+        .write_command = 0xc2, \
+        .erase_command = 0x21
 #endif  // __OSPI_FLASH_SETTINGS_H__

@@ -292,11 +292,11 @@ bool pyb_usb_dev_init(int dev_id, uint16_t vid, uint16_t pid, uint8_t mode, size
             msc_n = 1;
             msc_unit = msc_unit_default;
             switch (pyb_usb_storage_medium) {
-                #if MICROPY_HW_ENABLE_SDCARD
+            #if MICROPY_HW_ENABLE_SDCARD
                 case PYB_USB_STORAGE_MEDIUM_SDCARD:
                     msc_unit_default[0] = &pyb_sdcard_type;
                     break;
-                #endif
+            #endif
                 default:
                     msc_unit_default[0] = &pyb_flash_type;
                     break;

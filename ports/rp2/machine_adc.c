@@ -46,7 +46,7 @@ static uint16_t adc_config_and_read_u16(uint32_t channel) {
 // MicroPython bindings for machine.ADC
 
 #define MICROPY_PY_MACHINE_ADC_CLASS_CONSTANTS \
-    { MP_ROM_QSTR(MP_QSTR_CORE_TEMP), MP_ROM_INT(ADC_TEMPERATURE_CHANNEL_NUM) }, \
+        { MP_ROM_QSTR(MP_QSTR_CORE_TEMP), MP_ROM_INT(ADC_TEMPERATURE_CHANNEL_NUM) }, \
 
 typedef struct _machine_adc_obj_t {
     mp_obj_base_t base;

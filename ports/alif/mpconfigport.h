@@ -171,7 +171,7 @@
 #endif
 
 #define MICROPY_PORT_NETWORK_INTERFACES \
-    MICROPY_BOARD_NETWORK_INTERFACES \
+        MICROPY_BOARD_NETWORK_INTERFACES \
 
 // Bluetooth code only runs in the scheduler, no locking/mutex required.
 #define MICROPY_PY_BLUETOOTH_ENTER uint32_t atomic_state = 0;

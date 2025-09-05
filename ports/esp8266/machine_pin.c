@@ -40,19 +40,19 @@
 #include "modmachine.h"
 
 #define GET_TRIGGER(phys_port) \
-    GPIO_PIN_INT_TYPE_GET(GPIO_REG_READ(GPIO_PIN_ADDR(phys_port)))
+        GPIO_PIN_INT_TYPE_GET(GPIO_REG_READ(GPIO_PIN_ADDR(phys_port)))
 #define SET_TRIGGER(phys_port, trig) \
-    (GPIO_REG_WRITE(GPIO_PIN_ADDR(phys_port), \
+        (GPIO_REG_WRITE(GPIO_PIN_ADDR(phys_port), \
     (GPIO_REG_READ(GPIO_PIN_ADDR(phys_port)) & ~GPIO_PIN_INT_TYPE_MASK) \
     | GPIO_PIN_INT_TYPE_SET(trig))) \
 
 #define ENABLE_OPEN_DRAIN(phys_port) \
-    (GPIO_REG_WRITE(GPIO_PIN_ADDR(GPIO_ID_PIN(phys_port)), \
+        (GPIO_REG_WRITE(GPIO_PIN_ADDR(GPIO_ID_PIN(phys_port)), \
     GPIO_REG_READ(GPIO_PIN_ADDR(GPIO_ID_PIN(phys_port))) \
     | GPIO_PIN_PAD_DRIVER_SET(GPIO_PAD_DRIVER_ENABLE)))
 
 #define DISABLE_OPEN_DRAIN(phys_port) \
-    (GPIO_REG_WRITE(GPIO_PIN_ADDR(GPIO_ID_PIN(phys_port)), \
+        (GPIO_REG_WRITE(GPIO_PIN_ADDR(GPIO_ID_PIN(phys_port)), \
     GPIO_REG_READ(GPIO_PIN_ADDR(GPIO_ID_PIN(phys_port))) \
     & ~GPIO_PIN_PAD_DRIVER_SET(GPIO_PAD_DRIVER_ENABLE))) \
 

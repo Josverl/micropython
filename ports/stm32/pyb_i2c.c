@@ -140,9 +140,9 @@ const pyb_i2c_obj_t pyb_i2c_obj[] = {
 // The value 0x40912732 was obtained from the DISCOVERY_I2Cx_TIMING constant
 // defined in the STM32F7Cube file Drivers/BSP/STM32F746G-Discovery/stm32f7456g_discovery.h
 #define MICROPY_HW_I2C_BAUDRATE_TIMING { \
-        {PYB_I2C_SPEED_STANDARD, 0x40912732}, \
-        {PYB_I2C_SPEED_FULL, 0x10911823}, \
-        {PYB_I2C_SPEED_FAST, 0x00611116}, \
+            {PYB_I2C_SPEED_STANDARD, 0x40912732}, \
+            {PYB_I2C_SPEED_FULL, 0x10911823}, \
+            {PYB_I2C_SPEED_FAST, 0x00611116}, \
 }
 #define MICROPY_HW_I2C_BAUDRATE_DEFAULT (PYB_I2C_SPEED_FULL)
 #define MICROPY_HW_I2C_BAUDRATE_MAX (PYB_I2C_SPEED_FAST)
@@ -154,9 +154,9 @@ const pyb_i2c_obj_t pyb_i2c_obj[] = {
 
 // These timing values are for f_I2CCLK=54MHz and are only approximate
 #define MICROPY_HW_I2C_BAUDRATE_TIMING { \
-        {PYB_I2C_SPEED_STANDARD, 0xb0420f13}, \
-        {PYB_I2C_SPEED_FULL, 0x70330309}, \
-        {PYB_I2C_SPEED_FAST, 0x50100103}, \
+            {PYB_I2C_SPEED_STANDARD, 0xb0420f13}, \
+            {PYB_I2C_SPEED_FULL, 0x70330309}, \
+            {PYB_I2C_SPEED_FAST, 0x50100103}, \
 }
 #define MICROPY_HW_I2C_BAUDRATE_DEFAULT (PYB_I2C_SPEED_FULL)
 #define MICROPY_HW_I2C_BAUDRATE_MAX (PYB_I2C_SPEED_FAST)
@@ -164,9 +164,9 @@ const pyb_i2c_obj_t pyb_i2c_obj[] = {
 #elif defined(STM32G0)
 // generated using CubeMX
 #define MICROPY_HW_I2C_BAUDRATE_TIMING { \
-        {PYB_I2C_SPEED_STANDARD, 0x10707DBC}, \
-        {PYB_I2C_SPEED_FULL, 0x00602173}, \
-        {PYB_I2C_SPEED_FAST, 0x00300B29}, \
+            {PYB_I2C_SPEED_STANDARD, 0x10707DBC}, \
+            {PYB_I2C_SPEED_FULL, 0x00602173}, \
+            {PYB_I2C_SPEED_FAST, 0x00300B29}, \
 }
 #define MICROPY_HW_I2C_BAUDRATE_DEFAULT (PYB_I2C_SPEED_FULL)
 #define MICROPY_HW_I2C_BAUDRATE_MAX (PYB_I2C_SPEED_FAST)
@@ -178,16 +178,16 @@ const pyb_i2c_obj_t pyb_i2c_obj[] = {
 // generated using CubeMX
 #if defined(STM32G431xx) || defined(STM32G441xx)
 #define MICROPY_HW_I2C_BAUDRATE_TIMING { \
-        {PYB_I2C_SPEED_STANDARD, 0x30A0A7FB}, \
-        {PYB_I2C_SPEED_STANDARD, 0x30A0A7FB}, \
-        {PYB_I2C_SPEED_STANDARD, 0x30A0A7FB}, \
+            {PYB_I2C_SPEED_STANDARD, 0x30A0A7FB}, \
+            {PYB_I2C_SPEED_STANDARD, 0x30A0A7FB}, \
+            {PYB_I2C_SPEED_STANDARD, 0x30A0A7FB}, \
 }
 #else
 #define MICROPY_HW_I2C_BAUDRATE_TIMING { \
-        {PYB_I2C_SPEED_STANDARD, 0x30A0A7FB}, \
-        {PYB_I2C_SPEED_STANDARD, 0x30A0A7FB}, \
-        {PYB_I2C_SPEED_STANDARD, 0x30A0A7FB}, \
-        {PYB_I2C_SPEED_STANDARD, 0x30A0A7FB}, \
+            {PYB_I2C_SPEED_STANDARD, 0x30A0A7FB}, \
+            {PYB_I2C_SPEED_STANDARD, 0x30A0A7FB}, \
+            {PYB_I2C_SPEED_STANDARD, 0x30A0A7FB}, \
+            {PYB_I2C_SPEED_STANDARD, 0x30A0A7FB}, \
 }
 #endif
 #define MICROPY_HW_I2C_BAUDRATE_DEFAULT (PYB_I2C_SPEED_STANDARD)
@@ -197,9 +197,9 @@ const pyb_i2c_obj_t pyb_i2c_obj[] = {
 
 // I2C TIMINGs obtained from the STHAL examples.
 #define MICROPY_HW_I2C_BAUDRATE_TIMING { \
-        {PYB_I2C_SPEED_STANDARD, 0x40604E73}, \
-        {PYB_I2C_SPEED_FULL, 0x00901954}, \
-        {PYB_I2C_SPEED_FAST, 0x10810915}, \
+            {PYB_I2C_SPEED_STANDARD, 0x40604E73}, \
+            {PYB_I2C_SPEED_FULL, 0x00901954}, \
+            {PYB_I2C_SPEED_FAST, 0x10810915}, \
 }
 #define MICROPY_HW_I2C_BAUDRATE_DEFAULT (PYB_I2C_SPEED_FULL)
 #define MICROPY_HW_I2C_BAUDRATE_MAX (PYB_I2C_SPEED_FAST)
@@ -208,9 +208,9 @@ const pyb_i2c_obj_t pyb_i2c_obj[] = {
 
 // generated using CubeMX
 #define MICROPY_HW_I2C_BAUDRATE_TIMING { \
-        {PYB_I2C_SPEED_STANDARD, 0x10909CEC}, \
-        {PYB_I2C_SPEED_FULL, 0x00702991}, \
-        {PYB_I2C_SPEED_FAST, 0x00300F33}, \
+            {PYB_I2C_SPEED_STANDARD, 0x10909CEC}, \
+            {PYB_I2C_SPEED_FULL, 0x00702991}, \
+            {PYB_I2C_SPEED_FAST, 0x00300F33}, \
 }
 #define MICROPY_HW_I2C_BAUDRATE_DEFAULT (PYB_I2C_SPEED_FULL)
 #define MICROPY_HW_I2C_BAUDRATE_MAX (PYB_I2C_SPEED_FAST)
@@ -455,26 +455,26 @@ void i2c_ev_irq_handler(mp_uint_t i2c_id) {
     I2C_HandleTypeDef *hi2c;
 
     switch (i2c_id) {
-        #if defined(MICROPY_HW_I2C1_SCL)
+    #if defined(MICROPY_HW_I2C1_SCL)
         case 1:
             hi2c = &I2CHandle1;
             break;
-        #endif
-        #if defined(MICROPY_HW_I2C2_SCL)
+    #endif
+    #if defined(MICROPY_HW_I2C2_SCL)
         case 2:
             hi2c = &I2CHandle2;
             break;
-        #endif
-        #if defined(MICROPY_HW_I2C3_SCL)
+    #endif
+    #if defined(MICROPY_HW_I2C3_SCL)
         case 3:
             hi2c = &I2CHandle3;
             break;
-        #endif
-        #if defined(MICROPY_HW_I2C4_SCL)
+    #endif
+    #if defined(MICROPY_HW_I2C4_SCL)
         case 4:
             hi2c = &I2CHandle4;
             break;
-        #endif
+    #endif
         default:
             return;
     }
@@ -529,26 +529,26 @@ void i2c_er_irq_handler(mp_uint_t i2c_id) {
     I2C_HandleTypeDef *hi2c;
 
     switch (i2c_id) {
-        #if defined(MICROPY_HW_I2C1_SCL)
+    #if defined(MICROPY_HW_I2C1_SCL)
         case 1:
             hi2c = &I2CHandle1;
             break;
-        #endif
-        #if defined(MICROPY_HW_I2C2_SCL)
+    #endif
+    #if defined(MICROPY_HW_I2C2_SCL)
         case 2:
             hi2c = &I2CHandle2;
             break;
-        #endif
-        #if defined(MICROPY_HW_I2C3_SCL)
+    #endif
+    #if defined(MICROPY_HW_I2C3_SCL)
         case 3:
             hi2c = &I2CHandle3;
             break;
-        #endif
-        #if defined(MICROPY_HW_I2C4_SCL)
+    #endif
+    #if defined(MICROPY_HW_I2C4_SCL)
         case 4:
             hi2c = &I2CHandle4;
             break;
-        #endif
+    #endif
         default:
             return;
     }

@@ -42,9 +42,9 @@
 
 // This class needs a finalizer, so we add it here
 #define MICROPY_PY_MACHINE_UART_CLASS_CONSTANTS \
-    { MP_ROM_QSTR(MP_QSTR_RTS), MP_ROM_INT(MACHINE_UART_RTS) }, \
-    { MP_ROM_QSTR(MP_QSTR_CTS), MP_ROM_INT(MACHINE_UART_CTS) }, \
-    { MP_ROM_QSTR(MP_QSTR___del__), MP_ROM_PTR(&machine_uart_deinit_obj) },
+        { MP_ROM_QSTR(MP_QSTR_RTS), MP_ROM_INT(MACHINE_UART_RTS) }, \
+        { MP_ROM_QSTR(MP_QSTR_CTS), MP_ROM_INT(MACHINE_UART_CTS) }, \
+        { MP_ROM_QSTR(MP_QSTR___del__), MP_ROM_PTR(&machine_uart_deinit_obj) },
 
 #define UART_RX_RING_BUF_DEF_SIZE                   128
 #define UART_TX_RING_BUF_DEF_SIZE                   128

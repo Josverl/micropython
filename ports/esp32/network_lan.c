@@ -223,7 +223,7 @@ static mp_obj_t get_lan(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_ar
     #endif
 
     switch (args[ARG_phy_type].u_int) {
-        #if CONFIG_IDF_TARGET_ESP32
+    #if CONFIG_IDF_TARGET_ESP32
         case PHY_LAN8710:
         case PHY_LAN8720:
             self->phy = esp_eth_phy_new_lan87xx(&phy_config);
@@ -251,9 +251,9 @@ static mp_obj_t get_lan(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_ar
             self->phy = esp_eth_phy_new_generic(&phy_config);
             break;
         #endif
-        #endif // CONFIG_IDF_TARGET_ESP32
-        #if CONFIG_ETH_USE_SPI_ETHERNET
-        #if CONFIG_ETH_SPI_ETHERNET_KSZ8851SNL
+    #endif // CONFIG_IDF_TARGET_ESP32
+    #if CONFIG_ETH_USE_SPI_ETHERNET
+    #if CONFIG_ETH_SPI_ETHERNET_KSZ8851SNL
         case PHY_KSZ8851SNL: {
             spi_host_device_t host = machine_hw_spi_get_host(args[ARG_spi].u_obj);
             eth_ksz8851snl_config_t chip_config = ETH_KSZ8851SNL_DEFAULT_CONFIG(host, &devcfg);
@@ -262,8 +262,8 @@ static mp_obj_t get_lan(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_ar
             self->phy = esp_eth_phy_new_ksz8851snl(&phy_config);
             break;
         }
-        #endif
-        #if CONFIG_ETH_SPI_ETHERNET_DM9051
+    #endif
+    #if CONFIG_ETH_SPI_ETHERNET_DM9051
         case PHY_DM9051: {
             spi_host_device_t host = machine_hw_spi_get_host(args[ARG_spi].u_obj);
             eth_dm9051_config_t chip_config = ETH_DM9051_DEFAULT_CONFIG(host, &devcfg);
@@ -272,8 +272,8 @@ static mp_obj_t get_lan(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_ar
             self->phy = esp_eth_phy_new_dm9051(&phy_config);
             break;
         }
-        #endif
-        #if CONFIG_ETH_SPI_ETHERNET_W5500
+    #endif
+    #if CONFIG_ETH_SPI_ETHERNET_W5500
         case PHY_W5500: {
             spi_host_device_t host = machine_hw_spi_get_host(args[ARG_spi].u_obj);
             eth_w5500_config_t chip_config = ETH_W5500_DEFAULT_CONFIG(host, &devcfg);
@@ -282,8 +282,8 @@ static mp_obj_t get_lan(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_ar
             self->phy = esp_eth_phy_new_w5500(&phy_config);
             break;
         }
-        #endif
-        #endif
+    #endif
+    #endif
     }
 
     #if CONFIG_IDF_TARGET_ESP32

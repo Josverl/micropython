@@ -186,12 +186,12 @@ void machine_uart_set_baudrate(mp_obj_t uart_in, uint32_t baudrate) {
 // MicroPython bindings for UART
 
 #define MICROPY_PY_MACHINE_UART_CLASS_CONSTANTS \
-    { MP_ROM_QSTR(MP_QSTR_INV_TX), MP_ROM_INT(UART_INVERT_TX) }, \
-    { MP_ROM_QSTR(MP_QSTR_INV_RX), MP_ROM_INT(UART_INVERT_RX) }, \
-    { MP_ROM_QSTR(MP_QSTR_CTS), MP_ROM_INT(UART_HWCONTROL_CTS) }, \
-    { MP_ROM_QSTR(MP_QSTR_RTS), MP_ROM_INT(UART_HWCONTROL_RTS) }, \
-    { MP_ROM_QSTR(MP_QSTR_IRQ_RXIDLE), MP_ROM_INT(UART_IRQ_RXIDLE) }, \
-    { MP_ROM_QSTR(MP_QSTR_IRQ_TXIDLE), MP_ROM_INT(UART_IRQ_TXIDLE) }, \
+        { MP_ROM_QSTR(MP_QSTR_INV_TX), MP_ROM_INT(UART_INVERT_TX) }, \
+        { MP_ROM_QSTR(MP_QSTR_INV_RX), MP_ROM_INT(UART_INVERT_RX) }, \
+        { MP_ROM_QSTR(MP_QSTR_CTS), MP_ROM_INT(UART_HWCONTROL_CTS) }, \
+        { MP_ROM_QSTR(MP_QSTR_RTS), MP_ROM_INT(UART_HWCONTROL_RTS) }, \
+        { MP_ROM_QSTR(MP_QSTR_IRQ_RXIDLE), MP_ROM_INT(UART_IRQ_RXIDLE) }, \
+        { MP_ROM_QSTR(MP_QSTR_IRQ_TXIDLE), MP_ROM_INT(UART_IRQ_TXIDLE) }, \
 
 static void mp_machine_uart_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     machine_uart_obj_t *self = MP_OBJ_TO_PTR(self_in);

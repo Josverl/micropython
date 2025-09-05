@@ -49,17 +49,17 @@
 // Do not use this macro directly, include py/runtime.h and
 // call mp_event_wait_indefinite() or mp_event_wait_ms(timeout)
 #define MICROPY_INTERNAL_WFE(TIMEOUT_MS) \
-    do {                                 \
-        if ((TIMEOUT_MS) < 0) { \
-            __WFE(); \
-        } else { \
-            system_tick_wfe_with_timeout_us(TIMEOUT_MS * 1000); \
-        } \
-    } while (0)
+        do {                                 \
+            if ((TIMEOUT_MS) < 0) { \
+                __WFE(); \
+            } else { \
+                system_tick_wfe_with_timeout_us(TIMEOUT_MS * 1000); \
+            } \
+        } while (0)
 
 // TODO requires mods to py/emitglue.c for this to be picked up
 #define MP_HAL_CLEAN_DCACHE(addr, size) \
-    (SCB_CleanDCache_by_Addr((uint32_t *)((uint32_t)addr & ~0x1f), \
+        (SCB_CleanDCache_by_Addr((uint32_t *)((uint32_t)addr & ~0x1f), \
     ((uint32_t)((uint8_t *)addr + size + 0x1f) & ~0x1f) - ((uint32_t)addr & ~0x1f)))
 
 #define mp_hal_quiet_timing_enter() raise_irq_pri(IRQ_PRI_QUIET_TIMING)

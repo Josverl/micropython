@@ -21,31 +21,31 @@
 #define MICROPY_HW_UART_INDEX   { 1, 3, 2, 6, 8 }
 
 #define IOMUX_TABLE_UART \
-    { IOMUXC_GPIO_AD_B0_12_LPUART1_TX }, { IOMUXC_GPIO_AD_B0_13_LPUART1_RX }, \
-    { IOMUXC_GPIO_AD_B1_02_LPUART2_TX }, { IOMUXC_GPIO_AD_B1_03_LPUART2_RX }, \
-    { IOMUXC_GPIO_AD_B1_06_LPUART3_TX }, { IOMUXC_GPIO_AD_B1_07_LPUART3_RX }, \
-    { 0 }, { 0 }, \
-    { 0 }, { 0 }, \
-    { IOMUXC_GPIO_AD_B0_02_LPUART6_TX }, { IOMUXC_GPIO_AD_B0_03_LPUART6_RX }, \
-    { 0 }, { 0 }, \
-    { IOMUXC_GPIO_AD_B1_10_LPUART8_TX }, { IOMUXC_GPIO_AD_B1_11_LPUART8_RX },
+        { IOMUXC_GPIO_AD_B0_12_LPUART1_TX }, { IOMUXC_GPIO_AD_B0_13_LPUART1_RX }, \
+        { IOMUXC_GPIO_AD_B1_02_LPUART2_TX }, { IOMUXC_GPIO_AD_B1_03_LPUART2_RX }, \
+        { IOMUXC_GPIO_AD_B1_06_LPUART3_TX }, { IOMUXC_GPIO_AD_B1_07_LPUART3_RX }, \
+        { 0 }, { 0 }, \
+        { 0 }, { 0 }, \
+        { IOMUXC_GPIO_AD_B0_02_LPUART6_TX }, { IOMUXC_GPIO_AD_B0_03_LPUART6_RX }, \
+        { 0 }, { 0 }, \
+        { IOMUXC_GPIO_AD_B1_10_LPUART8_TX }, { IOMUXC_GPIO_AD_B1_11_LPUART8_RX },
 
 #define IOMUX_TABLE_UART_CTS_RTS \
-    { IOMUXC_GPIO_AD_B0_14_LPUART1_CTS_B }, { IOMUXC_GPIO_AD_B0_15_LPUART1_RTS_B }, \
-    { IOMUXC_GPIO_AD_B1_00_LPUART2_CTS_B }, { IOMUXC_GPIO_AD_B1_01_LPUART2_RTS_B }, \
-    { IOMUXC_GPIO_AD_B1_04_LPUART3_CTS_B }, { IOMUXC_GPIO_AD_B1_05_LPUART3_RTS_B }, \
-    { 0 }, { 0 }, \
-    { 0 }, { 0 }, \
-    { IOMUXC_GPIO_EMC_30_LPUART6_CTS_B }, { IOMUXC_GPIO_EMC_29_LPUART6_RTS_B }, \
-    { 0 }, { 0 }, \
-    { IOMUXC_GPIO_SD_B0_02_LPUART8_CTS_B }, { IOMUXC_GPIO_SD_B0_03_LPUART8_RTS_B },
+        { IOMUXC_GPIO_AD_B0_14_LPUART1_CTS_B }, { IOMUXC_GPIO_AD_B0_15_LPUART1_RTS_B }, \
+        { IOMUXC_GPIO_AD_B1_00_LPUART2_CTS_B }, { IOMUXC_GPIO_AD_B1_01_LPUART2_RTS_B }, \
+        { IOMUXC_GPIO_AD_B1_04_LPUART3_CTS_B }, { IOMUXC_GPIO_AD_B1_05_LPUART3_RTS_B }, \
+        { 0 }, { 0 }, \
+        { 0 }, { 0 }, \
+        { IOMUXC_GPIO_EMC_30_LPUART6_CTS_B }, { IOMUXC_GPIO_EMC_29_LPUART6_RTS_B }, \
+        { 0 }, { 0 }, \
+        { IOMUXC_GPIO_SD_B0_02_LPUART8_CTS_B }, { IOMUXC_GPIO_SD_B0_03_LPUART8_RTS_B },
 
 #define MICROPY_HW_SPI_INDEX { 1 }
 
 #define IOMUX_TABLE_SPI \
-    { IOMUXC_GPIO_SD_B0_00_LPSPI1_SCK }, { IOMUXC_GPIO_SD_B0_01_LPSPI1_PCS0 }, \
-    { IOMUXC_GPIO_SD_B0_02_LPSPI1_SDO }, { IOMUXC_GPIO_SD_B0_03_LPSPI1_SDI }, \
-    { 0 },
+        { IOMUXC_GPIO_SD_B0_00_LPSPI1_SCK }, { IOMUXC_GPIO_SD_B0_01_LPSPI1_PCS0 }, \
+        { IOMUXC_GPIO_SD_B0_02_LPSPI1_SDO }, { IOMUXC_GPIO_SD_B0_03_LPSPI1_SDI }, \
+        { 0 },
 
 #define DMA_REQ_SRC_RX { 0, kDmaRequestMuxLPSPI1Rx, kDmaRequestMuxLPSPI2Rx, \
                          kDmaRequestMuxLPSPI3Rx, kDmaRequestMuxLPSPI4Rx }
@@ -61,9 +61,9 @@
 #define MICROPY_HW_I2C_INDEX   { 1, 3 }
 
 #define IOMUX_TABLE_I2C \
-    { IOMUXC_GPIO_AD_B1_00_LPI2C1_SCL }, { IOMUXC_GPIO_AD_B1_01_LPI2C1_SDA }, \
-    { 0 }, { 0 }, \
-    { IOMUXC_GPIO_AD_B1_07_LPI2C3_SCL }, { IOMUXC_GPIO_AD_B1_06_LPI2C3_SDA },
+        { IOMUXC_GPIO_AD_B1_00_LPI2C1_SCL }, { IOMUXC_GPIO_AD_B1_01_LPI2C1_SDA }, \
+        { 0 }, { 0 }, \
+        { IOMUXC_GPIO_AD_B1_07_LPI2C3_SCL }, { IOMUXC_GPIO_AD_B1_06_LPI2C3_SDA },
 
 #define MICROPY_PY_MACHINE_I2S (1)
 #define MICROPY_HW_I2S_NUM (1)
@@ -77,36 +77,36 @@
 #define I2S_AUDIO_PLL_CLOCK (2U)
 
 #define I2S_GPIO(_hwid, _fn, _mode, _pin, _iomux) \
-    { \
-        .hw_id = _hwid, \
-        .fn = _fn, \
-        .mode = _mode, \
-        .name = MP_QSTR_##_pin, \
-        .iomux = {_iomux}, \
-    }
+        { \
+            .hw_id = _hwid, \
+            .fn = _fn, \
+            .mode = _mode, \
+            .name = MP_QSTR_##_pin, \
+            .iomux = {_iomux}, \
+        }
 
 #define I2S_GPIO_MAP \
-    { \
-        I2S_GPIO(1, MCK, TX, GPIO_AD_B1_09, IOMUXC_GPIO_AD_B1_09_SAI1_MCLK), \
-        I2S_GPIO(1, SCK, RX, GPIO_AD_B1_11, IOMUXC_GPIO_AD_B1_11_SAI1_RX_BCLK), \
-        I2S_GPIO(1, WS, RX, GPIO_AD_B1_10, IOMUXC_GPIO_AD_B1_10_SAI1_RX_SYNC), \
-        I2S_GPIO(1, SD, RX, GPIO_AD_B1_12, IOMUXC_GPIO_AD_B1_12_SAI1_RX_DATA00),  \
-        I2S_GPIO(1, SCK, TX, GPIO_AD_B1_14, IOMUXC_GPIO_AD_B1_14_SAI1_TX_BCLK), \
-        I2S_GPIO(1, WS, TX, GPIO_AD_B1_15, IOMUXC_GPIO_AD_B1_15_SAI1_TX_SYNC),  \
-        I2S_GPIO(1, SD, TX, GPIO_AD_B1_13, IOMUXC_GPIO_AD_B1_13_SAI1_TX_DATA00), \
-    }
+        { \
+            I2S_GPIO(1, MCK, TX, GPIO_AD_B1_09, IOMUXC_GPIO_AD_B1_09_SAI1_MCLK), \
+            I2S_GPIO(1, SCK, RX, GPIO_AD_B1_11, IOMUXC_GPIO_AD_B1_11_SAI1_RX_BCLK), \
+            I2S_GPIO(1, WS, RX, GPIO_AD_B1_10, IOMUXC_GPIO_AD_B1_10_SAI1_RX_SYNC), \
+            I2S_GPIO(1, SD, RX, GPIO_AD_B1_12, IOMUXC_GPIO_AD_B1_12_SAI1_RX_DATA00),  \
+            I2S_GPIO(1, SCK, TX, GPIO_AD_B1_14, IOMUXC_GPIO_AD_B1_14_SAI1_TX_BCLK), \
+            I2S_GPIO(1, WS, TX, GPIO_AD_B1_15, IOMUXC_GPIO_AD_B1_15_SAI1_TX_SYNC),  \
+            I2S_GPIO(1, SD, TX, GPIO_AD_B1_13, IOMUXC_GPIO_AD_B1_13_SAI1_TX_DATA00), \
+        }
 
 #define USDHC_DUMMY_PIN NULL, 0
 #define MICROPY_USDHC1 \
-    { \
-        .cmd = {GPIO_SD_B0_00_USDHC1_CMD}, \
-        .clk = { GPIO_SD_B0_01_USDHC1_CLK }, \
-        .cd_b = { GPIO_B1_12_USDHC1_CD_B }, \
-        .data0 = { GPIO_SD_B0_02_USDHC1_DATA0 }, \
-        .data1 = { GPIO_SD_B0_03_USDHC1_DATA1 }, \
-        .data2 = { GPIO_SD_B0_04_USDHC1_DATA2 }, \
-        .data3 = { GPIO_SD_B0_05_USDHC1_DATA3 }, \
-    }
+        { \
+            .cmd = {GPIO_SD_B0_00_USDHC1_CMD}, \
+            .clk = { GPIO_SD_B0_01_USDHC1_CLK }, \
+            .cd_b = { GPIO_B1_12_USDHC1_CD_B }, \
+            .data0 = { GPIO_SD_B0_02_USDHC1_DATA0 }, \
+            .data1 = { GPIO_SD_B0_03_USDHC1_DATA1 }, \
+            .data2 = { GPIO_SD_B0_04_USDHC1_DATA2 }, \
+            .data3 = { GPIO_SD_B0_05_USDHC1_DATA3 }, \
+        }
 
 // --- SEMC --- //
 #define MIMXRT_IOMUXC_SEMC_DATA00 IOMUXC_GPIO_EMC_00_SEMC_DATA00
@@ -159,13 +159,13 @@
 #define ENET_PHY_OPS        phyksz8081_ops
 
 #define IOMUX_TABLE_ENET \
-    { IOMUXC_GPIO_B1_04_ENET_RX_DATA00, 0, 0xB0E9u }, \
-    { IOMUXC_GPIO_B1_05_ENET_RX_DATA01, 0, 0xB0E9u }, \
-    { IOMUXC_GPIO_B1_06_ENET_RX_EN, 0, 0xB0E9u }, \
-    { IOMUXC_GPIO_B1_07_ENET_TX_DATA00, 0, 0xB0E9u }, \
-    { IOMUXC_GPIO_B1_08_ENET_TX_DATA01, 0, 0xB0E9u }, \
-    { IOMUXC_GPIO_B1_09_ENET_TX_EN, 0, 0xB0E9u }, \
-    { IOMUXC_GPIO_B1_10_ENET_REF_CLK, 1, 0x71u }, \
-    { IOMUXC_GPIO_B1_11_ENET_RX_ER, 0, 0xB0E9u }, \
-    { IOMUXC_GPIO_EMC_41_ENET_MDIO, 0, 0xB0E9u }, \
-    { IOMUXC_GPIO_EMC_40_ENET_MDC, 0, 0xB0E9u },
+        { IOMUXC_GPIO_B1_04_ENET_RX_DATA00, 0, 0xB0E9u }, \
+        { IOMUXC_GPIO_B1_05_ENET_RX_DATA01, 0, 0xB0E9u }, \
+        { IOMUXC_GPIO_B1_06_ENET_RX_EN, 0, 0xB0E9u }, \
+        { IOMUXC_GPIO_B1_07_ENET_TX_DATA00, 0, 0xB0E9u }, \
+        { IOMUXC_GPIO_B1_08_ENET_TX_DATA01, 0, 0xB0E9u }, \
+        { IOMUXC_GPIO_B1_09_ENET_TX_EN, 0, 0xB0E9u }, \
+        { IOMUXC_GPIO_B1_10_ENET_REF_CLK, 1, 0x71u }, \
+        { IOMUXC_GPIO_B1_11_ENET_RX_ER, 0, 0xB0E9u }, \
+        { IOMUXC_GPIO_EMC_41_ENET_MDIO, 0, 0xB0E9u }, \
+        { IOMUXC_GPIO_EMC_40_ENET_MDC, 0, 0xB0E9u },

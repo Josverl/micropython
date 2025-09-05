@@ -684,11 +684,11 @@ static mp_obj_t pyb_timer_init_helper(pyb_timer_obj_t *self, size_t n_args, cons
 
     // enable TIM clock
     switch (self->tim_id) {
-        #if defined(TIM1)
+    #if defined(TIM1)
         case 1:
             __HAL_RCC_TIM1_CLK_ENABLE();
             break;
-        #endif
+    #endif
         case 2:
             __HAL_RCC_TIM2_CLK_ENABLE();
             break;

@@ -35,11 +35,11 @@
 
 // During machine.time_pulse_us, feed WDT every now and then.
 #define MICROPY_PY_MACHINE_TIME_PULSE_US_HOOK(dt) \
-    do { \
-        if ((dt & 0xffff) == 0xffff && !ets_loop_dont_feed_sw_wdt) { \
-            system_soft_wdt_feed(); \
-        } \
-    } while (0)
+        do { \
+            if ((dt & 0xffff) == 0xffff && !ets_loop_dont_feed_sw_wdt) { \
+                system_soft_wdt_feed(); \
+            } \
+        } while (0)
 
 void mp_sched_keyboard_interrupt(void);
 
@@ -96,17 +96,17 @@ void mp_hal_pin_input(mp_hal_pin_obj_t pin);
 void mp_hal_pin_output(mp_hal_pin_obj_t pin);
 void mp_hal_pin_open_drain(mp_hal_pin_obj_t pin);
 #define mp_hal_pin_od_low(p) do { \
-        if ((p) == 16) { WRITE_PERI_REG(RTC_GPIO_ENABLE, (READ_PERI_REG(RTC_GPIO_ENABLE) & ~1) | 1); } \
-        else { gpio_output_set(0, 1 << (p), 1 << (p), 0); } \
+            if ((p) == 16) { WRITE_PERI_REG(RTC_GPIO_ENABLE, (READ_PERI_REG(RTC_GPIO_ENABLE) & ~1) | 1); } \
+            else { gpio_output_set(0, 1 << (p), 1 << (p), 0); } \
 } while (0)
 #define mp_hal_pin_od_high(p) do { \
-        if ((p) == 16) { WRITE_PERI_REG(RTC_GPIO_ENABLE, (READ_PERI_REG(RTC_GPIO_ENABLE) & ~1)); } \
-        else { gpio_output_set(0, 0, 0, 1 << (p)); /* set as input to avoid glitches */ } \
+            if ((p) == 16) { WRITE_PERI_REG(RTC_GPIO_ENABLE, (READ_PERI_REG(RTC_GPIO_ENABLE) & ~1)); } \
+            else { gpio_output_set(0, 0, 0, 1 << (p)); /* set as input to avoid glitches */ } \
 } while (0)
 // The DHT driver requires using the open-drain feature of the GPIO to get it to work reliably
 #define mp_hal_pin_od_high_dht(p) do { \
-        if ((p) == 16) { WRITE_PERI_REG(RTC_GPIO_ENABLE, (READ_PERI_REG(RTC_GPIO_ENABLE) & ~1)); } \
-        else { gpio_output_set(1 << (p), 0, 1 << (p), 0); } \
+            if ((p) == 16) { WRITE_PERI_REG(RTC_GPIO_ENABLE, (READ_PERI_REG(RTC_GPIO_ENABLE) & ~1)); } \
+            else { gpio_output_set(1 << (p), 0, 1 << (p), 0); } \
 } while (0)
 #define mp_hal_pin_read(p) pin_get(p)
 static inline int mp_hal_pin_read_output(mp_hal_pin_obj_t pin) {

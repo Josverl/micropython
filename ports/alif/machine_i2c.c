@@ -40,12 +40,12 @@
 #define I2C_RX_FIFO_LEN     (I2C_FIFO_DEPTH / 2)
 
 #define I2C_SPEED(freq) \
-    ((freq) <= 100000 ? I2C_SPEED_STANDARD : \
+        ((freq) <= 100000 ? I2C_SPEED_STANDARD : \
     ((freq) <= 400000 ? I2C_SPEED_FAST : \
     I2C_SPEED_FASTPLUS))
 
 #define I2C_IC_CON_SPEED(freq) \
-    ((freq) <= 100000 ? I2C_IC_CON_SPEED_STANDARD : \
+        ((freq) <= 100000 ? I2C_IC_CON_SPEED_STANDARD : \
     ((freq) <= 400000 ? I2C_IC_CON_SPEED_FAST : \
     I2C_IC_CON_SPEED_HIGH))
 #define I2C_IC_CON_MASTER_TX_EMPTY_CTRL (1 << 8)
@@ -57,15 +57,15 @@
 
 #define debug_printf(...) // mp_printf(&mp_plat_print, "i2c.c: " __VA_ARGS__)
 #define I2C_CHECK_ERRORS(base) \
-    if (base->I2C_RAW_INTR_STAT & I2C_STAT_ERRORS) { \
-        uint32_t status = base->I2C_RAW_INTR_STAT; \
-        debug_printf("status: 0x%lx raw_int: 0x%lx abort: 0x%lx line: %d\n", \
+        if (base->I2C_RAW_INTR_STAT & I2C_STAT_ERRORS) { \
+            uint32_t status = base->I2C_RAW_INTR_STAT; \
+            debug_printf("status: 0x%lx raw_int: 0x%lx abort: 0x%lx line: %d\n", \
     base->I2C_STATUS, status, base->I2C_TX_ABRT_SOURCE, __LINE__); \
-        (void)status; \
-        (void)base->I2C_CLR_TX_ABRT; \
-        (void)base->I2C_CLR_ACTIVITY; \
-        return -MP_EIO; \
-    }
+            (void)status; \
+            (void)base->I2C_CLR_TX_ABRT; \
+            (void)base->I2C_CLR_ACTIVITY; \
+            return -MP_EIO; \
+        }
 
 typedef struct _machine_i2c_obj_t {
     mp_obj_base_t base;

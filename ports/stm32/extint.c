@@ -249,12 +249,12 @@ static const uint8_t nvic_irq_channel[EXTI_NUM_VECTORS] = {
 };
 
 #define DEFINE_EXTI_IRQ_HANDLER(line) \
-    void EXTI##line##_IRQHandler(void) { \
-        MP_STATIC_ASSERT(EXTI##line##_IRQn > 0); \
-        IRQ_ENTER(EXTI##line##_IRQn); \
-        Handle_EXTI_Irq(line); \
-        IRQ_EXIT(EXTI##line##_IRQn); \
-    }
+        void EXTI##line##_IRQHandler(void) { \
+            MP_STATIC_ASSERT(EXTI##line##_IRQn > 0); \
+            IRQ_ENTER(EXTI##line##_IRQn); \
+            Handle_EXTI_Irq(line); \
+            IRQ_EXIT(EXTI##line##_IRQn); \
+        }
 
 #if defined(STM32F0) || defined(STM32L0) || defined(STM32G0)
 

@@ -1383,7 +1383,7 @@ static vstr_t mp_obj_str_format_helper(const char *str, const char *top, int *ar
             }
 
             switch (type) {
-                #if MICROPY_PY_BUILTINS_FLOAT
+            #if MICROPY_PY_BUILTINS_FLOAT
                 case 'e':
                 case 'E':
                 case 'f':
@@ -1403,7 +1403,7 @@ static vstr_t mp_obj_str_format_helper(const char *str, const char *top, int *ar
                     mp_print_float(&print, mp_obj_get_float(arg) * F100, 'f', flags, fill, width, precision);
 #undef F100
                     break;
-                #endif
+            #endif
 
                 default:
                     #if MICROPY_ERROR_REPORTING <= MICROPY_ERROR_REPORTING_TERSE

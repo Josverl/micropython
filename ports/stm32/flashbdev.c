@@ -45,19 +45,19 @@ extern uint8_t _micropy_hw_internal_flash_storage_ram_cache_start[];
 extern uint8_t _micropy_hw_internal_flash_storage_ram_cache_end[];
 
 #define CACHE_MEM_START_ADDR \
-    ((uintptr_t)&_micropy_hw_internal_flash_storage_ram_cache_start[0])
+        ((uintptr_t)&_micropy_hw_internal_flash_storage_ram_cache_start[0])
 #define FLASH_SECTOR_SIZE_MAX \
-    (&_micropy_hw_internal_flash_storage_ram_cache_end[0] - &_micropy_hw_internal_flash_storage_ram_cache_start[0])
+        (&_micropy_hw_internal_flash_storage_ram_cache_end[0] - &_micropy_hw_internal_flash_storage_ram_cache_start[0])
 #define FLASH_MEM_SEG1_START_ADDR \
-    ((long)&_micropy_hw_internal_flash_storage_start)
+        ((long)&_micropy_hw_internal_flash_storage_start)
 #define FLASH_MEM_SEG1_NUM_BLOCKS \
-    ((&_micropy_hw_internal_flash_storage_end - &_micropy_hw_internal_flash_storage_start) / 512)
+        ((&_micropy_hw_internal_flash_storage_end - &_micropy_hw_internal_flash_storage_start) / 512)
 
 #if MICROPY_HW_ENABLE_INTERNAL_FLASH_STORAGE_SEGMENT2
 #define FLASH_MEM_SEG2_START_ADDR \
-    ((long)&_micropy_hw_internal_flash_storage2_start)
+        ((long)&_micropy_hw_internal_flash_storage2_start)
 #define FLASH_MEM_SEG2_NUM_BLOCKS \
-    ((&_micropy_hw_internal_flash_storage2_end - &_micropy_hw_internal_flash_storage2_start) / 512)
+        ((&_micropy_hw_internal_flash_storage2_end - &_micropy_hw_internal_flash_storage2_start) / 512)
 #endif
 
 #if !defined(FLASH_MEM_SEG2_START_ADDR)

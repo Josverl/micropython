@@ -100,8 +100,8 @@ static int adc_find(mp_obj_t id) {
 
 // These are ad-hoc legacy methods and need to be removed.
 #define MICROPY_PY_MACHINE_ADC_CLASS_CONSTANTS \
-    { MP_ROM_QSTR(MP_QSTR_value), MP_ROM_PTR(&mp_machine_adc_value_obj) }, /* instance method */ \
-    { MP_ROM_QSTR(MP_QSTR_battery_level), MP_ROM_PTR(&mp_machine_adc_battery_level_obj) }, /* class method */ \
+        { MP_ROM_QSTR(MP_QSTR_value), MP_ROM_PTR(&mp_machine_adc_value_obj) }, /* instance method */ \
+        { MP_ROM_QSTR(MP_QSTR_battery_level), MP_ROM_PTR(&mp_machine_adc_battery_level_obj) }, /* class method */ \
 
 // Return a string describing the ADC object.
 static void mp_machine_adc_print(const mp_print_t *print, mp_obj_t o, mp_print_kind_t kind) {
@@ -209,7 +209,7 @@ static MP_DEFINE_CONST_FUN_OBJ_1(mp_machine_adc_value_obj, machine_adc_value);
 #define DIODE_VOLT_DROP_MILLIVOLT    (270)  // Voltage drop over diode.
 
 #define BATTERY_MILLIVOLT(VALUE) \
-    ((((VALUE)*ADC_REF_VOLTAGE_IN_MILLIVOLT) / 255) * ADC_PRE_SCALING_MULTIPLIER)
+        ((((VALUE)*ADC_REF_VOLTAGE_IN_MILLIVOLT) / 255) * ADC_PRE_SCALING_MULTIPLIER)
 
 static uint8_t battery_level_in_percent(const uint16_t mvolts) {
     uint8_t battery_level;

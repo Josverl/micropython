@@ -45,7 +45,7 @@
 #define DMA_SYSTICK_LOG2    (3)
 #define DMA_SYSTICK_MASK    ((1 << DMA_SYSTICK_LOG2) - 1)
 #define DMA_IDLE_TICK_MAX   (8) // 8*8 = 64 msec
-#define DMA_IDLE_TICK(tick) (((tick) & ~(SYSTICK_DISPATCH_NUM_SLOTS - 1) & DMA_SYSTICK_MASK) == 0)
+#define DMA_IDLE_TICK(tick) (((tick) & ~(SYSTICK_DISPATCH_NUM_SLOTS - 1)&DMA_SYSTICK_MASK) == 0)
 
 #define ENABLE_SDIO (MICROPY_HW_ENABLE_SDCARD || MICROPY_HW_ENABLE_MMCARD || MICROPY_PY_NETWORK_CYW43)
 
@@ -294,7 +294,7 @@ static const uint8_t dma_irqn[NSTREAM] = {
 #define NSTREAMS_PER_CONTROLLER (8)
 #define NSTREAM                 (NCONTROLLERS * NSTREAMS_PER_CONTROLLER)
 
-#define DMA_SUB_INSTANCE_AS_UINT8(dma_channel) (((dma_channel) & DMA_SxCR_CHSEL) >> 25)
+#define DMA_SUB_INSTANCE_AS_UINT8(dma_channel) (((dma_channel)&DMA_SxCR_CHSEL) >> 25)
 
 #define DMA1_ENABLE_MASK (0x00ff) // Bits in dma_enable_mask corresponding to DMA1
 #define DMA2_ENABLE_MASK (0xff00) // Bits in dma_enable_mask corresponding to DMA2
@@ -1232,14 +1232,14 @@ void DMA2_Channel8_IRQHandler(void) {
 #elif defined(STM32H5) || defined(STM32N6)
 
 #define DEFINE_IRQ_HANDLER(periph, channel, id) \
-    void GPDMA##periph##_Channel##channel##_IRQHandler(void) { \
-        MP_STATIC_ASSERT(GPDMA##periph##_Channel##channel##_IRQn > 0); \
-        IRQ_ENTER(GPDMA##periph##_Channel##channel##_IRQn); \
-        if (dma_handle[id] != NULL) { \
-            HAL_DMA_IRQHandler(dma_handle[id]); \
-        } \
-        IRQ_EXIT(GPDMA##periph##_Channel##channel##_IRQn); \
-    }
+        void GPDMA##periph##_Channel##channel##_IRQHandler(void) { \
+            MP_STATIC_ASSERT(GPDMA##periph##_Channel##channel##_IRQn > 0); \
+            IRQ_ENTER(GPDMA##periph##_Channel##channel##_IRQn); \
+            if (dma_handle[id] != NULL) { \
+                HAL_DMA_IRQHandler(dma_handle[id]); \
+            } \
+            IRQ_EXIT(GPDMA##periph##_Channel##channel##_IRQn); \
+        }
 
 DEFINE_IRQ_HANDLER(1, 0, dma_id_0)
 DEFINE_IRQ_HANDLER(1, 1, dma_id_1)

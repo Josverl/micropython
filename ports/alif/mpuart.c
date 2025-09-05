@@ -36,7 +36,7 @@
 #define SYST_PCLK (100000000)
 
 #define CALCULATE_BITS_PER_CHAR(data_bits, parity, stop_bits) \
-    (1 + ((data_bits) + 5) + ((parity) != UART_PARITY_NONE) + ((stop_bits) + 1))
+        (1 + ((data_bits) + 5) + ((parity) != UART_PARITY_NONE) + ((stop_bits) + 1))
 
 typedef struct _uart_state_t {
     UART_TRANSFER_STATUS status;
@@ -316,9 +316,9 @@ static void mp_uart_irq_handler(unsigned int uart_id) {
 }
 
 #define DEFINE_IRQ_HANDLER(id) \
-    void UART##id##_IRQHandler(void) { \
-        mp_uart_irq_handler(id); \
-    }
+        void UART##id##_IRQHandler(void) { \
+            mp_uart_irq_handler(id); \
+        }
 
 DEFINE_IRQ_HANDLER(0)
 DEFINE_IRQ_HANDLER(1)

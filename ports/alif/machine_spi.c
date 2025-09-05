@@ -83,7 +83,7 @@ static void spi_init(machine_spi_obj_t *spi, uint32_t baudrate,
     uint32_t polarity, uint32_t phase, uint32_t bits, uint32_t firstbit) {
     const machine_pin_obj_t *pins[4] = { NULL, NULL, NULL, NULL };
     switch (spi->id) {
-        #if defined(MICROPY_HW_SPI0_SCK)
+    #if defined(MICROPY_HW_SPI0_SCK)
         case 0:
             pins[0] = MICROPY_HW_SPI0_SCK;
             pins[1] = MICROPY_HW_SPI0_MISO;
@@ -92,8 +92,8 @@ static void spi_init(machine_spi_obj_t *spi, uint32_t baudrate,
             pins[3] = MICROPY_HW_SPI0_NSS;
             #endif
             break;
-        #endif
-        #if defined(MICROPY_HW_SPI1_SCK)
+    #endif
+    #if defined(MICROPY_HW_SPI1_SCK)
         case 1:
             pins[0] = MICROPY_HW_SPI1_SCK;
             pins[1] = MICROPY_HW_SPI1_MISO;
@@ -102,8 +102,8 @@ static void spi_init(machine_spi_obj_t *spi, uint32_t baudrate,
             pins[3] = MICROPY_HW_SPI1_NSS;
             #endif
             break;
-        #endif
-        #if defined(MICROPY_HW_SPI2_SCK)
+    #endif
+    #if defined(MICROPY_HW_SPI2_SCK)
         case 2:
             pins[0] = MICROPY_HW_SPI2_SCK;
             pins[1] = MICROPY_HW_SPI2_MISO;
@@ -112,8 +112,8 @@ static void spi_init(machine_spi_obj_t *spi, uint32_t baudrate,
             pins[3] = MICROPY_HW_SPI2_NSS;
             #endif
             break;
-        #endif
-        #if defined(MICROPY_HW_SPI3_SCK)
+    #endif
+    #if defined(MICROPY_HW_SPI3_SCK)
         case 3:
             pins[0] = MICROPY_HW_SPI3_SCK;
             pins[1] = MICROPY_HW_SPI3_MISO;
@@ -122,8 +122,8 @@ static void spi_init(machine_spi_obj_t *spi, uint32_t baudrate,
             pins[3] = MICROPY_HW_SPI3_NSS;
             #endif
             break;
-        #endif
-        #if defined(MICROPY_HW_LPSPI0_SCK)
+    #endif
+    #if defined(MICROPY_HW_LPSPI0_SCK)
         case 4:  // LPSPI0
             pins[0] = MICROPY_HW_LPSPI0_SCK;
             pins[1] = MICROPY_HW_LPSPI0_MISO;
@@ -132,7 +132,7 @@ static void spi_init(machine_spi_obj_t *spi, uint32_t baudrate,
             pins[3] = MICROPY_HW_LPSPI0_NSS;
             #endif
             break;
-        #endif
+    #endif
         default:
             return;
     }

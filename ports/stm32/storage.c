@@ -37,7 +37,7 @@
 #if MICROPY_HW_ENABLE_STORAGE
 
 #define STORAGE_SYSTICK_MASK    (0x1ff) // 512ms
-#define STORAGE_IDLE_TICK(tick) (((tick) & ~(SYSTICK_DISPATCH_NUM_SLOTS - 1) & STORAGE_SYSTICK_MASK) == 0)
+#define STORAGE_IDLE_TICK(tick) (((tick) & ~(SYSTICK_DISPATCH_NUM_SLOTS - 1)&STORAGE_SYSTICK_MASK) == 0)
 
 #if defined(MICROPY_HW_BDEV2_IOCTL)
 #define FLASH_PART2_START_BLOCK (FLASH_PART1_START_BLOCK + MICROPY_HW_BDEV_IOCTL(BDEV_IOCTL_NUM_BLOCKS, 0))
@@ -244,11 +244,11 @@ int storage_write_blocks(const uint8_t *src, uint32_t block_num, uint32_t num_bl
 // Board defined an external SPI flash for use with extended block protocol
 #define MICROPY_HW_BDEV_BLOCKSIZE_EXT (MP_SPIFLASH_ERASE_BLOCK_SIZE)
 #define MICROPY_HW_BDEV_READBLOCKS_EXT(dest, bl, off, len) \
-    (spi_bdev_readblocks_raw(MICROPY_HW_BDEV_SPIFLASH_EXTENDED, (dest), MICROPY_HW_BDEV_SPIFLASH_OFFSET_BYTES / MP_SPIFLASH_ERASE_BLOCK_SIZE + (bl), (off), (len)))
+        (spi_bdev_readblocks_raw(MICROPY_HW_BDEV_SPIFLASH_EXTENDED, (dest), MICROPY_HW_BDEV_SPIFLASH_OFFSET_BYTES / MP_SPIFLASH_ERASE_BLOCK_SIZE + (bl), (off), (len)))
 #define MICROPY_HW_BDEV_WRITEBLOCKS_EXT(src, bl, off, len) \
-    (spi_bdev_writeblocks_raw(MICROPY_HW_BDEV_SPIFLASH_EXTENDED, (src), MICROPY_HW_BDEV_SPIFLASH_OFFSET_BYTES / MP_SPIFLASH_ERASE_BLOCK_SIZE + (bl), (off), (len)))
+        (spi_bdev_writeblocks_raw(MICROPY_HW_BDEV_SPIFLASH_EXTENDED, (src), MICROPY_HW_BDEV_SPIFLASH_OFFSET_BYTES / MP_SPIFLASH_ERASE_BLOCK_SIZE + (bl), (off), (len)))
 #define MICROPY_HW_BDEV_ERASEBLOCKS_EXT(bl, len) \
-    (spi_bdev_eraseblocks_raw(MICROPY_HW_BDEV_SPIFLASH_EXTENDED, MICROPY_HW_BDEV_SPIFLASH_OFFSET_BYTES / MP_SPIFLASH_ERASE_BLOCK_SIZE + (bl), (len)))
+        (spi_bdev_eraseblocks_raw(MICROPY_HW_BDEV_SPIFLASH_EXTENDED, MICROPY_HW_BDEV_SPIFLASH_OFFSET_BYTES / MP_SPIFLASH_ERASE_BLOCK_SIZE + (bl), (len)))
 
 #elif (MICROPY_VFS_LFS1 || MICROPY_VFS_LFS2) && MICROPY_HW_ENABLE_INTERNAL_FLASH_STORAGE
 // Board uses littlefs and internal flash, so enable extended block protocol on internal flash

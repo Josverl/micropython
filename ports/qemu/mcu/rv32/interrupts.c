@@ -35,7 +35,7 @@ void mtvec_table(void) __attribute__((naked, section(".text.mtvec"), aligned(256
 // Default interrupts
 
 #define ASSIGN_EMPTY_MACHINE_INTERRUPT(interrupt_name) \
-    void interrupt_name(void) __attribute__((alias("mtvec_nop")))
+        void interrupt_name(void) __attribute__((alias("mtvec_nop")))
 
 ASSIGN_EMPTY_MACHINE_INTERRUPT(mtvec_ssi);
 ASSIGN_EMPTY_MACHINE_INTERRUPT(mtvec_msi);

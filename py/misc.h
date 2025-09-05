@@ -232,10 +232,10 @@ void vstr_printf(vstr_t *vstr, const char *fmt, ...);
 #define CHECKBUF(buf, max_size) char buf[max_size + 1]; size_t buf##_len = max_size; char *buf##_p = buf;
 #define CHECKBUF_RESET(buf, max_size) buf##_len = max_size; buf##_p = buf;
 #define CHECKBUF_APPEND(buf, src, src_len) \
-    { size_t l = MIN(src_len, buf##_len); \
-      memcpy(buf##_p, src, l); \
-      buf##_len -= l; \
-      buf##_p += l; }
+        { size_t l = MIN(src_len, buf##_len); \
+          memcpy(buf##_p, src, l); \
+          buf##_len -= l; \
+          buf##_p += l; }
 #define CHECKBUF_APPEND_0(buf) { *buf##_p = 0; }
 #define CHECKBUF_LEN(buf) (buf##_p - buf)
 
@@ -425,7 +425,7 @@ static inline uint32_t mp_popcount(uint32_t x) {
 
 #define MP_FIT_UNSIGNED(bits, value) (((value) & (~0U << (bits))) == 0)
 #define MP_FIT_SIGNED(bits, value) \
-    (MP_FIT_UNSIGNED(((bits) - 1), (value)) || \
+        (MP_FIT_UNSIGNED(((bits) - 1), (value)) || \
     (((value) & (~0U << ((bits) - 1))) == (~0U << ((bits) - 1))))
 
 // mp_int_t can be larger than long, i.e. Windows 64-bit, nan-box variants

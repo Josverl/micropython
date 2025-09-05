@@ -84,18 +84,18 @@
 
 // Configuration for standard block protocol (block size FLASH_BLOCK_SIZE).
 #define MICROPY_HW_BDEV_READBLOCKS(dest, bl, n) \
-    spi_bdev_readblocks(&spi_bdev, (dest), MICROPY_HW_SPIFLASH_BLOCKMAP(bl), (n))
+        spi_bdev_readblocks(&spi_bdev, (dest), MICROPY_HW_SPIFLASH_BLOCKMAP(bl), (n))
 #define MICROPY_HW_BDEV_WRITEBLOCKS(src, bl, n) \
-    spi_bdev_writeblocks(&spi_bdev, (src), MICROPY_HW_SPIFLASH_BLOCKMAP(bl), (n))
+        spi_bdev_writeblocks(&spi_bdev, (src), MICROPY_HW_SPIFLASH_BLOCKMAP(bl), (n))
 
 // Configuration for extended block protocol (block size MP_SPIFLASH_ERASE_BLOCK_SIZE).
 #define MICROPY_HW_BDEV_BLOCKSIZE_EXT (MP_SPIFLASH_ERASE_BLOCK_SIZE)
 #define MICROPY_HW_BDEV_READBLOCKS_EXT(dest, bl, off, len) \
-    (spi_bdev_readblocks_raw(&spi_bdev, (dest), MICROPY_HW_SPIFLASH_BLOCKMAP_EXT(bl), (off), (len)))
+        (spi_bdev_readblocks_raw(&spi_bdev, (dest), MICROPY_HW_SPIFLASH_BLOCKMAP_EXT(bl), (off), (len)))
 #define MICROPY_HW_BDEV_WRITEBLOCKS_EXT(src, bl, off, len) \
-    (spi_bdev_writeblocks_raw(&spi_bdev, (src), MICROPY_HW_SPIFLASH_BLOCKMAP_EXT(bl), (off), (len)))
+        (spi_bdev_writeblocks_raw(&spi_bdev, (src), MICROPY_HW_SPIFLASH_BLOCKMAP_EXT(bl), (off), (len)))
 #define MICROPY_HW_BDEV_ERASEBLOCKS_EXT(bl, len) \
-    (spi_bdev_eraseblocks_raw(&spi_bdev, MICROPY_HW_SPIFLASH_BLOCKMAP_EXT(bl), (len)))
+        (spi_bdev_eraseblocks_raw(&spi_bdev, MICROPY_HW_SPIFLASH_BLOCKMAP_EXT(bl), (len)))
 
 // Board control config
 #define MICROPY_BOARD_STARTUP                    board_init

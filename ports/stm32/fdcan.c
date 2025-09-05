@@ -145,21 +145,21 @@ bool can_init(CAN_HandleTypeDef *can, int can_id, uint32_t mode, uint32_t presca
     const machine_pin_obj_t *pins[2];
 
     switch (can_id) {
-        #if defined(MICROPY_HW_CAN1_TX)
+    #if defined(MICROPY_HW_CAN1_TX)
         case PYB_CAN_1:
             CANx = FDCAN1;
             pins[0] = MICROPY_HW_CAN1_TX;
             pins[1] = MICROPY_HW_CAN1_RX;
             break;
-        #endif
+    #endif
 
-        #if defined(MICROPY_HW_CAN2_TX)
+    #if defined(MICROPY_HW_CAN2_TX)
         case PYB_CAN_2:
             CANx = FDCAN2;
             pins[0] = MICROPY_HW_CAN2_TX;
             pins[1] = MICROPY_HW_CAN2_RX;
             break;
-        #endif
+    #endif
 
         default:
             return false;

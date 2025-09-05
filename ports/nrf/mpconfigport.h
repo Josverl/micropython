@@ -351,12 +351,12 @@ long unsigned int rng_generate_random_word(void);
 
 // extra built in names to add to the global namespace
 #define MICROPY_PORT_BUILTINS \
-    { MP_ROM_QSTR(MP_QSTR_help), MP_ROM_PTR(&mp_builtin_help_obj) }, \
-    { MP_ROM_QSTR(MP_QSTR_open), MP_ROM_PTR(&mp_builtin_open_obj) }, \
+        { MP_ROM_QSTR(MP_QSTR_help), MP_ROM_PTR(&mp_builtin_help_obj) }, \
+        { MP_ROM_QSTR(MP_QSTR_open), MP_ROM_PTR(&mp_builtin_open_obj) }, \
 
 // extra constants
 #define MICROPY_PORT_CONSTANTS \
-    { MP_ROM_QSTR(MP_QSTR_machine), MP_ROM_PTR(&mp_module_machine) }, \
+        { MP_ROM_QSTR(MP_QSTR_machine), MP_ROM_PTR(&mp_module_machine) }, \
 
 #define MP_STATE_PORT MP_STATE_VM
 
@@ -374,11 +374,11 @@ long unsigned int rng_generate_random_word(void);
 #endif // MICROPY_HW_ENABLE_USBDEV
 
 #define MICROPY_EVENT_POLL_HOOK \
-    do { \
-        extern void mp_handle_pending(bool); \
-        mp_handle_pending(true); \
-        __WFI(); \
-    } while (0);
+        do { \
+            extern void mp_handle_pending(bool); \
+            mp_handle_pending(true); \
+            __WFI(); \
+        } while (0);
 
 // We need to provide a declaration/definition of alloca()
 #include <alloca.h>

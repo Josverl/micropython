@@ -464,12 +464,12 @@ void mp_hal_pin_config_speed(uint32_t port_pin, uint32_t speed) {
 #endif
 
 #define FLASH_LAYOUT_STR_ALLOC \
-    ( \
+        ( \
     (sizeof(INTERNAL_FLASH_LAYOUT) - 1) \
     + MBOOT_SPIFLASH_LAYOUT_DYNAMIC_MAX_LEN \
     + MBOOT_SPIFLASH2_LAYOUT_DYNAMIC_MAX_LEN \
     + 1 \
-    )
+        )
 
 // Build the flash layout string from a template with total flash size inserted.
 static size_t build_flash_layout_str(uint8_t *buf) {

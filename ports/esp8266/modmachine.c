@@ -40,23 +40,23 @@
 #define MACHINE_WAKE_DEEPSLEEP (0x04)
 
 #define MICROPY_PY_MACHINE_EXTRA_GLOBALS \
-    { MP_ROM_QSTR(MP_QSTR_sleep), MP_ROM_PTR(&machine_lightsleep_obj) }, \
+        { MP_ROM_QSTR(MP_QSTR_sleep), MP_ROM_PTR(&machine_lightsleep_obj) }, \
     \
-    { MP_ROM_QSTR(MP_QSTR_RTC), MP_ROM_PTR(&pyb_rtc_type) }, \
-    { MP_ROM_QSTR(MP_QSTR_Timer), MP_ROM_PTR(&esp_timer_type) }, \
-    { MP_ROM_QSTR(MP_QSTR_Pin), MP_ROM_PTR(&pyb_pin_type) }, \
-    { MP_ROM_QSTR(MP_QSTR_PWM), MP_ROM_PTR(&machine_pwm_type) }, \
-    { MP_ROM_QSTR(MP_QSTR_I2C), MP_ROM_PTR(&mp_machine_soft_i2c_type) }, \
+        { MP_ROM_QSTR(MP_QSTR_RTC), MP_ROM_PTR(&pyb_rtc_type) }, \
+        { MP_ROM_QSTR(MP_QSTR_Timer), MP_ROM_PTR(&esp_timer_type) }, \
+        { MP_ROM_QSTR(MP_QSTR_Pin), MP_ROM_PTR(&pyb_pin_type) }, \
+        { MP_ROM_QSTR(MP_QSTR_PWM), MP_ROM_PTR(&machine_pwm_type) }, \
+        { MP_ROM_QSTR(MP_QSTR_I2C), MP_ROM_PTR(&mp_machine_soft_i2c_type) }, \
     \
-    /* wake abilities */ \
-    { MP_ROM_QSTR(MP_QSTR_DEEPSLEEP), MP_ROM_INT(MACHINE_WAKE_DEEPSLEEP) }, \
+        /* wake abilities */ \
+        { MP_ROM_QSTR(MP_QSTR_DEEPSLEEP), MP_ROM_INT(MACHINE_WAKE_DEEPSLEEP) }, \
     \
-    /* reset causes */ \
-    { MP_ROM_QSTR(MP_QSTR_PWRON_RESET), MP_ROM_INT(REASON_DEFAULT_RST) }, \
-    { MP_ROM_QSTR(MP_QSTR_HARD_RESET), MP_ROM_INT(REASON_EXT_SYS_RST) }, \
-    { MP_ROM_QSTR(MP_QSTR_DEEPSLEEP_RESET), MP_ROM_INT(REASON_DEEP_SLEEP_AWAKE) }, \
-    { MP_ROM_QSTR(MP_QSTR_WDT_RESET), MP_ROM_INT(REASON_WDT_RST) }, \
-    { MP_ROM_QSTR(MP_QSTR_SOFT_RESET), MP_ROM_INT(REASON_SOFT_RESTART) }, \
+        /* reset causes */ \
+        { MP_ROM_QSTR(MP_QSTR_PWRON_RESET), MP_ROM_INT(REASON_DEFAULT_RST) }, \
+        { MP_ROM_QSTR(MP_QSTR_HARD_RESET), MP_ROM_INT(REASON_EXT_SYS_RST) }, \
+        { MP_ROM_QSTR(MP_QSTR_DEEPSLEEP_RESET), MP_ROM_INT(REASON_DEEP_SLEEP_AWAKE) }, \
+        { MP_ROM_QSTR(MP_QSTR_WDT_RESET), MP_ROM_INT(REASON_WDT_RST) }, \
+        { MP_ROM_QSTR(MP_QSTR_SOFT_RESET), MP_ROM_INT(REASON_SOFT_RESTART) }, \
 
 static mp_obj_t mp_machine_get_freq(void) {
     return mp_obj_new_int(system_get_cpu_freq() * 1000000);

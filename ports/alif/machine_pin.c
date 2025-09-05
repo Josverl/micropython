@@ -44,31 +44,31 @@ typedef struct _machine_pin_irq_obj_t {
 } machine_pin_irq_obj_t;
 
 #define MACHINE_PIN_IRQ_INDEX(port, pin) \
-    ((port) * MACHINE_PIN_NUM_PORT_IO + (pin))
+        ((port) * MACHINE_PIN_NUM_PORT_IO + (pin))
 
 #define MACHINE_PIN_IRQ_OBJECT(port, pin) \
-    (MP_STATE_PORT(machine_pin_irq_obj[MACHINE_PIN_IRQ_INDEX((port), (pin))]))
+        (MP_STATE_PORT(machine_pin_irq_obj[MACHINE_PIN_IRQ_INDEX((port), (pin))]))
 
 // Defines a single GPIO IRQ handler
 #define DEFINE_GPIO_IRQ_HANDLER(pname, port, pin) \
-    void pname##_IRQ##pin##Handler(void) { \
-        machine_pin_irq_obj_t *irq = MACHINE_PIN_IRQ_OBJECT(port, pin); \
-        machine_pin_obj_t *self = MP_OBJ_TO_PTR(irq->base.parent); \
-        gpio_interrupt_eoi(self->gpio, pin); \
-        irq->flags = irq->trigger; \
-        mp_irq_handler(&irq->base); \
-    }
+        void pname##_IRQ##pin##Handler(void) { \
+            machine_pin_irq_obj_t *irq = MACHINE_PIN_IRQ_OBJECT(port, pin); \
+            machine_pin_obj_t *self = MP_OBJ_TO_PTR(irq->base.parent); \
+            gpio_interrupt_eoi(self->gpio, pin); \
+            irq->flags = irq->trigger; \
+            mp_irq_handler(&irq->base); \
+        }
 
 // Defines all 8 pin IRQ handlers for a port
 #define DEFINE_GPIO_IRQ_HANDLERS_FOR_PORT(gpio, port) \
-    DEFINE_GPIO_IRQ_HANDLER(gpio, port, 0) \
-    DEFINE_GPIO_IRQ_HANDLER(gpio, port, 1) \
-    DEFINE_GPIO_IRQ_HANDLER(gpio, port, 2) \
-    DEFINE_GPIO_IRQ_HANDLER(gpio, port, 3) \
-    DEFINE_GPIO_IRQ_HANDLER(gpio, port, 4) \
-    DEFINE_GPIO_IRQ_HANDLER(gpio, port, 5) \
-    DEFINE_GPIO_IRQ_HANDLER(gpio, port, 6) \
-    DEFINE_GPIO_IRQ_HANDLER(gpio, port, 7)
+        DEFINE_GPIO_IRQ_HANDLER(gpio, port, 0) \
+        DEFINE_GPIO_IRQ_HANDLER(gpio, port, 1) \
+        DEFINE_GPIO_IRQ_HANDLER(gpio, port, 2) \
+        DEFINE_GPIO_IRQ_HANDLER(gpio, port, 3) \
+        DEFINE_GPIO_IRQ_HANDLER(gpio, port, 4) \
+        DEFINE_GPIO_IRQ_HANDLER(gpio, port, 5) \
+        DEFINE_GPIO_IRQ_HANDLER(gpio, port, 6) \
+        DEFINE_GPIO_IRQ_HANDLER(gpio, port, 7)
 
 // Generate handlers for GPIO ports 0 to 14 + LPGPIO
 DEFINE_GPIO_IRQ_HANDLERS_FOR_PORT(GPIO0, 0)

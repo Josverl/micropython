@@ -57,13 +57,13 @@
 // Do not use this macro directly, include py/runtime.h and
 // call mp_event_wait_indefinite() or mp_event_wait_ms(timeout)
 #define MICROPY_INTERNAL_WFE(TIMEOUT_MS) \
-    do {                                 \
-        if ((TIMEOUT_MS) < 0) { \
-            __wfe(); \
-        } else { \
-            mp_wfe_or_timeout(TIMEOUT_MS); \
-        } \
-    } while (0)
+        do {                                 \
+            if ((TIMEOUT_MS) < 0) { \
+                __wfe(); \
+            } else { \
+                mp_wfe_or_timeout(TIMEOUT_MS); \
+            } \
+        } while (0)
 
 extern int mp_interrupt_char;
 extern ringbuf_t stdin_ringbuf;

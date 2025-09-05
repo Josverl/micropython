@@ -95,10 +95,10 @@ static uint32_t pwm_duty_values[13];
 #endif // defined(MCU_SAMD51)
 
 #define put_duty_value(device, channel, duty) \
-    pwm_duty_values[tcc_channel_offset[device] + channel] = duty;
+        pwm_duty_values[tcc_channel_offset[device] + channel] = duty;
 
 #define get_duty_value(device, channel) \
-    pwm_duty_values[tcc_channel_offset[device] + channel]
+        pwm_duty_values[tcc_channel_offset[device] + channel]
 
 static uint8_t duty_type_flags[TCC_INST_NUM];
 static uint8_t device_status[TCC_INST_NUM];
