@@ -326,18 +326,18 @@ def do_filesystem_recursive_rm(state, path, args):
             try:
                 state.transport.fs_rmdir(path)
                 if args.verbose:
-                    print(f"removed directory: '{path}'", file=sys.stderr)
+                    verbose_print(state, f"removed directory: '{path}'")
             except OSError as e:
                 if e.errno != errno.EINVAL:  # not vfs mountpoint
                     raise CommandError(
                         f"rm -r: cannot remove :{path} {os.strerror(e.errno) if e.errno else ''}"
                     ) from e
                 if args.verbose:
-                    print(f"skipped: '{path}' (vfs mountpoint)", file=sys.stderr)
+                    verbose_print(state, f"skipped: '{path}' (vfs mountpoint)")
     else:
         state.transport.fs_rmfile(path)
         if args.verbose:
-            print(f"removed: '{path}'", file=sys.stderr)
+            verbose_print(state, f"removed: '{path}'")
 
 
 def human_size(size, decimals=1):
@@ -377,9 +377,9 @@ def do_filesystem_tree(state, path, args):
     if not (path == "." or state.transport.fs_isdir(path)):
         raise CommandError(f"tree: '{path}' is not a directory")
     if args.verbose:
-        print(f":{path} on {state.transport.device_name}", file=sys.stderr)
+        verbose_print(state, f":{path} on {state.transport.device_name}")
     else:
-        print(f":{path}", file=sys.stderr)
+        verbose_print(state, f":{path}")
     _tree_recursive(path)
 
 
@@ -419,9 +419,9 @@ def do_filesystem(state, args):
         for path in paths:
             if verbose:
                 if command == "cp":
-                    print("{} {} {}".format(command, path, cp_dest), file=sys.stderr)
+                    verbose_print(state, "{} {} {}".format(command, path, cp_dest))
                 else:
-                    print("{} :{}".format(command, path), file=sys.stderr)
+                    verbose_print(state, "{} :{}".format(command, path))
 
             if command == "cat":
                 state.transport.fs_printfile(path)
