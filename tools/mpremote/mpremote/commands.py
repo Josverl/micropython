@@ -377,9 +377,9 @@ def do_filesystem_tree(state, path, args):
     if not (path == "." or state.transport.fs_isdir(path)):
         raise CommandError(f"tree: '{path}' is not a directory")
     if args.verbose:
-        print(f":{path} on {state.transport.device_name}")
+        print(f":{path} on {state.transport.device_name}", file=sys.stderr)
     else:
-        print(f":{path}")
+        print(f":{path}", file=sys.stderr)
     _tree_recursive(path)
 
 
