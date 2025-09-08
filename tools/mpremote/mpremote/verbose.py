@@ -1,16 +1,30 @@
 """
-Global verbosity control for mpremote.
+Global verbosity control for mpremote using Python standard logging.
 
 Provides centralized verbose printing functionality with three levels:
-- 0: quiet (suppress all non-essential output)
-- 1: normal (current default behavior)  
-- 2: verbose/debug (show additional debug information)
+- 0: quiet (suppress all non-essential output, show only WARNING and above)
+- 1: normal (show INFO and above, suppress DEBUG)  
+- 2: verbose/debug (show all levels including DEBUG)
 """
 
+import logging
 import sys
 
-# Global verbosity level
-# 0 = quiet, 1 = normal, 2 = verbose/debug
+# Create logger for mpremote
+_logger = logging.getLogger('mpremote')
+
+# Create handler to output to stderr
+_handler = logging.StreamHandler(sys.stderr)
+_handler.setFormatter(logging.Formatter('%(message)s'))
+_logger.addHandler(_handler)
+
+# Prevent propagation to root logger to avoid duplicate output
+_logger.propagate = False
+
+# Set default level to INFO (normal mode)
+_logger.setLevel(logging.INFO)
+
+# Track current verbosity level for backward compatibility
 _verbosity_level = 1
 
 
@@ -22,6 +36,13 @@ def set_verbosity_level(level):
     """
     global _verbosity_level
     _verbosity_level = level
+    
+    if level == 0:  # quiet mode
+        _logger.setLevel(logging.WARNING)
+    elif level == 1:  # normal mode
+        _logger.setLevel(logging.INFO)
+    elif level >= 2:  # verbose/debug mode
+        _logger.setLevel(logging.DEBUG)
 
 
 def get_verbosity_level():
@@ -34,8 +55,8 @@ def verbose_print(message, **kwargs):
     
     Prints for verbosity levels 1 (normal) and 2 (verbose/debug).
     """
-    if _verbosity_level >= 1:
-        print(message, file=sys.stderr, **kwargs)
+    # Use logging.info for normal verbose output
+    _logger.info(message)
 
 
 def debug_print(message, **kwargs):
@@ -43,8 +64,8 @@ def debug_print(message, **kwargs):
     
     Prints only for verbosity level 2 (verbose/debug).
     """
-    if _verbosity_level >= 2:
-        print(message, file=sys.stderr, **kwargs)
+    # Use logging.debug for debug output
+    _logger.debug(message)
 
 
 def is_quiet():
