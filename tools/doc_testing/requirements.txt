@@ -1,0 +1,18 @@
+# Core dependencies for MicroPython documentation sample testing
+pytest>=6.0
+pyyaml>=5.0
+mypy>=0.900
+astroid>=2.0
+
+# Linting and formatting
+ruff>=0.1.0
+
+# Optional development dependencies
+pre-commit>=2.0
+pytest-cov>=3.0
+
+# For HTML reporting
+pytest-html>=3.0
+
+# For XML output
+pytest-xvfb>=2.0

@@ -1,0 +1,57 @@
+# Ruff configuration for MicroPython documentation sample testing
+# Basic configuration to replace black and flake8
+
+# Maximum line length
+line-length = 100
+
+# Python version compatibility
+target-version = "py38"
+
+# Enable common linting rules  
+extend-select = [
+    "E",     # pycodestyle errors
+    "W",     # pycodestyle warnings
+    "F",     # Pyflakes
+    "B",     # flake8-bugbear
+    "C4",    # flake8-comprehensions
+    "I",     # isort
+    "UP",    # pyupgrade
+    "S",     # flake8-bandit
+    "A",     # flake8-builtins
+    "C90",   # mccabe
+    "PT",    # flake8-pytest-style
+    "RUF",   # Ruff-specific rules
+]
+
+# Ignore rules that aren't suitable for this project
+ignore = [
+    "S101",    # Use of assert detected (needed in tests)
+    "T201",    # print statements (needed for demo/debug)
+    "A003",    # Class attribute shadows built-in
+    "C901",    # Function is too complex
+    "S603",    # subprocess call
+    "S607",    # Starting process with partial executable path
+    "E501",    # Line too long (handled by line-length)
+]
+
+# Exclude auto-generated and external files
+exclude = [
+    ".git",
+    "__pycache__",
+    "build",
+    "dist", 
+    ".venv",
+    "venv",
+    "extracted_samples",
+    "demo_samples",
+    "test_samples", 
+    "test_extraction",
+    ".pytest_cache",
+]
+
+# Per-file ignores for auto-generated content
+[per-file-ignores]
+"extracted_samples/*.py" = ["ALL"]
+"demo_samples/*.py" = ["ALL"] 
+"test_samples/*.py" = ["ALL"]
+"test_extraction/*.py" = ["ALL"]
