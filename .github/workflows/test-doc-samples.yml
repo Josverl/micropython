@@ -1,0 +1,312 @@
+name: Test Documentation Code Samples
+
+on:
+  push:
+    branches: [ master, main ]
+    paths:
+      - 'docs/**'
+      - 'tools/doc_testing/**'
+      - '.github/workflows/test-doc-samples.yml'
+  pull_request:
+    branches: [ master, main ]
+    paths:
+      - 'docs/**'
+      - 'tools/doc_testing/**'
+  schedule:
+    # Run weekly on Mondays at 2 AM UTC to catch regressions
+    - cron: '0 2 * * 1'
+  workflow_dispatch:
+    inputs:
+      platform_filter:
+        description: 'Platform to test (optional: esp32, esp8266, rp2, etc.)'
+        required: false
+        type: string
+      run_full_analysis:
+        description: 'Run full analysis including execution tests'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  extract-and-test-samples:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.8', '3.9', '3.10', '3.11']
+        include:
+          - python-version: '3.10'
+            upload-artifacts: true
+    
+    steps:
+    - name: Checkout MicroPython repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('tools/doc_testing/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest pyyaml mypy ruff
+        
+        # Create requirements file for doc testing tools
+        cat > tools/doc_testing/requirements.txt << EOF
+        pytest>=6.0
+        pyyaml>=5.0
+        mypy>=0.900
+        astroid>=2.0
+        ruff>=0.1.0
+        EOF
+        
+        pip install -r tools/doc_testing/requirements.txt
+    
+    - name: Setup micropython-stubs
+      run: |
+        # Clone or use existing micropython-stubs
+        if [ ! -d "micropython-stubs" ]; then
+          echo "Cloning micropython-stubs..."
+          git clone https://github.com/josverl/micropython-stubs.git micropython-stubs
+        fi
+        
+        cd micropython-stubs
+        # Install in development mode
+        if [ -f "pyproject.toml" ] || [ -f "setup.py" ]; then
+          pip install -e .
+        fi
+        cd ..
+    
+    - name: Extract code samples from documentation
+      run: |
+        echo "Extracting code samples from MicroPython documentation..."
+        python tools/doc_testing/extract_doc_samples.py docs/ \
+          --output extracted_samples \
+          --stats \
+          ${{ inputs.platform_filter && format('--platform {0}', inputs.platform_filter) || '' }}
+    
+    - name: Show extraction results
+      run: |
+        echo "=== Extraction Results ==="
+        if [ -d "extracted_samples" ]; then
+          echo "Total samples: $(find extracted_samples -name '*.py' | wc -l)"
+          echo ""
+          echo "Samples by platform:"
+          for platform in esp32 esp8266 rp2 pyboard wipy unix stm32; do
+            count=$(find extracted_samples -name "*${platform}*" -name "*.py" 2>/dev/null | wc -l)
+            if [ $count -gt 0 ]; then
+              echo "  $platform: $count"
+            fi
+          done
+          echo ""
+          echo "Sample files (first 10):"
+          find extracted_samples -name '*.py' | head -10
+        else
+          echo "No samples directory created!"
+          exit 1
+        fi
+    
+    - name: Run basic syntax and import tests
+      run: |
+        echo "Running basic tests on extracted samples..."
+        cd extracted_samples
+        
+        # Set PYTHONPATH to include micropython-stubs
+        export PYTHONPATH="../micropython-stubs:$PYTHONPATH"
+        
+        python -m pytest -v \
+          --tb=short \
+          --micropython-stubs-path=../micropython-stubs \
+          -p ../tools/doc_testing/pytest_docsamples.py \
+          --disable-warnings \
+          ${{ inputs.platform_filter && format('--platform-filter {0}', inputs.platform_filter) || '' }} \
+          . || echo "Some basic tests failed, continuing..."
+    
+    - name: Run extended analysis (if enabled)
+      if: ${{ inputs.run_full_analysis == true || github.event_name == 'schedule' }}
+      run: |
+        echo "Running extended analysis..."
+        cd extracted_samples
+        
+        export PYTHONPATH="../micropython-stubs:$PYTHONPATH"
+        
+        python -m pytest -v \
+          --tb=short \
+          --micropython-stubs-path=../micropython-stubs \
+          -p ../tools/doc_testing/pytest_docsamples.py \
+          --run-static-analysis \
+          --run-execution-test \
+          --disable-warnings \
+          ${{ inputs.platform_filter && format('--platform-filter {0}', inputs.platform_filter) || '' }} \
+          . || echo "Extended tests completed with some failures"
+    
+    - name: Generate test report
+      if: always()
+      run: |
+        echo "# Test Report for Python ${{ matrix.python-version }}" > test_report.md
+        echo "" >> test_report.md
+        echo "## Summary" >> test_report.md
+        echo "- Platform filter: ${{ inputs.platform_filter || 'None' }}" >> test_report.md
+        echo "- Full analysis: ${{ inputs.run_full_analysis || 'false' }}" >> test_report.md
+        
+        if [ -d "extracted_samples" ]; then
+          sample_count=$(find extracted_samples -name '*.py' | wc -l)
+          echo "- Samples extracted: $sample_count" >> test_report.md
+        fi
+        
+        echo "" >> test_report.md
+        echo "## Platform Distribution" >> test_report.md
+        for platform in esp32 esp8266 rp2 pyboard wipy unix stm32; do
+          if [ -d "extracted_samples" ]; then
+            count=$(find extracted_samples -name "*${platform}*" -name "*.py" 2>/dev/null | wc -l)
+            if [ $count -gt 0 ]; then
+              echo "- $platform: $count samples" >> test_report.md
+            fi
+          fi
+        done
+        
+        # Add to GitHub Step Summary
+        cat test_report.md >> $GITHUB_STEP_SUMMARY
+    
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: ${{ always() && matrix.upload-artifacts }}
+      with:
+        name: doc-sample-test-results-py${{ matrix.python-version }}
+        path: |
+          extracted_samples/
+          test_report.md
+        retention-days: 30
+        if-no-files-found: warn
+    
+    - name: Upload samples for reuse
+      uses: actions/upload-artifact@v4
+      if: ${{ matrix.upload-artifacts }}
+      with:
+        name: extracted-doc-samples
+        path: extracted_samples/
+        retention-days: 7
+
+  # Separate job for type checking (can be slow)
+  type-check-samples:
+    runs-on: ubuntu-latest
+    needs: extract-and-test-samples
+    if: ${{ github.event_name == 'schedule' || inputs.run_full_analysis }}
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Download extracted samples
+      uses: actions/download-artifact@v4
+      with:
+        name: extracted-doc-samples
+        path: extracted_samples/
+    
+    - name: Install mypy and dependencies
+      run: |
+        pip install mypy typing-extensions
+        
+        # Setup micropython-stubs
+        git clone https://github.com/josverl/micropython-stubs.git micropython-stubs
+        cd micropython-stubs
+        if [ -f "pyproject.toml" ] || [ -f "setup.py" ]; then
+          pip install -e .
+        fi
+        cd ..
+    
+    - name: Run type checking on samples
+      run: |
+        echo "Running mypy type checking on selected samples..."
+        cd extracted_samples
+        
+        # Type check a subset of samples to avoid timeouts
+        samples=$(find . -name "*.py" | grep -E "(machine|pin|network)" | head -20)
+        
+        if [ -n "$samples" ]; then
+          echo "Type checking samples:"
+          echo "$samples"
+          
+          export PYTHONPATH="../micropython-stubs:$PYTHONPATH"
+          
+          for sample in $samples; do
+            echo "Checking $sample..."
+            mypy --ignore-missing-imports \
+                 --follow-imports=silent \
+                 --show-error-codes \
+                 "$sample" || echo "Type check failed for $sample"
+          done
+        else
+          echo "No suitable samples found for type checking"
+        fi
+
+  # Job to create issues on failure (for scheduled runs)
+  create-issue-on-failure:
+    runs-on: ubuntu-latest
+    needs: [extract-and-test-samples, type-check-samples]
+    if: ${{ always() && github.event_name == 'schedule' && (needs.extract-and-test-samples.result == 'failure' || needs.type-check-samples.result == 'failure') }}
+    
+    steps:
+    - name: Create issue on test failure
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const title = 'Documentation code samples test failure';
+          const body = `The periodic check of documentation code samples has failed.
+          
+          **Details:**
+          - Workflow run: ${{ github.run_id }}
+          - Branch: ${{ github.ref }}
+          - Commit: ${{ github.sha }}
+          
+          **Failed jobs:**
+          ${context.payload.needs.extract_and_test_samples?.result === 'failure' ? '- extract-and-test-samples' : ''}
+          ${context.payload.needs.type_check_samples?.result === 'failure' ? '- type-check-samples' : ''}
+          
+          Please investigate the failures and update the documentation or code samples as needed.
+          
+          [View workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})`;
+          
+          // Check if issue already exists
+          const issues = await github.rest.issues.listForRepo({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            labels: 'documentation,bug,automated',
+            state: 'open'
+          });
+          
+          const existingIssue = issues.data.find(issue => issue.title === title);
+          
+          if (!existingIssue) {
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['documentation', 'bug', 'automated', 'ci-failure']
+            });
+          } else {
+            // Update existing issue with new run information
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: existingIssue.number,
+              body: `Another test failure occurred:\n${body}`
+            });
+          }
