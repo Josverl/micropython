@@ -1,0 +1,17 @@
+# Source: reference\packages.rst:144
+# Type: code_block
+# Platform: unix
+
+{
+    "urls": [
+        ["mlx90640/__init__.py", "mlx90640/__init__.py"],
+        ["mlx90640/utils.py", "mlx90640/utils.py"],
+    ],
+    "deps": [
+        ["collections-defaultdict", "latest"],
+        ["os-path", "latest"],
+        ["github:org/micropython-additions", "main"],
+        ["gitlab:org/micropython-otheradditions", "main"],
+    ],
+    "version": "0.2",
+}
