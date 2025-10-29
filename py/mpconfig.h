@@ -1298,6 +1298,14 @@ typedef time_t mp_timestamp_t;
 #define MICROPY_METACLASS_PREPARE (0)
 #endif
 
+// Whether to support __init_subclass__ method (PEP 487)
+// This allows classes to customize subclass creation.
+// When enabled, __init_subclass__ is automatically called on base classes
+// when a subclass is created.
+#ifndef MICROPY_INIT_SUBCLASS
+#define MICROPY_INIT_SUBCLASS (0)
+#endif
+
 // Support for async/await/async for/async with
 #ifndef MICROPY_PY_ASYNC_AWAIT
 #define MICROPY_PY_ASYNC_AWAIT (MICROPY_CONFIG_ROM_LEVEL_AT_LEAST_CORE_FEATURES)

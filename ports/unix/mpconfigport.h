@@ -47,6 +47,11 @@
 #define MICROPY_METACLASS (1)
 #endif
 
+// Enable __init_subclass__ support for testing
+#ifndef MICROPY_INIT_SUBCLASS
+#define MICROPY_INIT_SUBCLASS (1)
+#endif
+
 #ifndef MICROPY_PY_SYS_PLATFORM
 #if defined(__APPLE__) && defined(__MACH__)
     #define MICROPY_PY_SYS_PLATFORM  "darwin"

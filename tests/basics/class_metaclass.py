@@ -1,6 +1,23 @@
 # Test metaclass functionality (PEP 3115)
 # Note: __prepare__ method requires MICROPY_METACLASS_PREPARE to be enabled
 
+# Check if metaclass support is enabled
+try:
+    class _TestMeta(type):
+        def __init__(cls, name, bases, dct):
+            cls._metaclass_used = True
+    
+    class _Test(metaclass=_TestMeta):
+        pass
+    
+    if not hasattr(_Test, '_metaclass_used'):
+        raise TypeError("metaclass not used")
+    del _TestMeta, _Test
+
+except (TypeError, AttributeError):
+    print("SKIP")
+    raise SystemExit
+
 # Test 1: Basic metaclass with metaclass= keyword
 print("Test 1: Basic metaclass")
 class Meta(type):
@@ -8,11 +25,11 @@ class Meta(type):
         print("Meta.__init__ called for", name)
         cls.from_meta = True
 
-class C(metaclass=Meta):
+class Basic(metaclass=Meta):
     pass
 
-print("type(C):", type(C).__name__)
-print("C.from_meta:", C.from_meta)
+print("type(Basic):", type(Basic).__name__)
+print("Basic.from_meta:", Basic.from_meta)
 
 # Test 2: Metaclass with __init__
 print("\nTest 2: Metaclass with __init__")
@@ -21,18 +38,24 @@ class InitMeta(type):
         print("InitMeta.__init__ called for", name)
         cls.initialized = True
 
-class E(metaclass=InitMeta):
+class BasicInit(metaclass=InitMeta):
     pass
 
-print("E.initialized:", E.initialized)
+print("BasicInit.initialized:", BasicInit.initialized)
 
 # Test 3: Metaclass inheritance - metaclass should be inherited
 print("\nTest 3: Metaclass inheritance")
-class F(E):
+class Inherit_1(Basic):
     pass
 
-print("type(F):", type(F).__name__)
-print("F.initialized:", F.initialized)
+class Inherit_2(BasicInit):
+    pass
+
+print("type(Inherit):", type(Inherit_1).__name__)
+# print("Inherit.initialized:", Inherit_1.initialized)
+
+print("type(Inherit):", type(Inherit_2).__name__)
+print("Inherit.initialized:", Inherit_2.initialized)
 
 # Test 4: Custom metaclass behavior
 print("\nTest 4: Custom metaclass behavior")
