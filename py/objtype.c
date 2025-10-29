@@ -45,7 +45,6 @@
     (MICROPY_PY_DESCRIPTORS || MICROPY_PY_DELATTR_SETATTR || MICROPY_PY_BUILTINS_PROPERTY)
 
 static mp_obj_t mp_obj_new_type(qstr name, mp_obj_t bases_tuple, mp_obj_t locals_dict);
-static mp_obj_t mp_obj_is_subclass(mp_obj_t object, mp_obj_t classinfo);
 static mp_obj_t static_class_method_make_new(const mp_obj_type_t *self_in, size_t n_args, size_t n_kw, const mp_obj_t *args);
 
 /******************************************************************************/
@@ -1474,7 +1473,7 @@ bool mp_obj_is_subclass_fast(mp_const_obj_t object, mp_const_obj_t classinfo) {
     }
 }
 
-static mp_obj_t mp_obj_is_subclass(mp_obj_t object, mp_obj_t classinfo) {
+mp_obj_t mp_obj_is_subclass(mp_obj_t object, mp_obj_t classinfo) {
     size_t len;
     mp_obj_t *items;
     if (mp_obj_is_type(classinfo, &mp_type_type)) {

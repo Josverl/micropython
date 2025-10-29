@@ -1282,6 +1282,14 @@ typedef time_t mp_timestamp_t;
 #define MICROPY_PY_DELATTR_SETATTR (MICROPY_CONFIG_ROM_LEVEL_AT_LEAST_EXTRA_FEATURES)
 #endif
 
+// Whether to support metaclasses as defined in PEP 3115
+// This enables the metaclass= keyword argument in class definitions,
+// __prepare__ method support, and proper metaclass resolution.
+// This costs some code size for the additional metaclass machinery.
+#ifndef MICROPY_METACLASS
+#define MICROPY_METACLASS (0)
+#endif
+
 // Support for async/await/async for/async with
 #ifndef MICROPY_PY_ASYNC_AWAIT
 #define MICROPY_PY_ASYNC_AWAIT (MICROPY_CONFIG_ROM_LEVEL_AT_LEAST_CORE_FEATURES)
