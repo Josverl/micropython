@@ -12,6 +12,8 @@ try:
     
     if not hasattr(_Test, '_metaclass_used'):
         raise TypeError("metaclass not used")
+    del _TestMeta, _Test
+
 except (TypeError, AttributeError):
     print("SKIP")
     raise SystemExit
@@ -23,11 +25,11 @@ class Meta(type):
         print("Meta.__init__ called for", name)
         cls.from_meta = True
 
-class C(metaclass=Meta):
+class Basic(metaclass=Meta):
     pass
 
-print("type(C):", type(C).__name__)
-print("C.from_meta:", C.from_meta)
+print("type(Basic):", type(Basic).__name__)
+print("Basic.from_meta:", Basic.from_meta)
 
 # Test 2: Metaclass with __init__
 print("\nTest 2: Metaclass with __init__")
@@ -36,18 +38,24 @@ class InitMeta(type):
         print("InitMeta.__init__ called for", name)
         cls.initialized = True
 
-class E(metaclass=InitMeta):
+class BasicInit(metaclass=InitMeta):
     pass
 
-print("E.initialized:", E.initialized)
+print("BasicInit.initialized:", BasicInit.initialized)
 
 # Test 3: Metaclass inheritance - metaclass should be inherited
 print("\nTest 3: Metaclass inheritance")
-class F(E):
+class Inherit_1(Basic):
     pass
 
-print("type(F):", type(F).__name__)
-print("F.initialized:", F.initialized)
+class Inherit_2(BasicInit):
+    pass
+
+print("type(Inherit):", type(Inherit_1).__name__)
+# print("Inherit.initialized:", Inherit_1.initialized)
+
+print("type(Inherit):", type(Inherit_2).__name__)
+print("Inherit.initialized:", Inherit_2.initialized)
 
 # Test 4: Custom metaclass behavior
 print("\nTest 4: Custom metaclass behavior")
