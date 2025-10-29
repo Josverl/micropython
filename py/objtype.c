@@ -1448,7 +1448,10 @@ static mp_obj_t mp_obj_new_type(qstr name, mp_obj_t bases_tuple, mp_obj_t locals
 
     #if MICROPY_INIT_SUBCLASS
     // Call __init_subclass__ on base classes (PEP 487)
-    // This allows parent classes to customize subclass creation
+    // Per PEP 487, __init_subclass__ is implicitly a classmethod and is called
+    // on the first base that defines it (following MRO), unless it chains via super().
+    // __init_subclass__ does NOT need @classmethod decorator.
+    
     // Extract kwargs (excluding 'metaclass') to pass to __init_subclass__
     size_t n_kw = 0;
     if (kw_args != NULL && kw_args->used > 0) {
@@ -1462,33 +1465,51 @@ static mp_obj_t mp_obj_new_type(qstr name, mp_obj_t bases_tuple, mp_obj_t locals
         }
     }
     
+    // Only call __init_subclass__ on the first base that has it (per PEP 487)
+    // The __init_subclass__ implementation can chain to others via super()
     for (size_t i = 0; i < bases_len; i++) {
         mp_obj_t base = bases_items[i];
+        
+        // Use mp_load_method to properly handle __init_subclass__
+        // This will handle both @classmethod decorated and undecorated versions
         mp_obj_t init_subclass_dest[2];
         mp_load_method_maybe(base, MP_QSTR___init_subclass__, init_subclass_dest);
         
         if (init_subclass_dest[0] != MP_OBJ_NULL) {
-            // __init_subclass__ exists, call it with kwargs (excluding metaclass)
-            size_t total_args = 2 + (n_kw * 2);  // method, self, then kw pairs
-            mp_obj_t *call_args = m_new(mp_obj_t, total_args);
-            call_args[0] = init_subclass_dest[0];  // method
-            call_args[1] = MP_OBJ_FROM_PTR(o);     // self (the new subclass, becomes cls)
+            // __init_subclass__ exists
+            // Per PEP 487, call it as if it's a classmethod with the new subclass as cls
+            // When using mp_load_method, if it's a @classmethod, init_subclass_dest[0] is the function
+            // and init_subclass_dest[1] is the class it's bound to.
+            // If it's NOT a classmethod, init_subclass_dest[0] is the function and
+            // init_subclass_dest[1] is the instance (but we want the new class, not the base)
+            
+            // Build call arguments
+            // For implicit classmethod behavior, we need to pass the new class (o) as the first arg
+            size_t total_args = 1 + (n_kw * 2);
+            mp_obj_t *args = m_new(mp_obj_t, total_args);
+            args[0] = MP_OBJ_FROM_PTR(o);  // cls argument (the new subclass being created)
             
             // Add keyword arguments (excluding 'metaclass')
-            size_t kw_idx = 2;
+            size_t kw_idx = 1;
             if (n_kw > 0) {
                 for (size_t j = 0; j < kw_args->alloc; j++) {
                     if (mp_map_slot_is_filled(kw_args, j)) {
                         if (kw_args->table[j].key != MP_OBJ_NEW_QSTR(MP_QSTR_metaclass)) {
-                            call_args[kw_idx++] = kw_args->table[j].key;
-                            call_args[kw_idx++] = kw_args->table[j].value;
+                            args[kw_idx++] = kw_args->table[j].key;
+                            args[kw_idx++] = kw_args->table[j].value;
                         }
                     }
                 }
             }
             
-            mp_call_method_n_kw(0, n_kw, call_args);
-            m_del(mp_obj_t, call_args, total_args);
+            // Call __init_subclass__
+            // Use mp_call_function_n_kw to call the function directly with our args
+            mp_call_function_n_kw(init_subclass_dest[0], 1, n_kw, args);
+            m_del(mp_obj_t, args, total_args);
+            
+            // Per PEP 487, only call __init_subclass__ on the first base that has it
+            // (the implementation can chain to others via super())
+            break;
         }
     }
     #endif

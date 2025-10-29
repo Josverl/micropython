@@ -1,0 +1,1 @@
+TypeError: @classmethod decorator not supported on __init_subclass__
