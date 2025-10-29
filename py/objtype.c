@@ -1043,7 +1043,9 @@ static mp_obj_t type_make_new(const mp_obj_type_t *type_in, size_t n_args, size_
             // args[3..] = keyword argument pairs (if n_kw > 0)
             
             // Build kw_args map if there are keywords
+            #if MICROPY_INIT_SUBCLASS
             mp_map_t kw_args_map;
+            #endif
             mp_map_t *kw_args_ptr = NULL;
             #if MICROPY_INIT_SUBCLASS
             if (n_kw > 0) {
@@ -1243,6 +1245,10 @@ static mp_obj_t mp_obj_new_type(qstr name, mp_obj_t bases_tuple, mp_obj_t locals
             t->flags |= MP_TYPE_FLAG_IS_SUBCLASSED;
             base_flags |= t->flags & MP_TYPE_FLAG_HAS_SPECIAL_ACCESSORS;
         }
+        #endif
+        // Suppress unused variable warning when both MICROPY_METACLASS and !ENABLE_SPECIAL_ACCESSORS
+        #if MICROPY_METACLASS && !ENABLE_SPECIAL_ACCESSORS
+        (void)t;
         #endif
     }
 
