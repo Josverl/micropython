@@ -44,8 +44,7 @@
 #define ENABLE_SPECIAL_ACCESSORS \
     (MICROPY_PY_DESCRIPTORS || MICROPY_PY_DELATTR_SETATTR || MICROPY_PY_BUILTINS_PROPERTY)
 
-static mp_obj_t mp_obj_new_type(qstr name, mp_obj_t bases_tuple, mp_obj_t locals_dict);
-static mp_obj_t mp_obj_is_subclass(mp_obj_t object, mp_obj_t classinfo);
+static mp_obj_t mp_obj_new_type(qstr name, mp_obj_t bases_tuple, mp_obj_t locals_dict, const mp_obj_type_t *metaclass);
 static mp_obj_t static_class_method_make_new(const mp_obj_type_t *self_in, size_t n_args, size_t n_kw, const mp_obj_t *args);
 
 /******************************************************************************/
@@ -1036,7 +1035,7 @@ static mp_obj_t type_make_new(const mp_obj_type_t *type_in, size_t n_args, size_
             // args[0] = name
             // args[1] = bases tuple
             // args[2] = locals dict
-            return mp_obj_new_type(mp_obj_str_get_qstr(args[0]), args[1], args[2]);
+            return mp_obj_new_type(mp_obj_str_get_qstr(args[0]), args[1], args[2], type_in);
 
         default:
             mp_raise_TypeError(MP_ERROR_TEXT("type takes 1 or 3 arguments"));
@@ -1165,7 +1164,7 @@ MP_DEFINE_CONST_OBJ_TYPE(
     attr, type_attr
     );
 
-static mp_obj_t mp_obj_new_type(qstr name, mp_obj_t bases_tuple, mp_obj_t locals_dict) {
+static mp_obj_t mp_obj_new_type(qstr name, mp_obj_t bases_tuple, mp_obj_t locals_dict, const mp_obj_type_t *metaclass) {
     // Verify input objects have expected type
     if (!mp_obj_is_type(bases_tuple, &mp_type_tuple)) {
         mp_raise_TypeError(NULL);
@@ -1186,11 +1185,21 @@ static mp_obj_t mp_obj_new_type(qstr name, mp_obj_t bases_tuple, mp_obj_t locals
     mp_obj_t *bases_items;
     mp_obj_tuple_get(bases_tuple, &bases_len, &bases_items);
     for (size_t i = 0; i < bases_len; i++) {
+        // Check if base is an instance of type (handles custom metaclasses)
+        #if MICROPY_METACLASS
+        if (!mp_obj_is_subclass_fast(MP_OBJ_FROM_PTR(mp_obj_get_type(bases_items[i])), MP_OBJ_FROM_PTR(&mp_type_type))) {
+            mp_raise_TypeError(NULL);
+        }
+        #else
         if (!mp_obj_is_type(bases_items[i], &mp_type_type)) {
             mp_raise_TypeError(NULL);
         }
+        #endif
         mp_obj_type_t *t = MP_OBJ_TO_PTR(bases_items[i]);
         // TODO: Verify with CPy, tested on function type
+        #if !MICROPY_METACLASS
+        // Skip this check when metaclass support is enabled because
+        // classes created with custom metaclasses may not be detected correctly
         if (!MP_OBJ_TYPE_HAS_SLOT(t, make_new)) {
             #if MICROPY_ERROR_REPORTING <= MICROPY_ERROR_REPORTING_TERSE
             mp_raise_TypeError(MP_ERROR_TEXT("type isn't an acceptable base type"));
@@ -1199,6 +1208,7 @@ static mp_obj_t mp_obj_new_type(qstr name, mp_obj_t bases_tuple, mp_obj_t locals
                 MP_ERROR_TEXT("type '%q' isn't an acceptable base type"), t->name);
             #endif
         }
+        #endif
         #if ENABLE_SPECIAL_ACCESSORS
         if (mp_obj_is_instance_type(t)) {
             t->flags |= MP_TYPE_FLAG_IS_SUBCLASSED;
@@ -1217,7 +1227,7 @@ static mp_obj_t mp_obj_new_type(qstr name, mp_obj_t bases_tuple, mp_obj_t locals
     // Note: mp_obj_type_t is (2 + 3 + #slots) words, so going from 11 to 12 slots
     // moves from 4 to 5 gc blocks.
     mp_obj_type_t *o = m_new_obj_var0(mp_obj_type_t, slots, void *, 10 + (bases_len ? 1 : 0) + (base_protocol ? 1 : 0));
-    o->base.type = &mp_type_type;
+    o->base.type = metaclass; // Use the provided metaclass
     o->flags = base_flags;
     o->name = name;
     MP_OBJ_TYPE_SET_SLOT(o, make_new, mp_obj_instance_make_new, 0);
@@ -1474,7 +1484,7 @@ bool mp_obj_is_subclass_fast(mp_const_obj_t object, mp_const_obj_t classinfo) {
     }
 }
 
-static mp_obj_t mp_obj_is_subclass(mp_obj_t object, mp_obj_t classinfo) {
+mp_obj_t mp_obj_is_subclass(mp_obj_t object, mp_obj_t classinfo) {
     size_t len;
     mp_obj_t *items;
     if (mp_obj_is_type(classinfo, &mp_type_type)) {
