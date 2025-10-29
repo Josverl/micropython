@@ -1283,11 +1283,19 @@ typedef time_t mp_timestamp_t;
 #endif
 
 // Whether to support metaclasses as defined in PEP 3115
-// This enables the metaclass= keyword argument in class definitions,
-// __prepare__ method support, and proper metaclass resolution.
+// This enables the metaclass= keyword argument in class definitions
+// and proper metaclass resolution.
 // This costs some code size for the additional metaclass machinery.
 #ifndef MICROPY_METACLASS
 #define MICROPY_METACLASS (0)
+#endif
+
+// Whether to support the __prepare__ method for metaclasses (PEP 3115)
+// This allows metaclasses to customize the namespace dict before class creation.
+// Rarely used in practice, so disabled by default even when MICROPY_METACLASS is enabled.
+// Requires MICROPY_METACLASS to be enabled.
+#ifndef MICROPY_METACLASS_PREPARE
+#define MICROPY_METACLASS_PREPARE (0)
 #endif
 
 // Support for async/await/async for/async with
