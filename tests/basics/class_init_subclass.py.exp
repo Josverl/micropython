@@ -1,0 +1,33 @@
+Test 1: Basic __init_subclass__
+__init_subclass__ called for Derived
+Derived.from_init_subclass: True
+
+Test 2: __init_subclass__ without decorator
+__init_subclass__ (no decorator) for Derived2
+Derived2.marker: implicit_classmethod
+
+Test 3: __init_subclass__ with kwargs
+__init_subclass__ for Derived3 with kwargs: {'foo': 'bar', 'init': True}
+Derived3.kwargs: {'foo': 'bar', 'init': True}
+
+Test 4: Dataclass-style __init_subclass__
+ModelBase.__init_subclass__ for CustomerModel
+  init=False, frozen=True, eq=False
+CustomerModel.config: {'eq': False, 'init': False, 'frozen': True}
+
+Test 5: Multiple levels of inheritance
+GrandParent.__init_subclass__ for Parent
+Parent.__init_subclass__ for Child
+Child.from_grandparent: True
+Child.from_parent: True
+
+Test 6: Multiple inheritance
+BaseA.__init_subclass__ for Multi
+BaseB.__init_subclass__ for Multi
+Multi.from_a: True
+Multi.from_b: True
+
+Test 7: Base without __init_subclass__
+DerivedNoInit created successfully
+
+All tests passed!

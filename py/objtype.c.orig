@@ -1228,6 +1228,13 @@ static mp_obj_t mp_obj_new_type(qstr name, mp_obj_t bases_tuple, mp_obj_t locals
         #endif
         mp_obj_type_t *t = MP_OBJ_TO_PTR(bases_items[i]);
         // TODO: Verify with CPy, tested on function type
+        // DEBUG
+        printf("DEBUG: Checking base %d\n", (int)i);
+        printf("  t=%p\n", t);
+        printf("  t->name=%s\n", qstr_str(t->name));
+        printf("  t->slot_index_make_new=%d\n", t->slot_index_make_new);
+        printf("  HAS_SLOT=%d\n", MP_OBJ_TYPE_HAS_SLOT(t, make_new) ? 1 : 0);
+        // END DEBUG
         if (!MP_OBJ_TYPE_HAS_SLOT(t, make_new)) {
             #if MICROPY_ERROR_REPORTING <= MICROPY_ERROR_REPORTING_TERSE
             mp_raise_TypeError(MP_ERROR_TEXT("type isn't an acceptable base type"));

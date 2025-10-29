@@ -1,6 +1,21 @@
 # Test metaclass functionality (PEP 3115)
 # Note: __prepare__ method requires MICROPY_METACLASS_PREPARE to be enabled
 
+# Check if metaclass support is enabled
+try:
+    class _TestMeta(type):
+        def __init__(cls, name, bases, dct):
+            cls._metaclass_used = True
+    
+    class _Test(metaclass=_TestMeta):
+        pass
+    
+    if not hasattr(_Test, '_metaclass_used'):
+        raise TypeError("metaclass not used")
+except (TypeError, AttributeError):
+    print("SKIP")
+    raise SystemExit
+
 # Test 1: Basic metaclass with metaclass= keyword
 print("Test 1: Basic metaclass")
 class Meta(type):

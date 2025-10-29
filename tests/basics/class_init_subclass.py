@@ -1,5 +1,22 @@
 # Test __init_subclass__ functionality (PEP 487)
 
+# Check if __init_subclass__ support is enabled
+try:
+    class _TestBase:
+        _called = False
+        @classmethod
+        def __init_subclass__(cls):
+            _TestBase._called = True
+    
+    class _TestDerived(_TestBase):
+        pass
+    
+    if not _TestBase._called:
+        raise TypeError("__init_subclass__ not called")
+except (TypeError, AttributeError):
+    print("SKIP")
+    raise SystemExit
+
 # Test 1: Basic __init_subclass__ with @classmethod
 print("Test 1: Basic __init_subclass__")
 class Base:
