@@ -1065,6 +1065,45 @@ static mp_obj_t type_make_new(const mp_obj_type_t *type_in, size_t n_args, size_
             }
             #endif
             
+            // Call metaclass __init__ if it exists (PEP 3115)
+            // This is needed for custom metaclasses to initialize the class
+            #if MICROPY_METACLASS
+            if (type_in != &mp_type_type) {
+                // Custom metaclass - look for __init__ in the metaclass's dict
+                mp_obj_t init_fn[2] = {MP_OBJ_NULL, MP_OBJ_NULL};
+                struct class_lookup_data lookup = {
+                    .obj = (mp_obj_instance_t *)type_in,
+                    .attr = MP_QSTR___init__,
+                    .slot_offset = 0,
+                    .dest = init_fn,
+                    .is_type = true,
+                };
+                mp_obj_class_lookup(&lookup, type_in);
+                
+                if (init_fn[0] != MP_OBJ_NULL && init_fn[0] != MP_OBJ_SENTINEL) {
+                    // __init__ exists, call it with (cls, name, bases, dict)
+                    // If init_fn[1] is not NULL, it's a bound method, otherwise it's a function
+                    if (init_fn[1] != MP_OBJ_NULL) {
+                        // Bound method - init_fn[0] is the function, init_fn[1] is self
+                        mp_obj_t call_args[4];
+                        call_args[0] = result;      // cls (the newly created class)
+                        call_args[1] = args[0];     // name
+                        call_args[2] = args[1];     // bases
+                        call_args[3] = args[2];     // dict
+                        mp_call_function_n_kw(init_fn[0], 4, 0, call_args);
+                    } else {
+                        // Unbound function - need to pass type_in as self? Or result?
+                        mp_obj_t call_args[4];
+                        call_args[0] = result;      // cls
+                        call_args[1] = args[0];     // name
+                        call_args[2] = args[1];     // bases
+                        call_args[3] = args[2];     // dict
+                        mp_call_function_n_kw(init_fn[0], 4, 0, call_args);
+                    }
+                }
+            }
+            #endif
+            
             return result;
         }
 
@@ -1094,7 +1133,13 @@ static mp_obj_t type_call(mp_obj_t self_in, size_t n_args, size_t n_kw, const mp
 }
 
 static void type_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
+    #if MICROPY_METACLASS
+    // With metaclass support, self_in may be an instance of a custom metaclass
+    // Check that its type is a subclass of type
+    assert(mp_obj_is_subclass_fast(MP_OBJ_FROM_PTR(mp_obj_get_type(self_in)), MP_OBJ_FROM_PTR(&mp_type_type)));
+    #else
     assert(mp_obj_is_type(self_in, &mp_type_type));
+    #endif
     mp_obj_type_t *self = MP_OBJ_TO_PTR(self_in);
 
     if (dest[0] == MP_OBJ_NULL) {
@@ -1260,15 +1305,71 @@ static mp_obj_t mp_obj_new_type(qstr name, mp_obj_t bases_tuple, mp_obj_t locals
     o->base.type = metaclass; // Use the provided metaclass
     o->flags = base_flags;
     o->name = name;
-    MP_OBJ_TYPE_SET_SLOT(o, make_new, mp_obj_instance_make_new, 0);
-    MP_OBJ_TYPE_SET_SLOT(o, print, instance_print, 1);
-    MP_OBJ_TYPE_SET_SLOT(o, call, mp_obj_instance_call, 2);
-    MP_OBJ_TYPE_SET_SLOT(o, unary_op, instance_unary_op, 3);
-    MP_OBJ_TYPE_SET_SLOT(o, binary_op, instance_binary_op, 4);
-    MP_OBJ_TYPE_SET_SLOT(o, attr, mp_obj_instance_attr, 5);
-    MP_OBJ_TYPE_SET_SLOT(o, subscr, instance_subscr, 6);
-    MP_OBJ_TYPE_SET_SLOT(o, iter, mp_obj_instance_getiter, 7);
-    MP_OBJ_TYPE_SET_SLOT(o, buffer, instance_get_buffer, 8);
+    
+    // Check if the first base class is type (or a subclass of type), and if so, copy its make_new
+    // This is needed for metaclasses (subclasses of type) to work correctly
+    bool inherited_type_make_new = false;
+    if (bases_len > 0) {
+        mp_obj_type_t *first_base = MP_OBJ_TO_PTR(bases_items[0]);
+        // Check if first_base is type or inherits from type
+        mp_obj_type_t *check = first_base;
+        while (check != NULL) {
+            if (check == &mp_type_type) {
+                // This class inherits from type, so it's a metaclass
+                // Copy type_make_new from the base
+                if (MP_OBJ_TYPE_HAS_SLOT(first_base, make_new)) {
+                    void *base_make_new = (void *)MP_OBJ_TYPE_GET_SLOT(first_base, make_new);
+                    MP_OBJ_TYPE_SET_SLOT(o, make_new, base_make_new, 0);
+                    inherited_type_make_new = true;
+                }
+                break;
+            }
+            // Walk up parent chain
+            if (MP_OBJ_TYPE_HAS_SLOT(check, parent)) {
+                const void *parent_slot = MP_OBJ_TYPE_GET_SLOT(check, parent);
+                mp_obj_t parent = MP_OBJ_FROM_PTR(parent_slot);
+                if (mp_obj_is_type(parent, &mp_type_tuple)) {
+                    // Multiple inheritance - check first parent only
+                    size_t len;
+                    mp_obj_t *items;
+                    mp_obj_tuple_get(parent, &len, &items);
+                    if (len > 0) {
+                        check = MP_OBJ_TO_PTR(items[0]);
+                    } else {
+                        break;
+                    }
+                } else {
+                    check = MP_OBJ_TO_PTR(parent);
+                }
+            } else {
+                break;
+            }
+        }
+    }
+    
+    if (!inherited_type_make_new) {
+        MP_OBJ_TYPE_SET_SLOT(o, make_new, mp_obj_instance_make_new, 0);
+    }
+    
+    // Also check if we should use type's other slots (print, attr, call)
+    // This is needed for metaclasses (subclasses of type)
+    if (inherited_type_make_new) {
+        // This is a metaclass - use type's slots for proper class behavior
+        MP_OBJ_TYPE_SET_SLOT(o, print, type_print, 1);
+        MP_OBJ_TYPE_SET_SLOT(o, call, type_call, 2);
+        MP_OBJ_TYPE_SET_SLOT(o, attr, type_attr, 3);
+        // Slots 4-8 are unused for metaclasses
+    } else {
+        // Regular class - use instance slots
+        MP_OBJ_TYPE_SET_SLOT(o, print, instance_print, 1);
+        MP_OBJ_TYPE_SET_SLOT(o, call, mp_obj_instance_call, 2);
+        MP_OBJ_TYPE_SET_SLOT(o, unary_op, instance_unary_op, 3);
+        MP_OBJ_TYPE_SET_SLOT(o, binary_op, instance_binary_op, 4);
+        MP_OBJ_TYPE_SET_SLOT(o, attr, mp_obj_instance_attr, 5);
+        MP_OBJ_TYPE_SET_SLOT(o, subscr, instance_subscr, 6);
+        MP_OBJ_TYPE_SET_SLOT(o, iter, mp_obj_instance_getiter, 7);
+        MP_OBJ_TYPE_SET_SLOT(o, buffer, instance_get_buffer, 8);
+    }
 
     mp_obj_dict_t *locals_ptr = MP_OBJ_TO_PTR(locals_dict);
     MP_OBJ_TYPE_SET_SLOT(o, locals_dict, locals_ptr, 9);
