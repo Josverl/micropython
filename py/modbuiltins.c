@@ -137,11 +137,49 @@ static mp_obj_t mp_builtin___build_class__(size_t n_args, const mp_obj_t *args, 
     mp_locals_set(old_locals);
 
     // create the new class using a call to the meta object
+    #if MICROPY_METACLASS || MICROPY_INIT_SUBCLASS
+    // Build arguments array for metaclass call: name, bases, dict, [kw_key1, kw_val1, ...]
+    // Extract kwargs excluding 'metaclass' to pass to the metaclass (and eventually to __init_subclass__)
+    size_t n_kw = 0;
+    if (kw_args != NULL && kw_args->used > 0) {
+        for (size_t i = 0; i < kw_args->alloc; i++) {
+            if (mp_map_slot_is_filled(kw_args, i)) {
+                if (kw_args->table[i].key != MP_OBJ_NEW_QSTR(MP_QSTR_metaclass)) {
+                    n_kw++;
+                }
+            }
+        }
+    }
+    
+    size_t total_args = 3 + (n_kw * 2);
+    mp_obj_t *metaclass_args = m_new(mp_obj_t, total_args);
+    metaclass_args[0] = args[1]; // class name
+    metaclass_args[1] = mp_obj_new_tuple(n_args - 2, args + 2); // tuple of bases
+    metaclass_args[2] = class_locals; // dict of members
+    
+    // Add keyword arguments (excluding 'metaclass')
+    if (n_kw > 0) {
+        size_t kw_idx = 3;
+        for (size_t i = 0; i < kw_args->alloc; i++) {
+            if (mp_map_slot_is_filled(kw_args, i)) {
+                if (kw_args->table[i].key != MP_OBJ_NEW_QSTR(MP_QSTR_metaclass)) {
+                    metaclass_args[kw_idx++] = kw_args->table[i].key;
+                    metaclass_args[kw_idx++] = kw_args->table[i].value;
+                }
+            }
+        }
+    }
+    
+    mp_obj_t new_class = mp_call_function_n_kw(meta, 3, n_kw, metaclass_args);
+    m_del(mp_obj_t, metaclass_args, total_args);
+    #else
+    // Original implementation without metaclass/init_subclass support
     mp_obj_t meta_args[3];
     meta_args[0] = args[1]; // class name
     meta_args[1] = mp_obj_new_tuple(n_args - 2, args + 2); // tuple of bases
     meta_args[2] = class_locals; // dict of members
     mp_obj_t new_class = mp_call_function_n_kw(meta, 3, 0, meta_args);
+    #endif
 
     // store into cell if needed
     if (cell != mp_const_none) {
