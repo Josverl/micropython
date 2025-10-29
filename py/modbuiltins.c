@@ -166,21 +166,33 @@ static mp_obj_t mp_builtin___build_class__(size_t n_args, const mp_obj_t *args, 
     mp_locals_set(old_locals);
 
     // create the new class using a call to the meta object
+    #if MICROPY_METACLASS
+    // Build arguments array for metaclass call: name, bases, dict, [kw_key1, kw_val1, ...]
+    size_t total_metaclass_args = 3 + (remaining_kwargs.used * 2);
+    mp_obj_t *metaclass_args = alloca(total_metaclass_args * sizeof(mp_obj_t));
+    metaclass_args[0] = args[1]; // class name
+    metaclass_args[1] = mp_obj_new_tuple(n_args - 2, args + 2); // tuple of bases
+    metaclass_args[2] = class_locals; // dict of members
+    
+    // Add keyword arguments if any
+    if (remaining_kwargs.used > 0) {
+        size_t kw_idx = 3;
+        for (size_t i = 0; i < remaining_kwargs.alloc; i++) {
+            if (mp_map_slot_is_filled(&remaining_kwargs, i)) {
+                metaclass_args[kw_idx++] = remaining_kwargs.table[i].key;
+                metaclass_args[kw_idx++] = remaining_kwargs.table[i].value;
+            }
+        }
+    }
+    
+    mp_obj_t new_class = mp_call_function_n_kw(meta, 3, remaining_kwargs.used, metaclass_args);
+    mp_map_deinit(&remaining_kwargs);
+    #else
+    // Original implementation without metaclass support
     mp_obj_t meta_args[3];
     meta_args[0] = args[1]; // class name
     meta_args[1] = mp_obj_new_tuple(n_args - 2, args + 2); // tuple of bases
     meta_args[2] = class_locals; // dict of members
-    
-    #if MICROPY_METACLASS
-    // Pass remaining keyword arguments to metaclass
-    mp_obj_t new_class;
-    if (remaining_kwargs.used > 0) {
-        new_class = mp_call_function_n_kw(meta, 3, remaining_kwargs.used, meta_args);
-        mp_map_deinit(&remaining_kwargs);
-    } else {
-        new_class = mp_call_function_n_kw(meta, 3, 0, meta_args);
-    }
-    #else
     mp_obj_t new_class = mp_call_function_n_kw(meta, 3, 0, meta_args);
     #endif
 
