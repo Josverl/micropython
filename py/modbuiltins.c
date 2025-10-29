@@ -26,7 +26,6 @@
 
 #include <stdio.h>
 #include <assert.h>
-#include <alloca.h>
 
 #include "py/smallint.h"
 #include "py/objint.h"
@@ -47,15 +46,13 @@ extern struct _mp_dummy_t mp_sys_stdout_obj; // type is irrelevant, just need po
 // args[0] is function from class body
 // args[1] is class name
 // args[2:] are base objects
-// Keyword arguments may include 'metaclass' and other kwargs
+// Keyword arguments may include 'metaclass'
 static mp_obj_t mp_builtin___build_class__(size_t n_args, const mp_obj_t *args, mp_map_t *kw_args) {
     assert(2 <= n_args);
 
     #if MICROPY_METACLASS
     // Extract metaclass keyword argument if provided
     mp_obj_t meta = MP_OBJ_NULL;
-    mp_map_t remaining_kwargs;
-    mp_map_init(&remaining_kwargs, 0);
     
     if (kw_args != NULL && kw_args->used > 0) {
         // Search for 'metaclass' in keyword arguments
@@ -63,19 +60,8 @@ static mp_obj_t mp_builtin___build_class__(size_t n_args, const mp_obj_t *args, 
         if (elem != NULL) {
             meta = elem->value;
         }
-        
-        // Copy remaining keyword arguments (excluding 'metaclass')
-        if (kw_args->used > (elem != NULL ? 1 : 0)) {
-            mp_map_init(&remaining_kwargs, kw_args->used - (elem != NULL ? 1 : 0));
-            for (size_t i = 0; i < kw_args->alloc; i++) {
-                if (mp_map_slot_is_filled(kw_args, i)) {
-                    mp_map_elem_t *kw_elem = &kw_args->table[i];
-                    if (kw_elem->key != MP_OBJ_NEW_QSTR(MP_QSTR_metaclass)) {
-                        mp_map_lookup(&remaining_kwargs, kw_elem->key, MP_MAP_LOOKUP_ADD_IF_NOT_FOUND)->value = kw_elem->value;
-                    }
-                }
-            }
-        }
+        // Note: Other keyword arguments are ignored (not passed to metaclass)
+        // This is a simplification vs CPython for code size optimization
     }
     
     // Determine the metaclass to use
@@ -85,62 +71,47 @@ static mp_obj_t mp_builtin___build_class__(size_t n_args, const mp_obj_t *args, 
             // no explicit bases, so use 'type'
             meta = MP_OBJ_FROM_PTR(&mp_type_type);
         } else {
-            // Proper metaclass resolution: find the most derived metaclass
+            // Use metaclass from first base (simplified resolution)
             meta = MP_OBJ_FROM_PTR(mp_obj_get_type(args[2]));
             
-            // Check all bases and find the most derived metaclass
+            // Validate that all other bases are compatible
             for (size_t i = 3; i < n_args; i++) {
                 mp_obj_t base_meta = MP_OBJ_FROM_PTR(mp_obj_get_type(args[i]));
-                // If base_meta is a subclass of meta, use it
-                if (mp_obj_is_subclass(base_meta, meta) == mp_const_true) {
-                    meta = base_meta;
-                } else if (mp_obj_is_subclass(meta, base_meta) == mp_const_false) {
-                    // meta and base_meta are not related - metaclass conflict
+                // Check if metaclasses are compatible (one is subclass of other)
+                if (meta != base_meta && 
+                    mp_obj_is_subclass(base_meta, meta) == mp_const_false &&
+                    mp_obj_is_subclass(meta, base_meta) == mp_const_false) {
                     mp_raise_TypeError(MP_ERROR_TEXT("metaclass conflict"));
                 }
-            }
-        }
-    } else {
-        // Explicit metaclass provided, validate it against bases
-        for (size_t i = 2; i < n_args; i++) {
-            mp_obj_t base_meta = MP_OBJ_FROM_PTR(mp_obj_get_type(args[i]));
-            if (mp_obj_is_subclass(meta, base_meta) == mp_const_false) {
-                mp_raise_TypeError(MP_ERROR_TEXT("metaclass conflict"));
+                // Use the most derived metaclass
+                if (mp_obj_is_subclass(base_meta, meta) == mp_const_true) {
+                    meta = base_meta;
+                }
             }
         }
     }
     
     // Call __prepare__ if it exists on the metaclass
     mp_obj_t class_locals;
+    #if MICROPY_METACLASS_PREPARE
     mp_obj_t prepare_dest[2];
     mp_load_method_maybe(meta, MP_QSTR___prepare__, prepare_dest);
     
     if (prepare_dest[0] != MP_OBJ_NULL) {
-        // __prepare__ exists, call it with (name, bases, **kwargs)
-        // Build args array: [method, self, name, bases, kw_key1, kw_val1, ...]
-        size_t total_args = 2 + 2 + (remaining_kwargs.used * 2); // method, self, 2 args, kw pairs
-        mp_obj_t *call_args = alloca(total_args * sizeof(mp_obj_t));
-        call_args[0] = prepare_dest[0];
-        call_args[1] = prepare_dest[1];
-        call_args[2] = args[1]; // class name
-        call_args[3] = mp_obj_new_tuple(n_args - 2, args + 2); // tuple of bases
-        
-        // Add keyword arguments if any
-        size_t kw_idx = 4;
-        if (remaining_kwargs.used > 0) {
-            for (size_t i = 0; i < remaining_kwargs.alloc; i++) {
-                if (mp_map_slot_is_filled(&remaining_kwargs, i)) {
-                    call_args[kw_idx++] = remaining_kwargs.table[i].key;
-                    call_args[kw_idx++] = remaining_kwargs.table[i].value;
-                }
-            }
-        }
-        
-        class_locals = mp_call_method_n_kw(2, remaining_kwargs.used, call_args);
+        // __prepare__ exists, call it with (name, bases)
+        mp_obj_t prepare_args[4];
+        prepare_args[0] = prepare_dest[0];
+        prepare_args[1] = prepare_dest[1];
+        prepare_args[2] = args[1]; // class name
+        prepare_args[3] = mp_obj_new_tuple(n_args - 2, args + 2); // tuple of bases
+        class_locals = mp_call_method_n_kw(2, 0, prepare_args);
     } else {
-        // No __prepare__, use regular dict
         class_locals = mp_obj_new_dict(0);
     }
+    #else
+    // __prepare__ not supported, always use regular dict
+    class_locals = mp_obj_new_dict(0);
+    #endif
     #else
     // Original implementation without metaclass support
     mp_obj_t class_locals = mp_obj_new_dict(0);
@@ -166,35 +137,11 @@ static mp_obj_t mp_builtin___build_class__(size_t n_args, const mp_obj_t *args, 
     mp_locals_set(old_locals);
 
     // create the new class using a call to the meta object
-    #if MICROPY_METACLASS
-    // Build arguments array for metaclass call: name, bases, dict, [kw_key1, kw_val1, ...]
-    size_t total_metaclass_args = 3 + (remaining_kwargs.used * 2);
-    mp_obj_t *metaclass_args = alloca(total_metaclass_args * sizeof(mp_obj_t));
-    metaclass_args[0] = args[1]; // class name
-    metaclass_args[1] = mp_obj_new_tuple(n_args - 2, args + 2); // tuple of bases
-    metaclass_args[2] = class_locals; // dict of members
-    
-    // Add keyword arguments if any
-    if (remaining_kwargs.used > 0) {
-        size_t kw_idx = 3;
-        for (size_t i = 0; i < remaining_kwargs.alloc; i++) {
-            if (mp_map_slot_is_filled(&remaining_kwargs, i)) {
-                metaclass_args[kw_idx++] = remaining_kwargs.table[i].key;
-                metaclass_args[kw_idx++] = remaining_kwargs.table[i].value;
-            }
-        }
-    }
-    
-    mp_obj_t new_class = mp_call_function_n_kw(meta, 3, remaining_kwargs.used, metaclass_args);
-    mp_map_deinit(&remaining_kwargs);
-    #else
-    // Original implementation without metaclass support
     mp_obj_t meta_args[3];
     meta_args[0] = args[1]; // class name
     meta_args[1] = mp_obj_new_tuple(n_args - 2, args + 2); // tuple of bases
     meta_args[2] = class_locals; // dict of members
     mp_obj_t new_class = mp_call_function_n_kw(meta, 3, 0, meta_args);
-    #endif
 
     // store into cell if needed
     if (cell != mp_const_none) {
