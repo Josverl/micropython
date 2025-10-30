@@ -42,7 +42,7 @@
 #endif
 
 #define ENABLE_SPECIAL_ACCESSORS \
-    (MICROPY_PY_DESCRIPTORS || MICROPY_PY_DELATTR_SETATTR || MICROPY_PY_BUILTINS_PROPERTY)
+        (MICROPY_PY_DESCRIPTORS || MICROPY_PY_DELATTR_SETATTR || MICROPY_PY_BUILTINS_PROPERTY)
 
 static mp_obj_t mp_obj_new_type(qstr name, mp_obj_t bases_tuple, mp_obj_t locals_dict, const mp_obj_type_t *metaclass, mp_map_t *kw_args);
 static mp_obj_t static_class_method_make_new(const mp_obj_type_t *self_in, size_t n_args, size_t n_kw, const mp_obj_t *args);
@@ -1041,7 +1041,7 @@ static mp_obj_t type_make_new(const mp_obj_type_t *type_in, size_t n_args, size_
             // args[1] = bases tuple
             // args[2] = locals dict
             // args[3..] = keyword argument pairs (if n_kw > 0)
-            
+
             // Build kw_args map if there are keywords
             #if MICROPY_INIT_SUBCLASS
             mp_map_t kw_args_map;
@@ -1056,15 +1056,15 @@ static mp_obj_t type_make_new(const mp_obj_type_t *type_in, size_t n_args, size_
                 kw_args_ptr = &kw_args_map;
             }
             #endif
-            
+
             mp_obj_t result = mp_obj_new_type(mp_obj_str_get_qstr(args[0]), args[1], args[2], type_in, kw_args_ptr);
-            
+
             #if MICROPY_INIT_SUBCLASS
             if (n_kw > 0) {
                 mp_map_deinit(&kw_args_map);
             }
             #endif
-            
+
             // Call metaclass __init__ if it exists (PEP 3115)
             // This is needed for custom metaclasses to initialize the class
             #if MICROPY_METACLASS
@@ -1079,7 +1079,7 @@ static mp_obj_t type_make_new(const mp_obj_type_t *type_in, size_t n_args, size_
                     .is_type = true,
                 };
                 mp_obj_class_lookup(&lookup, type_in);
-                
+
                 if (init_fn[0] != MP_OBJ_NULL && init_fn[0] != MP_OBJ_SENTINEL) {
                     // __init__ exists, call it with (cls, name, bases, dict)
                     // If init_fn[1] is not NULL, it's a bound method, otherwise it's a function
@@ -1103,7 +1103,7 @@ static mp_obj_t type_make_new(const mp_obj_type_t *type_in, size_t n_args, size_
                 }
             }
             #endif
-            
+
             return result;
         }
 
@@ -1305,7 +1305,7 @@ static mp_obj_t mp_obj_new_type(qstr name, mp_obj_t bases_tuple, mp_obj_t locals
     o->base.type = metaclass; // Use the provided metaclass
     o->flags = base_flags;
     o->name = name;
-    
+
     // Check if the first base class is type (or a subclass of type), and if so, copy its make_new
     // This is needed for metaclasses (subclasses of type) to work correctly
     bool inherited_type_make_new = false;
@@ -1346,11 +1346,11 @@ static mp_obj_t mp_obj_new_type(qstr name, mp_obj_t bases_tuple, mp_obj_t locals
             }
         }
     }
-    
+
     if (!inherited_type_make_new) {
         MP_OBJ_TYPE_SET_SLOT(o, make_new, mp_obj_instance_make_new, 0);
     }
-    
+
     // Also check if we should use type's other slots (print, attr, call)
     // This is needed for metaclasses (subclasses of type)
     if (inherited_type_make_new) {
@@ -1451,7 +1451,7 @@ static mp_obj_t mp_obj_new_type(qstr name, mp_obj_t bases_tuple, mp_obj_t locals
     // Per PEP 487, __init_subclass__ is implicitly a classmethod and is called
     // on the first base that defines it (following MRO), unless it chains via super().
     // __init_subclass__ does NOT need @classmethod decorator.
-    
+
     // Extract kwargs (excluding 'metaclass') to pass to __init_subclass__
     size_t n_kw = 0;
     if (kw_args != NULL && kw_args->used > 0) {
@@ -1464,17 +1464,17 @@ static mp_obj_t mp_obj_new_type(qstr name, mp_obj_t bases_tuple, mp_obj_t locals
             }
         }
     }
-    
+
     // Only call __init_subclass__ on the first base that has it (per PEP 487)
     // The __init_subclass__ implementation can chain to others via super()
     for (size_t i = 0; i < bases_len; i++) {
         mp_obj_t base = bases_items[i];
-        
+
         // Use mp_load_method to properly handle __init_subclass__
         // This will handle both @classmethod decorated and undecorated versions
         mp_obj_t init_subclass_dest[2];
         mp_load_method_maybe(base, MP_QSTR___init_subclass__, init_subclass_dest);
-        
+
         if (init_subclass_dest[0] != MP_OBJ_NULL) {
             // __init_subclass__ exists
             // Per PEP 487, call it as if it's a classmethod with the new subclass as cls
@@ -1482,13 +1482,13 @@ static mp_obj_t mp_obj_new_type(qstr name, mp_obj_t bases_tuple, mp_obj_t locals
             // and init_subclass_dest[1] is the class it's bound to.
             // If it's NOT a classmethod, init_subclass_dest[0] is the function and
             // init_subclass_dest[1] is the instance (but we want the new class, not the base)
-            
+
             // Build call arguments
             // For implicit classmethod behavior, we need to pass the new class (o) as the first arg
             size_t total_args = 1 + (n_kw * 2);
             mp_obj_t *args = m_new(mp_obj_t, total_args);
             args[0] = MP_OBJ_FROM_PTR(o);  // cls argument (the new subclass being created)
-            
+
             // Add keyword arguments (excluding 'metaclass')
             size_t kw_idx = 1;
             if (n_kw > 0) {
@@ -1501,14 +1501,12 @@ static mp_obj_t mp_obj_new_type(qstr name, mp_obj_t bases_tuple, mp_obj_t locals
                     }
                 }
             }
-            
-            // Call __init_subclass__
-            // Use mp_call_function_n_kw to call the function directly with our args
+
+            // Call __init_subclass__  directly with our args
             mp_call_function_n_kw(init_subclass_dest[0], 1, n_kw, args);
             m_del(mp_obj_t, args, total_args);
-            
-            // Per PEP 487, only call __init_subclass__ on the first base that has it
-            // (the implementation can chain to others via super())
+
+            // only call __init_subclass__ on the first base that has it
             break;
         }
     }

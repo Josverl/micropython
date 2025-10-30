@@ -53,7 +53,7 @@ static mp_obj_t mp_builtin___build_class__(size_t n_args, const mp_obj_t *args, 
     #if MICROPY_METACLASS
     // Extract metaclass keyword argument if provided
     mp_obj_t meta = MP_OBJ_NULL;
-    
+
     if (kw_args != NULL && kw_args->used > 0) {
         // Search for 'metaclass' in keyword arguments
         mp_map_elem_t *elem = mp_map_lookup(kw_args, MP_OBJ_NEW_QSTR(MP_QSTR_metaclass), MP_MAP_LOOKUP);
@@ -63,7 +63,7 @@ static mp_obj_t mp_builtin___build_class__(size_t n_args, const mp_obj_t *args, 
         // Note: Other keyword arguments are ignored (not passed to metaclass)
         // This is a simplification vs CPython for code size optimization
     }
-    
+
     // Determine the metaclass to use
     if (meta == MP_OBJ_NULL) {
         // No explicit metaclass, determine from bases
@@ -73,12 +73,12 @@ static mp_obj_t mp_builtin___build_class__(size_t n_args, const mp_obj_t *args, 
         } else {
             // Use metaclass from first base (simplified resolution)
             meta = MP_OBJ_FROM_PTR(mp_obj_get_type(args[2]));
-            
+
             // Validate that all other bases are compatible
             for (size_t i = 3; i < n_args; i++) {
                 mp_obj_t base_meta = MP_OBJ_FROM_PTR(mp_obj_get_type(args[i]));
                 // Check if metaclasses are compatible (one is subclass of other)
-                if (meta != base_meta && 
+                if (meta != base_meta &&
                     mp_obj_is_subclass(base_meta, meta) == mp_const_false &&
                     mp_obj_is_subclass(meta, base_meta) == mp_const_false) {
                     mp_raise_TypeError(MP_ERROR_TEXT("metaclass conflict"));
@@ -90,13 +90,13 @@ static mp_obj_t mp_builtin___build_class__(size_t n_args, const mp_obj_t *args, 
             }
         }
     }
-    
+
     // Call __prepare__ if it exists on the metaclass
     mp_obj_t class_locals;
     #if MICROPY_METACLASS_PREPARE
     mp_obj_t prepare_dest[2];
     mp_load_method_maybe(meta, MP_QSTR___prepare__, prepare_dest);
-    
+
     if (prepare_dest[0] != MP_OBJ_NULL) {
         // __prepare__ exists, call it with (name, bases)
         mp_obj_t prepare_args[4];
@@ -116,7 +116,7 @@ static mp_obj_t mp_builtin___build_class__(size_t n_args, const mp_obj_t *args, 
     // Original implementation without metaclass support
     mp_obj_t class_locals = mp_obj_new_dict(0);
     mp_obj_t meta;
-    
+
     if (n_args == 2) {
         // no explicit bases, so use 'type'
         meta = MP_OBJ_FROM_PTR(&mp_type_type);
@@ -150,13 +150,13 @@ static mp_obj_t mp_builtin___build_class__(size_t n_args, const mp_obj_t *args, 
             }
         }
     }
-    
+
     size_t total_args = 3 + (n_kw * 2);
     mp_obj_t *metaclass_args = m_new(mp_obj_t, total_args);
     metaclass_args[0] = args[1]; // class name
     metaclass_args[1] = mp_obj_new_tuple(n_args - 2, args + 2); // tuple of bases
     metaclass_args[2] = class_locals; // dict of members
-    
+
     // Add keyword arguments (excluding 'metaclass')
     if (n_kw > 0) {
         size_t kw_idx = 3;
@@ -169,11 +169,11 @@ static mp_obj_t mp_builtin___build_class__(size_t n_args, const mp_obj_t *args, 
             }
         }
     }
-    
+
     mp_obj_t new_class = mp_call_function_n_kw(meta, 3, n_kw, metaclass_args);
     m_del(mp_obj_t, metaclass_args, total_args);
     #else
-    // Original implementation without metaclass/init_subclass support
+    // Basic implementation without metaclass/init_subclass support
     mp_obj_t meta_args[3];
     meta_args[0] = args[1]; // class name
     meta_args[1] = mp_obj_new_tuple(n_args - 2, args + 2); // tuple of bases
@@ -595,7 +595,7 @@ static mp_obj_t mp_builtin_round(size_t n_args, const mp_obj_t *args) {
         mp_int_t num_dig = mp_obj_get_int(args[1]);
         mp_float_t mult = MICROPY_FLOAT_C_FUN(pow)(10, (mp_float_t)num_dig);
         // TODO may lead to overflow
-        mp_float_t rounded = MICROPY_FLOAT_C_FUN(nearbyint)(val * mult) / mult;
+        mp_float_t rounded = MICROPY_FLOAT_C_FUN(nearbyint)(val *mult) / mult;
         return mp_obj_new_float(rounded);
     }
     mp_float_t rounded = MICROPY_FLOAT_C_FUN(nearbyint)(val);

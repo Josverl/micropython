@@ -53,9 +53,9 @@
 // os.uname().release. All other version info available in the firmware (e.g.
 // the REPL banner) comes from MICROPY_GIT_TAG.
 #define MICROPY_VERSION_STRING_BASE \
-    MP_STRINGIFY(MICROPY_VERSION_MAJOR) "." \
-    MP_STRINGIFY(MICROPY_VERSION_MINOR) "." \
-    MP_STRINGIFY(MICROPY_VERSION_MICRO)
+        MP_STRINGIFY(MICROPY_VERSION_MAJOR) "." \
+        MP_STRINGIFY(MICROPY_VERSION_MINOR) "." \
+        MP_STRINGIFY(MICROPY_VERSION_MICRO)
 #if MICROPY_VERSION_PRERELEASE
 #define MICROPY_VERSION_STRING MICROPY_VERSION_STRING_BASE "-preview"
 #else
@@ -1285,7 +1285,6 @@ typedef time_t mp_timestamp_t;
 // Whether to support metaclasses as defined in PEP 3115
 // This enables the metaclass= keyword argument in class definitions
 // and proper metaclass resolution.
-// This costs some code size for the additional metaclass machinery.
 #ifndef MICROPY_METACLASS
 #define MICROPY_METACLASS (0)
 #endif

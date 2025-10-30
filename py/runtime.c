@@ -1234,7 +1234,7 @@ void mp_load_method(mp_obj_t base, qstr attr, mp_obj_t *dest) {
         if (mp_obj_is_subclass_fast(MP_OBJ_FROM_PTR(mp_obj_get_type(base)), MP_OBJ_FROM_PTR(&mp_type_type))) {
         #else
         if (mp_obj_is_type(base, &mp_type_type)) {
-        #endif
+            #endif
             mp_raise_msg_varg(&mp_type_AttributeError,
                 MP_ERROR_TEXT("type object '%q' has no attribute '%q'"),
                 ((mp_obj_type_t *)MP_OBJ_TO_PTR(base))->name, attr);
