@@ -351,19 +351,41 @@ static mp_obj_t dict_setdefault(size_t n_args, const mp_obj_t *args) {
 }
 static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(dict_setdefault_obj, 2, 3, dict_setdefault);
 
-static mp_obj_t dict_popitem(mp_obj_t self_in) {
-    mp_check_self(mp_obj_is_dict_or_ordereddict(self_in));
-    mp_obj_dict_t *self = MP_OBJ_TO_PTR(self_in);
+static mp_obj_t dict_popitem(size_t n_args, const mp_obj_t *args, mp_map_t *kwargs)
+{
+    mp_check_self(mp_obj_is_dict_or_ordereddict(args[0]));
+    mp_obj_dict_t *self = MP_OBJ_TO_PTR(args[0]);
     mp_ensure_not_fixed(self);
+    mp_arg_check_num(n_args, kwargs->used, 1, 2, true);
+
+    bool last = true;
+    if (kwargs->used)
+    {
+        static const mp_arg_t allowed_args[] = {
+            {MP_QSTR_last, MP_ARG_BOOL, {.u_bool = true}},
+        };
+        mp_arg_val_t parsed[MP_ARRAY_SIZE(allowed_args)];
+        mp_arg_parse_all(n_args - 1, args + 1, kwargs, MP_ARRAY_SIZE(allowed_args), allowed_args, parsed);
+        last = parsed[0].u_bool;
+    }
+    else if (n_args == 2)
+    {
+        last = mp_obj_is_true(args[1]);
+    }
+
     if (self->map.used == 0) {
         mp_raise_msg(&mp_type_KeyError, MP_ERROR_TEXT("popitem(): dictionary is empty"));
     }
+
     size_t cur = 0;
     #if MICROPY_PY_COLLECTIONS_ORDEREDDICT
-    if (self->map.is_ordered) {
+    if (last && self->map.is_ordered)
+    {
         cur = self->map.used - 1;
     }
-    #endif
+#else
+    (void)last; // suppress unused variable warning when MICROPY_PY_COLLECTIONS_ORDEREDDICT is disabled
+#endif
     mp_map_elem_t *next = dict_iter_next(self, &cur);
     assert(next);
     self->map.used--;
@@ -374,7 +396,7 @@ static mp_obj_t dict_popitem(mp_obj_t self_in) {
 
     return tuple;
 }
-static MP_DEFINE_CONST_FUN_OBJ_1(dict_popitem_obj, dict_popitem);
+static MP_DEFINE_CONST_FUN_OBJ_KW(dict_popitem_obj, 1, dict_popitem);
 
 static mp_obj_t dict_update(size_t n_args, const mp_obj_t *args, mp_map_t *kwargs) {
     mp_check_self(mp_obj_is_dict_or_ordereddict(args[0]));
