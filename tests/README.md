@@ -249,3 +249,66 @@ $ openssl ecparam -name prime256v1 -genkey -noout -out ec_key.pem
 $ openssl pkey -in ec_key.pem -out ec_key.der -outform DER
 $ openssl req -new -x509 -key ec_key.pem -out ec_cert.der -outform DER -days 3650 -nodes -subj '/CN=micropython.local/O=MicroPython/C=AU'
 ```
+
+## Testing machine.lightsleep and machine.deepsleep
+
+The `extmod_hardware` directory contains tests for `machine.lightsleep()` and 
+`machine.deepsleep()` that can be run on connected hardware.
+
+### Basic sleep tests (no hardware connections required)
+
+These tests validate timer-based sleep functionality:
+
+```bash
+# Test lightsleep on connected hardware
+$ ./run-tests.py -t /dev/ttyACM0 tests/extmod_hardware/machine_lightsleep.py
+
+# Test deepsleep (informational tests and API verification)
+$ ./run-tests.py -t /dev/ttyACM0 tests/extmod_hardware/machine_deepsleep.py
+```
+
+The lightsleep tests validate:
+- Timer-based wake with various durations (100ms, 500ms, 1000ms)
+- State preservation across sleep (variables, objects)
+- Multiple consecutive sleeps
+- Timing accuracy (with platform-appropriate tolerances)
+
+The deepsleep tests provide:
+- API verification (`reset_cause()`, `DEEPSLEEP_RESET` constant)
+- State file management utilities
+- Manual test examples (as deepsleep causes device reset)
+- Platform-specific features (ESP32 `wake_reason()`)
+
+### GPIO wake tests (requires hardware connections)
+
+For more comprehensive testing with GPIO wake sources:
+
+```bash
+# Test GPIO-based wake (requires pin loopback)
+$ ./run-tests.py -t /dev/ttyACM0 tests/extmod_hardware/machine_lightsleep_gpio.py
+```
+
+**Required hardware connections** (defined in `tests/target_wiring/<platform>.py`):
+- **ESP32**: Connect GPIO2 to GPIO15
+- **RP2**: Connect GPIO2 to GPIO3
+
+These tests validate:
+- GPIO wake from lightsleep
+- Platform-specific wake methods (ESP32 EXT0, RP2 IRQ)
+- Pin configuration for wake sources
+
+### Platform-specific sleep tests
+
+Port-specific tests are in `tests/ports/<platform>/`:
+- `tests/ports/rp2/rp2_lightsleep.py` - RP2 USB serial stability during sleep
+- `tests/ports/rp2/rp2_lightsleep_thread.py` - Thread-safe lightsleep tests
+
+### Research and implementation details
+
+See `docs/sleep_test_research.md` for comprehensive documentation on:
+- Test framework patterns and options
+- Platform sleep capabilities (ESP32, RP2, etc.)
+- Wake source types (timer, GPIO, touchpad, ULP)
+- Implementation challenges and solutions
+- Manual testing procedures for deepsleep
+- Future enhancement opportunities
