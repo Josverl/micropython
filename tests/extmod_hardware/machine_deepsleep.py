@@ -238,7 +238,4 @@ def example_deepsleep_test():
 
 
 if __name__ == "__main__":
-    # Clean up any leftover state before running tests
-    clear_state()
-    
     unittest.main()

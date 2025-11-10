@@ -4,7 +4,7 @@
 # - sleep_wake_pin must be connected to sleep_trigger_pin
 # - Pin definitions are in tests/target_wiring/<platform>.py
 #
-# For ESP32: Connect GPIO2 to GPIO15
+# For ESP32: Connect GPIO2 to GPIO3
 # For RP2: Connect GPIO2 to GPIO3
 #
 # Test approach:
@@ -206,9 +206,9 @@ class TestLightSleepGPIODocumentation(unittest.TestCase):
         This test demonstrates how to manually test GPIO wake:
         
         For ESP32:
-        1. Connect GPIO2 to GPIO15
+        1. Connect GPIO2 to GPIO3
         2. Run: wake_on_ext0(2, 1)  # Wake on rising edge
-        3. In another terminal: mpremote exec "from machine import Pin; Pin(15, Pin.OUT).value(1)"
+        3. In another terminal: mpremote exec "from machine import Pin; Pin(3, Pin.OUT).value(1)"
         4. Device should wake from lightsleep
         
         For RP2:

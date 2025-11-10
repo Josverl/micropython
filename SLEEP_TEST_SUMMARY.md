@@ -135,7 +135,7 @@ mpremote mip install unittest
 
 ### GPIO Wake Tests (With Loopback)
 ```bash
-# ESP32: Connect GPIO2 to GPIO15
+# ESP32: Connect GPIO2 to GPIO3
 # RP2: Connect GPIO2 to GPIO3
 
 # Run GPIO wake tests

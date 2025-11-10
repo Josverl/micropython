@@ -52,7 +52,7 @@ def main():
     print("\n\n3. GPIO WAKE TESTS (requires pin connections)")
     print("-" * 60)
     print("Required hardware connections:")
-    print("  ESP32: GPIO2 <-> GPIO15")
+    print("  ESP32: GPIO2 <-> GPIO3")
     print("  RP2:   GPIO2 <-> GPIO3")
     print()
     
