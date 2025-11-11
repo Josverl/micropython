@@ -249,3 +249,18 @@ $ openssl ecparam -name prime256v1 -genkey -noout -out ec_key.pem
 $ openssl pkey -in ec_key.pem -out ec_key.der -outform DER
 $ openssl req -new -x509 -key ec_key.pem -out ec_cert.der -outform DER -days 3650 -nodes -subj '/CN=micropython.local/O=MicroPython/C=AU'
 ```
+
+## Testing machine.lightsleep and machine.deepsleep
+
+Tests for `machine.lightsleep()` and `machine.deepsleep()` are in `tests/extmod_hardware/`:
+
+```bash
+# Timer-based tests (no hardware connections)
+$ ./run-tests.py -t /dev/ttyACM0 tests/extmod_hardware/machine_lightsleep.py
+$ ./run-tests.py -t /dev/ttyACM0 tests/extmod_hardware/machine_deepsleep.py
+
+# GPIO wake tests (requires pin loopback - see tests/target_wiring/<platform>.py)
+$ ./run-tests.py -t /dev/ttyACM0 tests/extmod_hardware/machine_lightsleep_gpio.py
+```
+
+For detailed documentation see `docs/sleep_test_research.md`.
