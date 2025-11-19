@@ -42,14 +42,12 @@ async def test_async_workflow():
         method = getattr(transport, method_name)
         assert asyncio.iscoroutinefunction(method), f"{method_name} should be async"
     
-    print("  ✓ All async methods are present and are coroutines")
     
     # Test State integration
     state = State()
     assert hasattr(state, 'ensure_raw_repl_async')
     assert asyncio.iscoroutinefunction(state.ensure_raw_repl_async)
     
-    print("  ✓ State class has async methods")
     
     # Test protocol integration
     cmd = "print('test')"
@@ -60,9 +58,7 @@ async def test_async_workflow():
     assert cmd_bytes == b"print('test')"
     assert len(header) == 7  # Ctrl-E A \x01 + 4 bytes length
     
-    print("  ✓ Protocol encoding works correctly")
     
-    print("\n✅ Integration test passed!")
     return True
 
 
@@ -87,7 +83,6 @@ async def test_concurrent_pattern():
     results = await asyncio.gather(operation1(), operation2(), operation3())
     assert results == ["op1", "op2", "op3"]
     
-    print("  ✓ asyncio.gather works correctly")
     
     # Test task pattern
     task1 = asyncio.create_task(operation1())
@@ -99,18 +94,14 @@ async def test_concurrent_pattern():
     assert result1 == "op1"
     assert result2 == "op2"
     
-    print("  ✓ asyncio.create_task works correctly")
     
     # Test timeout pattern
     try:
         async with asyncio.timeout(0.1):
             await asyncio.sleep(0.01)
-        print("  ✓ asyncio.timeout works correctly")
     except asyncio.TimeoutError:
-        print("  ✗ Timeout occurred unexpectedly")
         return False
     
-    print("\n✅ Concurrent pattern test passed!")
     return True
 
 
@@ -122,21 +113,17 @@ def test_error_handling():
     stderr = b"Traceback: error message"
     error = RawREPLProtocol.check_error(stderr)
     assert error == "Traceback: error message"
-    print("  ✓ Error detection works")
     
     # Test empty error
     stderr = b""
     error = RawREPLProtocol.check_error(stderr)
     assert error is None
-    print("  ✓ Empty error handling works")
     
     # Test whitespace error
     stderr = b"   \n  "
     error = RawREPLProtocol.check_error(stderr)
     assert error is None
-    print("  ✓ Whitespace error handling works")
     
-    print("\n✅ Error handling test passed!")
     return True
 
 
@@ -154,15 +141,12 @@ def test_sync_async_coexistence():
         assert hasattr(state, method), f"Missing sync method: {method}"
         assert not asyncio.iscoroutinefunction(getattr(state, method)), f"{method} should not be async"
     
-    print("  ✓ All sync methods present and not async")
     
     for method in async_methods:
         assert hasattr(state, method), f"Missing async method: {method}"
         assert asyncio.iscoroutinefunction(getattr(state, method)), f"{method} should be async"
     
-    print("  ✓ All async methods present and are async")
     
-    print("\n✅ Sync/async coexistence test passed!")
     return True
 
 
@@ -207,8 +191,6 @@ def main():
     
     # Summary
     print("\n" + "=" * 70)
-    print("INTEGRATION TEST SUMMARY")
-    print("=" * 70)
     
     passed = sum(1 for _, result in results if result)
     total = len(results)

@@ -51,8 +51,7 @@ except ImportError as e:
 def test_async_transport_abstract():
     """Test that AsyncTransport is abstract and has required methods."""
     if not HAS_ASYNC:
-        print("SKIP: test_async_transport_abstract (async not available)")
-        return
+        return  # Skip test
     
     # Check that AsyncTransport has all required async methods
     required_methods = [
@@ -75,14 +74,11 @@ def test_async_transport_abstract():
     
     for method in required_methods:
         assert hasattr(AsyncTransport, method), f"AsyncTransport missing {method}"
-    
-    print("PASS: test_async_transport_abstract")
 
 
 def test_async_serial_transport_instantiation():
     """Test that AsyncSerialTransport can be instantiated."""
     if not HAS_ASYNC:
-        print("SKIP: test_async_serial_transport_instantiation (async not available)")
         return
     
     try:
@@ -101,7 +97,6 @@ def test_async_serial_transport_instantiation():
         assert transport.in_raw_repl is False
         assert transport.use_raw_paste is True
         
-        print("PASS: test_async_serial_transport_instantiation")
     except Exception as e:
         print(f"FAIL: test_async_serial_transport_instantiation - {e}")
 
@@ -109,7 +104,6 @@ def test_async_serial_transport_instantiation():
 def test_protocol_constants():
     """Test that RawREPLProtocol has the correct constants."""
     if not HAS_ASYNC:
-        print("SKIP: test_protocol_constants (async not available)")
         return
     
     # Check control codes
@@ -128,13 +122,11 @@ def test_protocol_constants():
     assert RawREPLProtocol.RAW_REPL_PROMPT == b'raw REPL; CTRL-B to exit\r\n>'
     assert RawREPLProtocol.RAW_REPL_OK == b'OK'
     
-    print("PASS: test_protocol_constants")
 
 
 def test_protocol_encode_command():
     """Test protocol command encoding."""
     if not HAS_ASYNC:
-        print("SKIP: test_protocol_encode_command (async not available)")
         return
     
     # Test standard encoding
@@ -147,13 +139,11 @@ def test_protocol_encode_command():
     assert header.startswith(RawREPLProtocol.RAW_PASTE_START)
     assert cmd_bytes == b"print('hello')"
     
-    print("PASS: test_protocol_encode_command")
 
 
 def test_protocol_decode_response():
     """Test protocol response decoding."""
     if not HAS_ASYNC:
-        print("SKIP: test_protocol_decode_response (async not available)")
         return
     
     # Test normal response with stdout and stderr separated by \x04
@@ -168,7 +158,6 @@ def test_protocol_decode_response():
     assert stdout == b"output"
     assert stderr == b"error message"
     
-    print("PASS: test_protocol_decode_response")
 
 
 def run_all_tests():

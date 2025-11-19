@@ -27,7 +27,6 @@ def test_import_all_modules():
         import mpremote.console_async
         import mpremote.repl_async
         import mpremote.commands_async
-        print("  PASS: All modules imported successfully")
         return True
     except ImportError as e:
         print(f"  FAIL: Import error - {e}")
@@ -66,7 +65,6 @@ def test_async_transport_inheritance():
             else:
                 print(f"  ✗ WARNING: {method} is not async")
         
-        print("  PASS: Inheritance and method implementation correct")
         return True
     except AssertionError as e:
         print(f"  FAIL: {e}")
@@ -109,7 +107,6 @@ def test_protocol_methods():
         assert RawREPLProtocol.check_error(b"error message") == "error message"
         assert RawREPLProtocol.check_error(b"  error  \n") == "error"
         
-        print("  PASS: All protocol methods work correctly")
         return True
     except AssertionError as e:
         print(f"  FAIL: {e}")
@@ -127,14 +124,12 @@ def test_console_factory():
         import sys
         if sys.platform == "win32":
             assert isinstance(console, AsyncConsoleWindows)
-            print("  ✓ Windows console created")
         else:
             try:
                 import termios
                 assert isinstance(console, AsyncConsolePosix)
-                print("  ✓ POSIX console created")
             except ImportError:
-                print("  ⚠ termios not available, skipping POSIX test")
+                pass  # termios not available, skip platform check
         
         # Check console has required methods
         assert hasattr(console, 'enter')
@@ -142,7 +137,6 @@ def test_console_factory():
         assert hasattr(console, 'readchar_async')
         assert hasattr(console, 'write')
         
-        print("  PASS: Console factory works correctly")
         return True
     except AssertionError as e:
         print(f"  FAIL: {e}")
@@ -177,7 +171,6 @@ def test_async_transport_attributes():
         assert transport.writer is None
         assert transport._transport is None
         
-        print("  PASS: All attributes initialized correctly")
         return True
     except Exception as e:
         print(f"  FAIL: {e}")
@@ -205,7 +198,6 @@ async def test_async_state_methods():
         assert asyncio.iscoroutinefunction(state.ensure_raw_repl_async)
         assert asyncio.iscoroutinefunction(state.ensure_friendly_repl_async)
         
-        print("  PASS: State async methods exist and are async")
         return True
     except Exception as e:
         print(f"  FAIL: {e}")
@@ -225,7 +217,6 @@ def test_command_async_functions():
         assert asyncio.iscoroutinefunction(do_exec_async)
         assert asyncio.iscoroutinefunction(do_eval_async)
         
-        print("  PASS: Async command functions are properly defined")
         return True
     except Exception as e:
         print(f"  FAIL: {e}")
@@ -256,7 +247,6 @@ def test_sync_wrappers_exist():
         assert not asyncio.iscoroutinefunction(do_run_sync_wrapper)
         assert not asyncio.iscoroutinefunction(do_repl_async_wrapper)
         
-        print("  PASS: All sync wrappers exist")
         return True
     except Exception as e:
         print(f"  FAIL: {e}")
@@ -289,7 +279,6 @@ def test_protocol_edge_cases():
         assert isinstance(encoded, bytes)
         assert b'print' in encoded
         
-        print("  PASS: Protocol handles edge cases correctly")
         return True
     except Exception as e:
         print(f"  FAIL: {e}")
@@ -315,7 +304,6 @@ def test_async_console_methods():
         assert not asyncio.iscoroutinefunction(console.enter)
         assert not asyncio.iscoroutinefunction(console.exit)
         
-        print("  PASS: Console has all required methods")
         return True
     except Exception as e:
         print(f"  FAIL: {e}")
@@ -353,8 +341,6 @@ def run_all_tests():
     
     # Summary
     print("\n" + "=" * 70)
-    print("TEST SUMMARY")
-    print("=" * 70)
     
     passed = sum(1 for _, result in results if result)
     total = len(results)
