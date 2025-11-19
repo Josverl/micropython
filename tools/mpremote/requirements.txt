@@ -1,3 +1,4 @@
 pyserial >= 3.3
+pyserial-asyncio >= 0.6
 importlib_metadata >= 1.4; python_version < "3.8"
 platformdirs >= 4.3.7
