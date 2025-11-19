@@ -153,7 +153,13 @@ error = RawREPLProtocol.check_error(stderr)
 
 ```bash
 cd tools/mpremote
-bash tests/run_async_tests.sh
+python3 tests/run_async_tests.py
+```
+
+Or on Windows:
+```cmd
+cd tools\mpremote
+python tests\run_async_tests.py
 ```
 
 ### Individual Test Suites
@@ -167,6 +173,9 @@ python3 tests/test_async_comprehensive.py
 
 # Integration tests
 python3 tests/test_integration.py
+
+# Validation script
+python3 tests/validate_implementation.py
 ```
 
 ### Test Coverage

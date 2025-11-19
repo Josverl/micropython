@@ -35,7 +35,7 @@ sync wrappers.
 import asyncio
 import sys
 
-from .transport import stdout_write_bytes
+from .transport import stdout_write_bytes, TransportExecError
 
 
 async def do_exec_async(state, args):
@@ -67,7 +67,7 @@ async def do_exec_async(state, args):
             )
             if ret_err:
                 stdout_write_bytes(ret_err)
-                sys.exit(1)
+                raise TransportExecError(1, ret_err)
     else:
         # Fall back to sync version
         state.transport.exec_raw_no_follow(pyfile)
@@ -78,7 +78,7 @@ async def do_exec_async(state, args):
             )
             if ret_err:
                 stdout_write_bytes(ret_err)
-                sys.exit(1)
+                raise TransportExecError(1, ret_err)
 
 
 async def do_eval_async(state, args):
@@ -128,7 +128,7 @@ async def do_run_async(state, args):
     
     if ret_err:
         stdout_write_bytes(ret_err)
-        sys.exit(1)
+        raise TransportExecError(1, ret_err)
 
 
 async def do_filesystem_cp_async(state, src, dest, check_hash=False):
