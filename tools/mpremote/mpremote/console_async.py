@@ -47,7 +47,8 @@ class AsyncConsolePosix:
     """Async POSIX console using asyncio streams."""
 
     def __init__(self):
-        self.infd = sys.stdin.fileno()
+        # Defer fileno() call until needed to avoid issues with pytest's stdin capture
+        self.infd = None
         self.infile = sys.stdin.buffer
         self.outfile = sys.stdout.buffer
         if hasattr(self.infile, "raw"):
@@ -55,12 +56,19 @@ class AsyncConsolePosix:
         if hasattr(self.outfile, "raw"):
             self.outfile = self.outfile.raw
 
-        self.orig_attr = termios.tcgetattr(self.infd)
+        self.orig_attr = None
         self.reader = None
         self._loop = None
 
     def enter(self):
         """Enter raw terminal mode."""
+        if not termios:
+            raise RuntimeError("termios module not available on this platform")
+        # Initialize file descriptor if not already done
+        if self.infd is None:
+            self.infd = sys.stdin.fileno()
+            self.orig_attr = termios.tcgetattr(self.infd)
+
         # attr is: [iflag, oflag, cflag, lflag, ispeed, ospeed, cc]
         attr = termios.tcgetattr(self.infd)
         attr[0] &= ~(
@@ -75,11 +83,20 @@ class AsyncConsolePosix:
 
     def exit(self):
         """Restore original terminal mode."""
-        termios.tcsetattr(self.infd, termios.TCSANOW, self.orig_attr)
+        assert termios
+        assert self.infd
+        if self.orig_attr is not None:
+            termios.tcsetattr(self.infd, termios.TCSANOW, self.orig_attr)
 
     async def setup_async(self):
         """Setup async stdin reader."""
+        assert termios
         if self.reader is None:
+            # Initialize file descriptor if not already done
+            if self.infd is None:
+                self.infd = sys.stdin.fileno()
+                self.orig_attr = termios.tcgetattr(self.infd)
+
             self._loop = asyncio.get_event_loop()
             self.reader = asyncio.StreamReader(loop=self._loop)
             protocol = asyncio.StreamReaderProtocol(self.reader, loop=self._loop)
@@ -98,6 +115,8 @@ class AsyncConsolePosix:
 
     def readchar(self):
         """Synchronous read character (for compatibility)."""
+        if self.infd is None:
+            self.infd = sys.stdin.fileno()
         res = select.select([self.infd], [], [], 0)
         if res[0]:
             return self.infile.read(1)
@@ -106,6 +125,8 @@ class AsyncConsolePosix:
 
     def waitchar(self, transport_serial=None):
         """Wait for character (synchronous, for compatibility)."""
+        if self.infd is None:
+            self.infd = sys.stdin.fileno()
         if transport_serial:
             # TODO: transport_serial might not have fd
             select.select([self.infd, transport_serial.fd], [], [])
