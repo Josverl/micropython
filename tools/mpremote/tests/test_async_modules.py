@@ -227,9 +227,9 @@ class TestAsyncSerialTransport:
             "close_async",
         ]
         for method_name in async_methods:
-            assert hasattr(
-                AsyncSerialTransport, method_name
-            ), f"AsyncSerialTransport missing {method_name}"
+            assert hasattr(AsyncSerialTransport, method_name), (
+                f"AsyncSerialTransport missing {method_name}"
+            )
 
 
 class TestAsyncConsole:

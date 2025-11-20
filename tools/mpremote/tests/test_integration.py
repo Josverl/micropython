@@ -15,6 +15,7 @@ from mpremote.protocol import RawREPLProtocol
 
 try:
     from mpremote.transport_serial_async import AsyncSerialTransport, serial_asyncio
+
     HAS_SERIAL_ASYNCIO = serial_asyncio is not None
 except ImportError:
     HAS_SERIAL_ASYNCIO = False
@@ -24,7 +25,7 @@ except ImportError:
 @pytest.mark.skipif(not HAS_SERIAL_ASYNCIO, reason="pyserial-asyncio not installed")
 def test_async_workflow(event_loop):
     """Test a complete async workflow (without actual hardware)."""
-    
+
     async def _test():
         print("Testing async workflow integration...")
 
@@ -75,13 +76,13 @@ def test_async_workflow(event_loop):
         assert len(header) == 7  # Ctrl-E A \x01 + 4 bytes length
 
         return True
-    
+
     event_loop.run_until_complete(_test())
 
 
 def test_concurrent_pattern(event_loop):
     """Test that async patterns work correctly."""
-    
+
     async def _test():
         print("\nTesting async concurrent patterns...")
 
@@ -120,7 +121,7 @@ def test_concurrent_pattern(event_loop):
             return False
 
         return True
-    
+
     event_loop.run_until_complete(_test())
 
 

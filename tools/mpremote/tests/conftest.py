@@ -224,19 +224,19 @@ def find_micropython_device():
 def test_device_port(request):
     """
     Get test device port from command line, environment, or auto-detect.
-    
+
     Priority order:
     1. Command line: pytest --device=COM20 or pytest --device=/dev/ttyUSB0
     2. Environment: MICROPYTHON_DEVICE=COM20 pytest ...
     3. Auto-detect: First available serial port (cross-platform)
-    
+
     Returns None if no device is found, causing hardware tests to be skipped.
     """
     # 1. Check command line argument
     device = request.config.getoption("--device", default=None)
     if device:
         return device
-    
+
     # 2. Check environment variable
     device = os.environ.get("MICROPYTHON_DEVICE")
     if device:
@@ -283,12 +283,13 @@ async def connected_transport(hardware_device, async_modules):
 def get_writable_path():
     """
     Return a helper function that detects writable filesystem path on device.
-    
+
     Usage:
         writable_path = await get_writable_path(transport)
         if writable_path is None:
             pytest.skip("No writable filesystem available")
     """
+
     async def _get_writable_path(transport):
         """Detect and return writable path on device, or None if none available."""
         code = """
@@ -310,8 +311,8 @@ print(writable_path if writable_path else 'NONE')
 """
         stdout = await transport.exec_async(code)
         result = stdout.strip().decode()
-        return None if result == 'NONE' else result
-    
+        return None if result == "NONE" else result
+
     return _get_writable_path
 
 

@@ -197,6 +197,7 @@ class AsyncTransport(Transport):
         result = await self.exec_async(f"import os\nprint(repr(os.stat({src!r})))")
         # Parse the repr() output back to tuple
         import ast
+
         return ast.literal_eval(result.decode().strip())
 
     async def fs_readfile_async(
@@ -216,6 +217,7 @@ class AsyncTransport(Transport):
         result = await self.exec_async(f"print(open({src!r}, 'rb').read())")
         # The result has b'...' format, need to decode it
         import ast
+
         return ast.literal_eval(result.decode().strip())
 
     async def fs_writefile_async(
@@ -231,13 +233,13 @@ class AsyncTransport(Transport):
         """
         # Open file and write data in chunks
         await self.exec_async(f"f=open({dest!r},'wb')\nw=f.write")
-        
+
         # Write data in chunks
         for i in range(0, len(data), chunk_size):
-            chunk = data[i:i + chunk_size]
+            chunk = data[i : i + chunk_size]
             await self.exec_async(f"w({chunk!r})")
             if progress_callback:
                 progress_callback(i + len(chunk), len(data))
-        
+
         # Close file
         await self.exec_async("f.close()")

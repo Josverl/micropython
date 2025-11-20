@@ -49,45 +49,49 @@ import asyncio
 import pytest
 
 
-pytestmark = [pytest.mark.async_required, pytest.mark.hardware_required, pytest.mark.serial_required]
+pytestmark = [
+    pytest.mark.async_required,
+    pytest.mark.hardware_required,
+    pytest.mark.serial_required,
+]
 
 
 def test_basic_connection(hardware_device, async_modules, event_loop):
     """Test basic connection and disconnection."""
     AsyncSerialTransport = async_modules["AsyncSerialTransport"]
-    
+
     async def _test():
         transport = AsyncSerialTransport(hardware_device, baudrate=115200)
         await asyncio.wait_for(transport.connect(), timeout=5.0)
-        
+
         assert transport.reader is not None
         assert transport.writer is not None
-        
+
         await transport.close_async()
-    
+
     event_loop.run_until_complete(_test())
 
 
 def test_enter_raw_repl(hardware_device, async_modules, event_loop):
     """Test entering raw REPL mode."""
     AsyncSerialTransport = async_modules["AsyncSerialTransport"]
-    
+
     async def _test():
         transport = AsyncSerialTransport(hardware_device, baudrate=115200)
         await asyncio.wait_for(transport.connect(), timeout=5.0)
-        
+
         await transport.enter_raw_repl_async(soft_reset=True)
         assert transport.in_raw_repl is True
-        
+
         await transport.close_async()
-    
+
     event_loop.run_until_complete(_test())
 
 
 def test_exec_raw_async(hardware_device, async_modules, event_loop):
     """Test executing raw commands."""
     AsyncSerialTransport = async_modules["AsyncSerialTransport"]
-    
+
     async def _test():
         transport = AsyncSerialTransport(hardware_device, baudrate=115200)
         await asyncio.wait_for(transport.connect(), timeout=5.0)
@@ -102,16 +106,16 @@ def test_exec_raw_async(hardware_device, async_modules, event_loop):
         stdout, stderr = await transport.exec_raw_async("print(2 + 2)")
         assert stdout.strip() == b"4"
         assert stderr == b""
-        
+
         await transport.close_async()
-    
+
     event_loop.run_until_complete(_test())
 
 
 def test_exec_with_error(hardware_device, async_modules, event_loop):
     """Test executing command that raises an error."""
     AsyncSerialTransport = async_modules["AsyncSerialTransport"]
-    
+
     async def _test():
         transport = AsyncSerialTransport(hardware_device, baudrate=115200)
         await asyncio.wait_for(transport.connect(), timeout=5.0)
@@ -121,16 +125,16 @@ def test_exec_with_error(hardware_device, async_modules, event_loop):
         stdout, stderr = await transport.exec_raw_async("print(undefined_var)")
         assert stdout == b""
         assert b"NameError" in stderr
-        
+
         await transport.close_async()
-    
+
     event_loop.run_until_complete(_test())
 
 
 def test_eval_async(hardware_device, async_modules, event_loop):
     """Test evaluating expressions."""
     AsyncSerialTransport = async_modules["AsyncSerialTransport"]
-    
+
     async def _test():
         transport = AsyncSerialTransport(hardware_device, baudrate=115200)
         await asyncio.wait_for(transport.connect(), timeout=5.0)
@@ -151,16 +155,16 @@ def test_eval_async(hardware_device, async_modules, event_loop):
         # Dictionary
         result = await transport.eval_async("{'a': 1, 'b': 2}")
         assert result == {"a": 1, "b": 2}
-        
+
         await transport.close_async()
-    
+
     event_loop.run_until_complete(_test())
 
 
 def test_exec_async(hardware_device, async_modules, event_loop):
     """Test executing multi-line code."""
     AsyncSerialTransport = async_modules["AsyncSerialTransport"]
-    
+
     async def _test():
         transport = AsyncSerialTransport(hardware_device, baudrate=115200)
         await asyncio.wait_for(transport.connect(), timeout=5.0)
@@ -173,16 +177,16 @@ print(x + y)
 """
         stdout = await transport.exec_async(code)
         assert stdout.strip() == b"30"
-        
+
         await transport.close_async()
-    
+
     event_loop.run_until_complete(_test())
 
 
 def test_multiple_commands(hardware_device, async_modules, event_loop):
     """Test executing multiple commands in sequence."""
     AsyncSerialTransport = async_modules["AsyncSerialTransport"]
-    
+
     async def _test():
         transport = AsyncSerialTransport(hardware_device, baudrate=115200)
         await asyncio.wait_for(transport.connect(), timeout=5.0)
@@ -203,16 +207,16 @@ def test_multiple_commands(hardware_device, async_modules, event_loop):
         # Read modified value
         result = await transport.eval_async("x")
         assert result == 84
-        
+
         await transport.close_async()
-    
+
     event_loop.run_until_complete(_test())
 
 
 def test_concurrent_operations(hardware_device, async_modules, event_loop):
     """Test that operations are properly serialized."""
     AsyncSerialTransport = async_modules["AsyncSerialTransport"]
-    
+
     async def _test():
         transport = AsyncSerialTransport(hardware_device, baudrate=115200)
         await asyncio.wait_for(transport.connect(), timeout=5.0)
@@ -225,9 +229,9 @@ def test_concurrent_operations(hardware_device, async_modules, event_loop):
             results.append(result)
 
         assert results == [2, 4, 6]
-        
+
         await transport.close_async()
-    
+
     event_loop.run_until_complete(_test())
 
 
@@ -235,7 +239,7 @@ def test_concurrent_operations(hardware_device, async_modules, event_loop):
 def test_raw_paste_mode(hardware_device, async_modules, event_loop):
     """Test raw paste mode if supported."""
     AsyncSerialTransport = async_modules["AsyncSerialTransport"]
-    
+
     async def _test():
         transport = AsyncSerialTransport(hardware_device, baudrate=115200)
         await asyncio.wait_for(transport.connect(), timeout=5.0)
@@ -249,16 +253,16 @@ def test_raw_paste_mode(hardware_device, async_modules, event_loop):
             # Should have 50 lines of output
             lines = stdout.strip().split(b"\r\n")
             assert len(lines) == 50
-        
+
         await transport.close_async()
-    
+
     event_loop.run_until_complete(_test())
 
 
 def test_soft_reset(hardware_device, async_modules, event_loop):
     """Test soft reset functionality."""
     AsyncSerialTransport = async_modules["AsyncSerialTransport"]
-    
+
     async def _test():
         transport = AsyncSerialTransport(hardware_device, baudrate=115200)
         await asyncio.wait_for(transport.connect(), timeout=5.0)
@@ -274,20 +278,20 @@ def test_soft_reset(hardware_device, async_modules, event_loop):
         # Variable should be gone
         stdout, stderr = await transport.exec_raw_async("print(test_var)")
         assert b"NameError" in stderr
-        
+
         await transport.close_async()
-    
+
     event_loop.run_until_complete(_test())
 
 
 def test_exit_and_reenter_raw_repl(hardware_device, async_modules, event_loop):
     """Test exiting and re-entering raw REPL."""
     AsyncSerialTransport = async_modules["AsyncSerialTransport"]
-    
+
     async def _test():
         transport = AsyncSerialTransport(hardware_device, baudrate=115200)
         await asyncio.wait_for(transport.connect(), timeout=5.0)
-        
+
         # Enter raw REPL
         await transport.enter_raw_repl_async(soft_reset=True)
         assert transport.in_raw_repl is True
@@ -303,9 +307,9 @@ def test_exit_and_reenter_raw_repl(hardware_device, async_modules, event_loop):
         # Should still be able to execute commands
         result = await transport.eval_async("1 + 1")
         assert result == 2
-        
+
         await transport.close_async()
-    
+
     event_loop.run_until_complete(_test())
 
 
@@ -313,7 +317,7 @@ def test_exit_and_reenter_raw_repl(hardware_device, async_modules, event_loop):
 def test_large_output(hardware_device, async_modules, event_loop):
     """Test handling large output from device."""
     AsyncSerialTransport = async_modules["AsyncSerialTransport"]
-    
+
     async def _test():
         transport = AsyncSerialTransport(hardware_device, baudrate=115200)
         await asyncio.wait_for(transport.connect(), timeout=5.0)
@@ -328,16 +332,16 @@ def test_large_output(hardware_device, async_modules, event_loop):
         assert len(lines) == 100
         assert b"Line 000:" in lines[0]
         assert b"Line 099:" in lines[99]
-        
+
         await transport.close_async()
-    
+
     event_loop.run_until_complete(_test())
 
 
 def test_unicode_handling(hardware_device, async_modules, event_loop):
     """Test handling of Unicode characters."""
     AsyncSerialTransport = async_modules["AsyncSerialTransport"]
-    
+
     async def _test():
         transport = AsyncSerialTransport(hardware_device, baudrate=115200)
         await asyncio.wait_for(transport.connect(), timeout=5.0)
@@ -354,16 +358,16 @@ def test_unicode_handling(hardware_device, async_modules, event_loop):
         for test_str in test_strings:
             result = await transport.eval_async(f"'{test_str}'")
             assert result == test_str
-        
+
         await transport.close_async()
-    
+
     event_loop.run_until_complete(_test())
 
 
 def test_import_modules(hardware_device, async_modules, event_loop):
     """Test importing standard MicroPython modules."""
     AsyncSerialTransport = async_modules["AsyncSerialTransport"]
-    
+
     async def _test():
         transport = AsyncSerialTransport(hardware_device, baudrate=115200)
         await asyncio.wait_for(transport.connect(), timeout=5.0)
@@ -385,9 +389,9 @@ print(t > 0)
 """
         stdout = await transport.exec_async(code)
         assert b"True" in stdout
-        
+
         await transport.close_async()
-    
+
     event_loop.run_until_complete(_test())
 
 
@@ -397,7 +401,7 @@ print(t > 0)
 def test_filesystem_operations(hardware_device, async_modules, event_loop):
     """Test basic filesystem operations."""
     AsyncSerialTransport = async_modules["AsyncSerialTransport"]
-    
+
     async def _test():
         transport = AsyncSerialTransport(hardware_device, baudrate=115200)
         await asyncio.wait_for(transport.connect(), timeout=5.0)
@@ -427,8 +431,8 @@ print(writable_path if writable_path else 'NONE')
 """
         stdout = await transport.exec_async(code)
         writable_path = stdout.strip().decode()
-        
-        if writable_path == 'NONE':
+
+        if writable_path == "NONE":
             # Skip test if no writable filesystem available
             pytest.skip("No writable filesystem available on device")
             return
@@ -459,16 +463,16 @@ print('deleted')
 """
         stdout = await transport.exec_async(code)
         assert b"deleted" in stdout
-        
+
         await transport.close_async()
-    
+
     event_loop.run_until_complete(_test())
 
 
 def test_directory_operations(hardware_device, async_modules, event_loop):
     """Test directory operations."""
     AsyncSerialTransport = async_modules["AsyncSerialTransport"]
-    
+
     async def _test():
         transport = AsyncSerialTransport(hardware_device, baudrate=115200)
         await asyncio.wait_for(transport.connect(), timeout=5.0)
@@ -494,8 +498,8 @@ print(writable_path if writable_path else 'NONE')
 """
         stdout = await transport.exec_async(code)
         writable_path = stdout.strip().decode()
-        
-        if writable_path == 'NONE':
+
+        if writable_path == "NONE":
             pytest.skip("No writable filesystem available on device")
             return
 
@@ -531,8 +535,7 @@ except OSError as e:
 """
         stdout = await transport.exec_async(code)
         assert b"removed" in stdout or b"error" in stdout
-        
-        await transport.close_async()
-    
-    event_loop.run_until_complete(_test())
 
+        await transport.close_async()
+
+    event_loop.run_until_complete(_test())

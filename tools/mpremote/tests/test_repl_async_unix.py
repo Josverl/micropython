@@ -27,6 +27,7 @@ from unittest.mock import Mock
 # POSIX-only imports
 try:
     import pty
+
     HAS_PTY = True
 except ImportError:
     HAS_PTY = False
