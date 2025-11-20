@@ -41,72 +41,72 @@ async def do_repl_main_loop_async(
     state, console, *, escape_non_printable=False, code_to_inject=None, file_to_inject=None
 ):
     """Async REPL loop with concurrent keyboard and device I/O.
-    
+
     This function runs two concurrent coroutines:
     1. Reading keyboard input and sending to device
     2. Reading device output and displaying to console
-    
+
     Args:
         state: State object with transport connection
         console: Async console for I/O
         escape_non_printable: Whether to escape non-printable characters
         code_to_inject: Code to inject on Ctrl-J
         file_to_inject: File to inject on Ctrl-K
-        
+
     Returns:
         bool: True if device disconnected, False if user exited
     """
-    
+
     async def handle_keyboard_input():
         """Coroutine: read keyboard input and send to device."""
         while True:
             try:
                 c = await console.readchar_async()
-                
+
                 if c in (b"\x1d", b"\x18"):  # ctrl-] or ctrl-x, quit
                     return "exit"
                 elif c == b"\x04":  # ctrl-D
                     # Special handling needed for ctrl-D if filesystem is mounted
-                    if hasattr(state.transport, 'write_ctrl_d'):
+                    if hasattr(state.transport, "write_ctrl_d"):
                         state.transport.write_ctrl_d(console.write)
                     else:
-                        if hasattr(state.transport, 'write_async'):
+                        if hasattr(state.transport, "write_async"):
                             await state.transport.write_async(c)
                         else:
                             state.transport.serial.write(c)
                 elif c == b"\x0a" and code_to_inject is not None:  # ctrl-j, inject code
-                    if hasattr(state.transport, 'write_async'):
+                    if hasattr(state.transport, "write_async"):
                         await state.transport.write_async(code_to_inject)
                     else:
                         state.transport.serial.write(code_to_inject)
                 elif c == b"\x0b" and file_to_inject is not None:  # ctrl-k, inject script
                     console.write(bytes(f"Injecting {file_to_inject}\r\n", "utf8"))
-                    
+
                     # Enter raw REPL and execute file
-                    if hasattr(state.transport, 'enter_raw_repl_async'):
+                    if hasattr(state.transport, "enter_raw_repl_async"):
                         await state.transport.enter_raw_repl_async(soft_reset=False)
                     else:
                         state.transport.enter_raw_repl(soft_reset=False)
-                    
+
                     with open(file_to_inject, "rb") as f:
                         pyfile = f.read()
-                    
+
                     try:
-                        if hasattr(state.transport, 'exec_raw_no_follow_async'):
+                        if hasattr(state.transport, "exec_raw_no_follow_async"):
                             await state.transport.exec_raw_no_follow_async(pyfile)
                         else:
                             state.transport.exec_raw_no_follow(pyfile)
                     except TransportError as er:
                         console.write(b"Error:\r\n")
                         console.write(str(er).encode())
-                    
-                    if hasattr(state.transport, 'exit_raw_repl_async'):
+
+                    if hasattr(state.transport, "exit_raw_repl_async"):
                         await state.transport.exit_raw_repl_async()
                     else:
                         state.transport.exit_raw_repl()
                 else:
                     # Send character to device
-                    if hasattr(state.transport, 'write_async'):
+                    if hasattr(state.transport, "write_async"):
                         await state.transport.write_async(c)
                     else:
                         state.transport.serial.write(c)
@@ -117,13 +117,13 @@ async def do_repl_main_loop_async(
             except Exception as e:
                 print(f"\r\nKeyboard error: {e}")
                 return "error"
-    
+
     async def handle_device_output():
         """Coroutine: read device output and write to console."""
         while True:
             try:
                 # Read data from device
-                if hasattr(state.transport, 'read_async'):
+                if hasattr(state.transport, "read_async"):
                     # Async transport
                     # Check if there's data available (non-blocking)
                     try:
@@ -169,19 +169,16 @@ async def do_repl_main_loop_async(
             except Exception as e:
                 print(f"\r\nDevice error: {e}")
                 return "error"
-    
+
     # Run both coroutines concurrently
     try:
         tasks = [
             asyncio.create_task(handle_keyboard_input(), name="keyboard"),
-            asyncio.create_task(handle_device_output(), name="device")
+            asyncio.create_task(handle_device_output(), name="device"),
         ]
-        
-        done, pending = await asyncio.wait(
-            tasks,
-            return_when=asyncio.FIRST_COMPLETED
-        )
-        
+
+        done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+
         # Get the result from completed task
         result = None
         for task in done:
@@ -190,7 +187,7 @@ async def do_repl_main_loop_async(
             except Exception as e:
                 print(f"\r\nTask error: {e}")
                 result = "error"
-        
+
         # Cancel remaining tasks
         for task in pending:
             task.cancel()
@@ -198,10 +195,10 @@ async def do_repl_main_loop_async(
                 await task
             except asyncio.CancelledError:
                 pass
-        
+
         # Return True if disconnected, False otherwise
         return result == "disconnect"
-    
+
     except KeyboardInterrupt:
         console.exit()
         return False
@@ -209,23 +206,23 @@ async def do_repl_main_loop_async(
 
 async def do_repl_async(state, args):
     """Async REPL command handler.
-    
+
     Args:
         state: State object with transport connection
         args: Command arguments
-        
+
     Returns:
         bool: True if device disconnected, False if user exited
     """
     # Ensure we're in friendly REPL mode
     await state.ensure_friendly_repl_async()
     state.did_action()
-    
+
     escape_non_printable = args.escape_non_printable
     capture_file = args.capture
     code_to_inject = args.inject_code
     file_to_inject = args.inject_file
-    
+
     print(f"Connected to MicroPython at {state.transport.device_name}")
     print("Use Ctrl-] or Ctrl-x to exit this shell")
     if escape_non_printable:
@@ -238,19 +235,21 @@ async def do_repl_async(state, args):
         print("Use Ctrl-J to inject", code_to_inject)
     if file_to_inject is not None:
         print(f'Use Ctrl-K to inject file "{file_to_inject}"')
-    
+
     console = AsyncConsole()
     console.enter()
-    
+
     # Wrap console.write to also write to capture file
     original_write = console.write
     if capture_file is not None:
+
         def console_write_with_capture(b):
             original_write(b)
             capture_file.write(b)
             capture_file.flush()
+
         console.write = console_write_with_capture
-    
+
     try:
         return await do_repl_main_loop_async(
             state,
@@ -267,10 +266,10 @@ async def do_repl_async(state, args):
 
 def _is_disconnect_exception(exception):
     """Check if an exception indicates device disconnect.
-    
+
     Args:
         exception: Exception to check
-        
+
     Returns:
         bool: True if the exception indicates device disconnected
     """
@@ -289,11 +288,11 @@ def _is_disconnect_exception(exception):
 # Sync wrapper for backward compatibility
 def do_repl_async_wrapper(state, args):
     """Synchronous wrapper for async REPL.
-    
+
     Args:
         state: State object with transport connection
         args: Command arguments
-        
+
     Returns:
         bool: True if device disconnected, False if user exited
     """

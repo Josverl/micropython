@@ -555,31 +555,31 @@ class State:
         self.ensure_connected()
         if self.transport.in_raw_repl:
             self.transport.exit_raw_repl()
-    
+
     # Async versions of ensure methods for Phase 2
     async def ensure_connected_async(self):
         """Async version of ensure_connected."""
         if self.transport is None:
             do_connect(self)
-    
+
     async def ensure_raw_repl_async(self, soft_reset=None):
         """Async version of ensure_raw_repl."""
         await self.ensure_connected_async()
         soft_reset = self._auto_soft_reset if soft_reset is None else soft_reset
         if soft_reset or not self.transport.in_raw_repl:
             # Check if transport has async method
-            if hasattr(self.transport, 'enter_raw_repl_async'):
+            if hasattr(self.transport, "enter_raw_repl_async"):
                 await self.transport.enter_raw_repl_async(soft_reset=soft_reset)
             else:
                 # Fall back to sync method
                 self.transport.enter_raw_repl(soft_reset=soft_reset)
             self._auto_soft_reset = False
-    
+
     async def ensure_friendly_repl_async(self):
         """Async version of ensure_friendly_repl."""
         await self.ensure_connected_async()
         if self.transport.in_raw_repl:
-            if hasattr(self.transport, 'exit_raw_repl_async'):
+            if hasattr(self.transport, "exit_raw_repl_async"):
                 await self.transport.exit_raw_repl_async()
             else:
                 self.transport.exit_raw_repl()

@@ -45,7 +45,7 @@ except ImportError:
 
 class AsyncConsolePosix:
     """Async POSIX console using asyncio streams."""
-    
+
     def __init__(self):
         self.infd = sys.stdin.fileno()
         self.infile = sys.stdin.buffer
@@ -54,11 +54,11 @@ class AsyncConsolePosix:
             self.infile = self.infile.raw
         if hasattr(self.outfile, "raw"):
             self.outfile = self.outfile.raw
-        
+
         self.orig_attr = termios.tcgetattr(self.infd)
         self.reader = None
         self._loop = None
-    
+
     def enter(self):
         """Enter raw terminal mode."""
         # attr is: [iflag, oflag, cflag, lflag, ispeed, ospeed, cc]
@@ -72,11 +72,11 @@ class AsyncConsolePosix:
         attr[6][termios.VMIN] = 1
         attr[6][termios.VTIME] = 0
         termios.tcsetattr(self.infd, termios.TCSANOW, attr)
-    
+
     def exit(self):
         """Restore original terminal mode."""
         termios.tcsetattr(self.infd, termios.TCSANOW, self.orig_attr)
-    
+
     async def setup_async(self):
         """Setup async stdin reader."""
         if self.reader is None:
@@ -84,18 +84,18 @@ class AsyncConsolePosix:
             self.reader = asyncio.StreamReader(loop=self._loop)
             protocol = asyncio.StreamReaderProtocol(self.reader, loop=self._loop)
             await self._loop.connect_read_pipe(lambda: protocol, sys.stdin)
-    
+
     async def readchar_async(self) -> bytes:
         """Async read single character from stdin.
-        
+
         Returns:
             bytes: Single character read from keyboard
         """
         if self.reader is None:
             await self.setup_async()
-        
+
         return await self.reader.read(1)
-    
+
     def readchar(self):
         """Synchronous read character (for compatibility)."""
         res = select.select([self.infd], [], [], 0)
@@ -103,7 +103,7 @@ class AsyncConsolePosix:
             return self.infile.read(1)
         else:
             return None
-    
+
     def waitchar(self, transport_serial=None):
         """Wait for character (synchronous, for compatibility)."""
         if transport_serial:
@@ -111,10 +111,10 @@ class AsyncConsolePosix:
             select.select([self.infd, transport_serial.fd], [], [])
         else:
             select.select([self.infd], [], [])
-    
+
     def write(self, buf: bytes):
         """Write to stdout.
-        
+
         Args:
             buf: Bytes to write to console
         """
@@ -124,31 +124,31 @@ class AsyncConsolePosix:
 
 class AsyncConsoleWindows:
     """Async Windows console."""
-    
+
     def __init__(self):
         self.ctrl_c = 0
         self._msvcrt = msvcrt
         self._signal = signal
-    
+
     def _sigint_handler(self, signo, frame):
         """Handle Ctrl-C signal."""
         self.ctrl_c += 1
-    
+
     def enter(self):
         """Setup signal handler."""
         self._signal.signal(self._signal.SIGINT, self._sigint_handler)
-    
+
     def exit(self):
         """Restore signal handler."""
         self._signal.signal(self._signal.SIGINT, self._signal.SIG_DFL)
-    
+
     def inWaiting(self):
         """Check if input is waiting (synchronous)."""
         return 1 if self.ctrl_c or self._msvcrt.kbhit() else 0
-    
+
     async def readchar_async(self) -> bytes:
         """Async read character on Windows.
-        
+
         Returns:
             bytes: Single character read from keyboard
         """
@@ -156,7 +156,7 @@ class AsyncConsoleWindows:
             if self.ctrl_c:
                 self.ctrl_c -= 1
                 return b"\x03"
-            
+
             if self._msvcrt.kbhit():
                 ch = self._msvcrt.getch()
                 # Handle arrow keys and function keys
@@ -183,10 +183,10 @@ class AsyncConsoleWindows:
                     except KeyError:
                         return None
                 return ch
-            
+
             # No key available, yield control
             await asyncio.sleep(0.01)
-    
+
     def readchar(self):
         """Synchronous read character (for compatibility)."""
         if self.ctrl_c:
@@ -195,16 +195,17 @@ class AsyncConsoleWindows:
         if self._msvcrt.kbhit():
             return self._msvcrt.getch()
         return None
-    
+
     def waitchar(self, transport_serial):
         """Wait for character (synchronous, for compatibility)."""
         import time
+
         while not (self.inWaiting() or transport_serial.inWaiting()):
             time.sleep(0.01)
-    
+
     def write(self, buf: bytes):
         """Write to stdout.
-        
+
         Args:
             buf: Bytes to write to console
         """
@@ -216,7 +217,7 @@ class AsyncConsoleWindows:
 # Factory function
 def AsyncConsole():
     """Create appropriate async console for platform.
-    
+
     Returns:
         AsyncConsolePosix or AsyncConsoleWindows instance
     """

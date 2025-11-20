@@ -47,18 +47,24 @@ from .protocol import RawREPLProtocol
 
 class AsyncSerialTransport(AsyncTransport):
     """Async serial transport using pyserial-asyncio.
-    
+
     This class provides an async implementation of the serial transport,
     allowing non-blocking I/O operations with MicroPython devices over
     serial connections.
     """
-    
+
     fs_hook_mount = "/remote"  # MUST match the mount point in fs_hook_code
-    
-    def __init__(self, device: str, baudrate: int = 115200, 
-                 wait: float = 0, exclusive: bool = True, timeout: float = None):
+
+    def __init__(
+        self,
+        device: str,
+        baudrate: int = 115200,
+        wait: float = 0,
+        exclusive: bool = True,
+        timeout: float = None,
+    ):
         """Initialize async serial transport.
-        
+
         Args:
             device: Serial device path (e.g., '/dev/ttyUSB0', 'COM3')
             baudrate: Communication speed (default: 115200)
@@ -67,9 +73,11 @@ class AsyncSerialTransport(AsyncTransport):
             timeout: Read timeout (None for blocking)
         """
         if serial_asyncio is None:
-            raise ImportError("pyserial-asyncio is required for async serial transport. "
-                            "Install with: pip install pyserial-asyncio")
-        
+            raise ImportError(
+                "pyserial-asyncio is required for async serial transport. "
+                "Install with: pip install pyserial-asyncio"
+            )
+
         self.device_name = device
         self.baudrate = baudrate
         self.wait = wait
@@ -78,16 +86,16 @@ class AsyncSerialTransport(AsyncTransport):
         self.in_raw_repl = False
         self.use_raw_paste = True
         self.mounted = False
-        
+
         # Async stream objects
         self.reader: asyncio.StreamReader = None
         self.writer: asyncio.StreamWriter = None
         self._transport = None
-    
+
     async def connect(self):
         """Establish async serial connection."""
         import serial
-        
+
         # Set options, and exclusive if pyserial supports it
         serial_kwargs = {
             "baudrate": self.baudrate,
@@ -96,14 +104,13 @@ class AsyncSerialTransport(AsyncTransport):
         }
         if serial.__version__ >= "3.3":
             serial_kwargs["exclusive"] = self.exclusive
-        
+
         delayed = False
         for attempt in range(int(self.wait) + 1):
             try:
                 # Create async serial connection
                 self.reader, self.writer = await serial_asyncio.open_serial_connection(
-                    url=self.device_name,
-                    **serial_kwargs
+                    url=self.device_name, **serial_kwargs
                 )
                 break
             except (OSError, serial.SerialException) as e:
@@ -119,16 +126,16 @@ class AsyncSerialTransport(AsyncTransport):
             if delayed:
                 print("")
             raise TransportError(f"failed to access {self.device_name}")
-        
+
         if delayed:
             print("")
-    
+
     async def close_async(self):
         """Close async serial connection."""
         if self.writer:
             self.writer.close()
             await self.writer.wait_closed()
-    
+
     def close(self):
         """Synchronous close wrapper."""
         if self.writer:
@@ -139,80 +146,80 @@ class AsyncSerialTransport(AsyncTransport):
             except RuntimeError:
                 # Not in async context, create new loop
                 asyncio.run(self.close_async())
-    
+
     async def read_async(self, size: int = 1) -> bytes:
         """Non-blocking read using asyncio streams.
-        
+
         Args:
             size: Number of bytes to read
-            
+
         Returns:
             bytes: Data read from serial port
         """
         if not self.reader:
             raise TransportError("Not connected")
-        
+
         try:
             data = await self.reader.read(size)
             return data
         except Exception as e:
             raise TransportError(f"Read error: {e}")
-    
+
     async def write_async(self, data: bytes) -> int:
         """Non-blocking write using asyncio streams.
-        
+
         Args:
             data: Bytes to write
-            
+
         Returns:
             int: Number of bytes written
         """
         if not self.writer:
             raise TransportError("Not connected")
-        
+
         try:
             self.writer.write(data)
             await self.writer.drain()
             return len(data)
         except Exception as e:
             raise TransportError(f"Write error: {e}")
-    
+
     async def read_until_async(
-        self, 
+        self,
         min_num_bytes: int,
-        ending: bytes, 
+        ending: bytes,
         timeout: float = 10.0,
         data_consumer=None,
-        timeout_overall: float = None
+        timeout_overall: float = None,
     ) -> bytes:
         """Read until ending pattern found - async version.
-        
+
         Args:
             min_num_bytes: Minimum bytes to read (obsolete parameter for compatibility)
             ending: Byte pattern to wait for
             timeout: Timeout between characters in seconds
             data_consumer: Optional callback to consume data as it arrives
             timeout_overall: Overall timeout in seconds
-            
+
         Returns:
             bytes: All data read including ending pattern
         """
         assert data_consumer is None or len(ending) == 1
-        
+
         data = b""
         begin_overall = time.monotonic()
         begin_char = time.monotonic()
-        
+
         try:
             while True:
                 if data.endswith(ending):
                     break
-                
+
                 # Check overall timeout
                 if timeout_overall is not None:
                     if time.monotonic() >= begin_overall + timeout_overall:
                         break
-                
+
                 # Check character timeout
                 if timeout is not None:
                     if time.monotonic() >= begin_char + timeout:
@@ -257,18 +264,18 @@ class AsyncSerialTransport(AsyncTransport):
                         await asyncio.sleep(0.01)  # Yield control if no data
         except asyncio.CancelledError:
             raise TransportError("Read cancelled")
-        
+
         return data
-    
+
     async def enter_raw_repl_async(self, soft_reset: bool = True, timeout_overall: float = 10.0):
         """Enter raw REPL mode - async version.
-        
+
         Args:
             soft_reset: Whether to perform soft reset
             timeout_overall: Maximum time for operation in seconds
         """
         await self.write_async(b"\r\x03")  # ctrl-C: interrupt any running program
-        
+
         # Flush input buffer
         await asyncio.sleep(0.1)  # Give time for data to arrive
         try:
@@ -278,9 +285,9 @@ class AsyncSerialTransport(AsyncTransport):
                     await self.reader.read(1024)
         except asyncio.TimeoutError:
             pass  # No more data, buffer is flushed
-        
+
         await self.write_async(b"\r\x01")  # ctrl-A: enter raw REPL
-        
+
         if soft_reset:
             data = await self.read_until_async(
                 1, b"raw REPL; CTRL-B to exit\r\n>", timeout_overall=timeout_overall
@@ -288,57 +295,59 @@ class AsyncSerialTransport(AsyncTransport):
             if not data.endswith(b"raw REPL; CTRL-B to exit\r\n>"):
                 print(data)
                 raise TransportError("could not enter raw repl")
-            
+
             await self.write_async(b"\x04")  # ctrl-D: soft reset
-            
+
             data = await self.read_until_async(
                 1, b"soft reboot\r\n", timeout_overall=timeout_overall
             )
             if not data.endswith(b"soft reboot\r\n"):
                 print(data)
                 raise TransportError("could not enter raw repl")
-        
+
         data = await self.read_until_async(
             1, b"raw REPL; CTRL-B to exit\r\n", timeout_overall=timeout_overall
         )
         if not data.endswith(b"raw REPL; CTRL-B to exit\r\n"):
             print(data)
             raise TransportError("could not enter raw repl")
-        
+
         self.in_raw_repl = True
-    
+
     async def exit_raw_repl_async(self):
         """Exit raw REPL mode - async version."""
         await self.write_async(b"\r\x02")  # ctrl-B: enter friendly REPL
         self.in_raw_repl = False
-    
+
     async def follow_async(self, timeout: float, data_consumer=None) -> tuple:
         """Follow command execution - async version.
-        
+
         Args:
             timeout: Maximum time to wait for output
             data_consumer: Optional callback to consume output
-            
+
         Returns:
             tuple: (stdout, stderr) as bytes
         """
         # Wait for normal output
-        data = await self.read_until_async(1, b"\x04", timeout=timeout, data_consumer=data_consumer)
+        data = await self.read_until_async(
+            1, b"\x04", timeout=timeout, data_consumer=data_consumer
+        )
         if not data.endswith(b"\x04"):
             raise TransportError("timeout waiting for first EOF reception")
         data = data[:-1]
-        
+
         # Wait for error output
         data_err = await self.read_until_async(1, b"\x04", timeout=timeout)
         if not data_err.endswith(b"\x04"):
             raise TransportError("timeout waiting for second EOF reception")
         data_err = data_err[:-1]
-        
+
         return data, data_err
-    
+
     async def raw_paste_write_async(self, command_bytes: bytes):
         """Write command using raw paste mode - async version.
-        
+
         Args:
             command_bytes: Command to execute as bytes
         """
@@ -346,7 +355,7 @@ class AsyncSerialTransport(AsyncTransport):
         data = await self.read_async(2)
         window_size = struct.unpack("<H", data)[0]
         window_remain = window_size
-        
+
         # Write out the command_bytes data
         i = 0
         while i < len(command_bytes):
@@ -362,24 +371,24 @@ class AsyncSerialTransport(AsyncTransport):
                     return
                 else:
                     raise TransportError(f"unexpected read during raw paste: {data}")
-            
+
             # Send out as much data as possible that fits within the allowed window
             b = command_bytes[i : min(i + window_remain, len(command_bytes))]
             await self.write_async(b)
             window_remain -= len(b)
             i += len(b)
-        
+
         # Indicate end of data
         await self.write_async(b"\x04")
-        
+
         # Wait for device to acknowledge end of data
         data = await self.read_until_async(1, b"\x04", timeout=10.0)
         if not data.endswith(b"\x04"):
             raise TransportError(f"could not complete raw paste: {data}")
-    
+
     async def exec_raw_no_follow_async(self, command: str):
         """Execute without following - async version.
-        
+
         Args:
             command: Python code to execute
         """
@@ -387,12 +396,12 @@ class AsyncSerialTransport(AsyncTransport):
             command_bytes = command
         else:
             command_bytes = bytes(command, encoding="utf8")
-        
+
         # Check we have a prompt
         data = await self.read_until_async(1, b">", timeout=10.0)
         if not data.endswith(b">"):
             raise TransportError("could not enter raw repl")
-        
+
         if self.use_raw_paste:
             # Try to enter raw-paste mode
             await self.write_async(b"\x05A\x01")
@@ -411,49 +420,46 @@ class AsyncSerialTransport(AsyncTransport):
                     raise TransportError("could not enter raw repl")
             # Don't try to use raw-paste mode again for this connection
             self.use_raw_paste = False
-        
+
         # Write command using standard raw REPL
         # In async mode, we don't need artificial delays for flow control
         for i in range(0, len(command_bytes), 256):
             await self.write_async(command_bytes[i : min(i + 256, len(command_bytes))])
         await self.write_async(b"\x04")
-        
+
         # Check if we could exec command
         data = await self.read_async(2)
         if data != b"OK":
             raise TransportError(f"could not exec command (response: {data!r})")
-    
+
     async def exec_raw_async(
-        self, 
-        command: str, 
-        timeout: float = 10.0, 
-        data_consumer=None
+        self, command: str, timeout: float = 10.0, data_consumer=None
     ) -> tuple:
         """Execute command and follow - async version.
-        
+
         Args:
             command: Python code to execute
             timeout: Maximum time to wait
             data_consumer: Optional callback to consume output
-            
+
         Returns:
             tuple: (stdout, stderr) as bytes
         """
         await self.exec_raw_no_follow_async(command)
         return await self.follow_async(timeout, data_consumer)
-    
+
     async def eval_async(self, expression: str, parse: bool = True):
         """Evaluate expression - async version.
-        
+
         Args:
             expression: Python expression to evaluate
             parse: Whether to parse result as Python literal
-            
+
         Returns:
             Evaluated result
         """
         import ast
-        
+
         if parse:
             ret = await self.exec_async(f"print(repr({expression}))")
             ret = ret.strip()
@@ -462,14 +468,14 @@ class AsyncSerialTransport(AsyncTransport):
             ret = await self.exec_async(f"print({expression})")
             ret = ret.strip()
             return ret
-    
+
     async def exec_async(self, command: str, data_consumer=None) -> bytes:
         """Execute command in normal REPL - async version.
-        
+
         Args:
             command: Python code to execute
             data_consumer: Optional callback to consume output
-            
+
         Returns:
             bytes: Command output
         """

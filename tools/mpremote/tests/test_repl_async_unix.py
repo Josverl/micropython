@@ -45,6 +45,7 @@ try:
     from mpremote.repl_async import do_repl_main_loop_async
     from mpremote.console_async import AsyncConsole
     from mpremote.transport_async import AsyncTransport
+
     HAS_ASYNC = True
 except ImportError as e:
     HAS_ASYNC = False
@@ -53,7 +54,11 @@ except ImportError as e:
 # Find MicroPython unix port binary
 MICROPYTHON_BIN = None
 for possible_path in [
-    Path(__file__).parent.parent.parent.parent / "ports" / "unix" / "build-standard" / "micropython",
+    Path(__file__).parent.parent.parent.parent
+    / "ports"
+    / "unix"
+    / "build-standard"
+    / "micropython",
     Path(__file__).parent.parent.parent.parent / "ports" / "unix" / "build" / "micropython",
     Path("/usr/local/bin/micropython"),
     Path("/usr/bin/micropython"),
@@ -65,7 +70,7 @@ for possible_path in [
 
 class MockAsyncTransportUnix(AsyncTransport):
     """Mock async transport that uses unix port via pty."""
-    
+
     def __init__(self, process, master_fd):
         self.process = process
         self.master_fd = master_fd
@@ -73,17 +78,17 @@ class MockAsyncTransportUnix(AsyncTransport):
         self.in_raw_repl = False
         self.use_raw_paste = True
         self.mounted = False
-        
+
     async def read_async(self, size=1):
         """Read bytes from the pty."""
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, os.read, self.master_fd, size)
-    
+
     async def write_async(self, data):
         """Write bytes to the pty."""
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(None, os.write, self.master_fd, data)
-    
+
     async def read_until_async(self, ending, timeout=10):
         """Read until a specific byte sequence is found."""
         data = b""
@@ -98,7 +103,7 @@ class MockAsyncTransportUnix(AsyncTransport):
                     return data
             except asyncio.TimeoutError:
                 continue
-    
+
     async def close_async(self):
         """Close the transport."""
         try:
@@ -115,27 +120,23 @@ class MockAsyncTransportUnix(AsyncTransport):
 @unittest.skipUnless(MICROPYTHON_BIN, "MicroPython unix port not found")
 class TestREPLAsyncUnixBackend(unittest.TestCase):
     """Test async REPL using unix backend."""
-    
+
     def setUp(self):
         """Set up test - start MicroPython process."""
         # Create pty pair
         master_fd, slave_fd = pty.openpty()
-        
+
         # Start MicroPython on the slave pty
         self.process = subprocess.Popen(
-            [MICROPYTHON_BIN],
-            stdin=slave_fd,
-            stdout=slave_fd,
-            stderr=slave_fd,
-            close_fds=True
+            [MICROPYTHON_BIN], stdin=slave_fd, stdout=slave_fd, stderr=slave_fd, close_fds=True
         )
-        
+
         # Close slave fd in parent - child has it
         os.close(slave_fd)
-        
+
         self.master_fd = master_fd
         self.transport = MockAsyncTransportUnix(self.process, master_fd)
-        
+
     def tearDown(self):
         """Clean up - terminate MicroPython process."""
         try:
@@ -147,37 +148,40 @@ class TestREPLAsyncUnixBackend(unittest.TestCase):
             os.close(self.master_fd)
         except:
             pass
-    
+
     def test_unix_backend_starts(self):
         """Test that MicroPython unix backend starts correctly."""
         # Wait a bit for process to start
         import time
+
         time.sleep(0.2)
-        
+
         self.assertIsNotNone(self.process)
         self.assertIsNone(self.process.poll(), "Process should be running")
-    
+
     def test_basic_repl_interaction(self):
         """Test basic REPL interaction via pty."""
         import time
+
         time.sleep(0.2)  # Wait for REPL to start
-        
+
         # Send a command
         os.write(self.master_fd, b"print('hello')\r")
         time.sleep(0.1)
-        
+
         # Read response
         try:
             output = os.read(self.master_fd, 1024)
             self.assertIn(b"hello", output)
         except OSError:
             self.skipTest("Could not read from pty")
-    
+
     async def _test_async_transport_read_write(self):
         """Test async read/write to transport."""
         import time
+
         time.sleep(0.2)  # Wait for REPL to start
-        
+
         # Clear initial output
         try:
             while True:
@@ -186,11 +190,11 @@ class TestREPLAsyncUnixBackend(unittest.TestCase):
                     break
         except asyncio.TimeoutError:
             pass
-        
+
         # Send command
         await self.transport.write_async(b"1+1\r")
         await asyncio.sleep(0.1)
-        
+
         # Read response
         output = b""
         for _ in range(10):
@@ -201,47 +205,48 @@ class TestREPLAsyncUnixBackend(unittest.TestCase):
                     break
             except asyncio.TimeoutError:
                 break
-        
+
         self.assertIn(b"2", output, "Should see result of 1+1")
-    
+
     def test_async_transport_read_write(self):
         """Wrapper to run async test."""
         loop = asyncio.get_event_loop()
         loop.run_until_complete(self._test_async_transport_read_write())
-    
+
     def test_transport_attributes(self):
         """Test that mock transport has required attributes."""
         self.assertEqual(self.transport.device_name, "unix-pty")
         self.assertFalse(self.transport.in_raw_repl)
         self.assertTrue(self.transport.use_raw_paste)
         self.assertFalse(self.transport.mounted)
-        self.assertTrue(hasattr(self.transport, 'read_async'))
-        self.assertTrue(hasattr(self.transport, 'write_async'))
+        self.assertTrue(hasattr(self.transport, "read_async"))
+        self.assertTrue(hasattr(self.transport, "write_async"))
 
 
 @unittest.skipUnless(HAS_ASYNC, "Async modules not available")
 class TestREPLAsyncFunctions(unittest.TestCase):
     """Test REPL async functions without actual backend."""
-    
+
     def test_repl_main_loop_async_exists(self):
         """Test that do_repl_main_loop_async function exists."""
         self.assertTrue(callable(do_repl_main_loop_async))
         self.assertTrue(asyncio.iscoroutinefunction(do_repl_main_loop_async))
-    
+
     def test_repl_function_signature(self):
         """Test that REPL function has correct signature."""
         import inspect
+
         sig = inspect.signature(do_repl_main_loop_async)
         params = list(sig.parameters.keys())
-        
+
         # Check required parameters
-        self.assertIn('state', params)
-        self.assertIn('console', params)
-        
+        self.assertIn("state", params)
+        self.assertIn("console", params)
+
         # Check keyword-only parameters
-        self.assertIn('escape_non_printable', params)
-        self.assertIn('code_to_inject', params)
-        self.assertIn('file_to_inject', params)
+        self.assertIn("escape_non_printable", params)
+        self.assertIn("code_to_inject", params)
+        self.assertIn("file_to_inject", params)
 
 
 if __name__ == "__main__":
@@ -255,5 +260,5 @@ if __name__ == "__main__":
         print(f"Import error: {IMPORT_ERROR}")
     print("=" * 72)
     print()
-    
+
     unittest.main(verbosity=2)
