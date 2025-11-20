@@ -92,6 +92,23 @@ class AsyncSerialTransport(AsyncTransport):
         self.writer: asyncio.StreamWriter = None
         self._transport = None
 
+        # Write buffering for performance optimization (especially Windows)
+        self._write_buffer_size = 0
+        self._last_drain_time = 0.0
+        # Platform-specific thresholds
+        if sys.platform == "win32":
+            # Windows: More aggressive buffering due to polling overhead
+            self._write_buffer_threshold = 2048
+            self._drain_interval = 0.1  # 100ms
+        else:
+            # Unix/Mac: Conservative buffering
+            self._write_buffer_threshold = 1024
+            self._drain_interval = 0.05  # 50ms
+
+        # Auto-detected optimal chunk size (cached per connection)
+        self._optimal_chunk_size = None
+        self._free_memory_kb = None
+
     async def connect(self):
         """Establish async serial connection."""
         import serial
@@ -173,11 +190,16 @@ class AsyncSerialTransport(AsyncTransport):
         except Exception as e:
             raise TransportError(f"Read error: {e}")
 
-    async def write_async(self, data: bytes) -> int:
-        """Non-blocking write using asyncio streams.
+    async def write_async(self, data: bytes, force_drain: bool = False) -> int:
+        """Non-blocking write using asyncio streams with intelligent buffering.
+
+        This method buffers writes and only calls drain() when necessary,
+        significantly improving performance on Windows where pyserial-asyncio
+        uses polling-based implementation.
 
         Args:
             data: Bytes to write
+            force_drain: If True, always drain immediately (for critical operations)
 
         Returns:
             int: Number of bytes written
@@ -187,7 +209,24 @@ class AsyncSerialTransport(AsyncTransport):
 
         try:
             self.writer.write(data)
-            await self.writer.drain()
+            self._write_buffer_size += len(data)
+            current_time = time.monotonic()
+
+            # Determine if we should drain:
+            # 1. Explicit force_drain request (for critical operations)
+            # 2. Buffer exceeds threshold (prevent excessive buffering)
+            # 3. Time since last drain exceeds interval (ensure timely delivery)
+            should_drain = (
+                force_drain
+                or self._write_buffer_size >= self._write_buffer_threshold
+                or (current_time - self._last_drain_time) >= self._drain_interval
+            )
+
+            if should_drain:
+                await self.writer.drain()
+                self._write_buffer_size = 0
+                self._last_drain_time = current_time
+
             return len(data)
         except Exception as e:
             raise TransportError(f"Write error: {e}")
@@ -382,12 +421,13 @@ class AsyncSerialTransport(AsyncTransport):
 
             # Send out as much data as possible that fits within the allowed window
             b = command_bytes[i : min(i + window_remain, len(command_bytes))]
-            await self.write_async(b)
+            # Use buffered write for bulk data transfer
+            await self.write_async(b, force_drain=False)
             window_remain -= len(b)
             i += len(b)
 
-        # Indicate end of data
-        await self.write_async(b"\x04")
+        # Indicate end of data with forced drain to ensure delivery
+        await self.write_async(b"\x04", force_drain=True)
 
         # Wait for device to acknowledge end of data
         data = await self.read_until_async(1, b"\x04", timeout=10.0)
@@ -412,7 +452,7 @@ class AsyncSerialTransport(AsyncTransport):
 
         if self.use_raw_paste:
             # Try to enter raw-paste mode
-            await self.write_async(b"\x05A\x01")
+            await self.write_async(b"\x05A\x01", force_drain=True)
             data = await self.read_async(2)
             if data == b"R\x00":
                 # Device understood raw-paste command but doesn't support it
@@ -429,11 +469,14 @@ class AsyncSerialTransport(AsyncTransport):
             # Don't try to use raw-paste mode again for this connection
             self.use_raw_paste = False
 
-        # Write command using standard raw REPL
-        # In async mode, we don't need artificial delays for flow control
+        # Write command using standard raw REPL with buffered writes
         for i in range(0, len(command_bytes), 256):
-            await self.write_async(command_bytes[i : min(i + 256, len(command_bytes))])
-        await self.write_async(b"\x04")
+            is_last_chunk = (i + 256) >= len(command_bytes)
+            await self.write_async(
+                command_bytes[i : min(i + 256, len(command_bytes))],
+                force_drain=is_last_chunk,  # Only drain on last chunk
+            )
+        await self.write_async(b"\x04", force_drain=True)
 
         # Check if we could exec command
         data = await self.read_async(2)

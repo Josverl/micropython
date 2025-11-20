@@ -139,9 +139,9 @@ class BenchmarkRunner:
             result.bytes_transferred = len(data)
             source_hash = compute_sha256(data)
 
-            # Benchmark upload
+            # Benchmark upload with auto-detected chunk size
             start = time.perf_counter()
-            await transport.fs_writefile_async(dest_path, data, chunk_size=256)
+            await transport.fs_writefile_async(dest_path, data)  # chunk_size=None (auto)
             result.duration = time.perf_counter() - start
 
             # Verify upload with SHA-256

@@ -220,21 +220,72 @@ class AsyncTransport(Transport):
 
         return ast.literal_eval(result.decode().strip())
 
+    async def detect_optimal_chunk_size_async(self) -> int:
+        """Auto-detect optimal chunk size based on available device memory.
+
+        This is called once per connection and cached. It queries free memory
+        and selects an appropriate chunk size that balances performance with
+        memory constraints.
+
+        Returns:
+            int: Recommended chunk size in bytes (256-2048)
+        """
+        if self._optimal_chunk_size is not None:
+            return self._optimal_chunk_size
+
+        try:
+            # Try to get free memory using gc.mem_free()
+            free_mem_bytes = await self.eval_async("__import__('gc').mem_free()", parse=False)
+            free_mem_kb = int(free_mem_bytes.decode().strip()) / 1024
+            self._free_memory_kb = free_mem_kb
+
+            # Determine optimal chunk size based on available memory
+            # Conservative approach: use ~1-2% of free memory for chunk
+            # but cap at reasonable limits for performance
+            if free_mem_kb >= 100:  # >100KB free: use large chunks
+                chunk_size = 2048
+            elif free_mem_kb >= 50:  # 50-100KB free: use medium chunks
+                chunk_size = 1024
+            elif free_mem_kb >= 20:  # 20-50KB free: use small chunks
+                chunk_size = 512
+            else:  # <20KB free: use minimal chunks
+                chunk_size = 256
+
+        except Exception:
+            # If detection fails (no gc module, error, etc), use safe default
+            chunk_size = 256
+            self._free_memory_kb = None
+
+        self._optimal_chunk_size = chunk_size
+        return chunk_size
+
     async def fs_writefile_async(
-        self, dest: str, data: bytes, chunk_size: int = 256, progress_callback=None
+        self, dest: str, data: bytes, chunk_size: int = None, progress_callback=None
     ) -> None:
         """Write file to device asynchronously.
 
         Args:
             dest: Remote file path
             data: File contents to write
-            chunk_size: Size of chunks to write
+            chunk_size: Size of chunks to write. If None (default), automatically
+                       detects optimal size based on device free memory (once per connection).
+                       Manual values: 256 (safe), 512, 1024, 2048 (fast, needs RAM)
             progress_callback: Optional callback for progress updates
+
+        Note:
+            Automatic chunk size detection queries device memory once and caches the result.
+            For constrained devices (<20KB free), uses conservative 256-byte chunks.
+            For devices with ample memory (>100KB free), uses 2048-byte chunks for best performance.
         """
+        # Auto-detect optimal chunk size if not specified
+        if chunk_size is None:
+            chunk_size = await self.detect_optimal_chunk_size_async()
+
         # Open file and write data in chunks
         await self.exec_async(f"f=open({dest!r},'wb')\nw=f.write")
 
         # Write data in chunks
+        # Note: Each exec_async goes through raw REPL, so minimizing calls is important
         for i in range(0, len(data), chunk_size):
             chunk = data[i : i + chunk_size]
             await self.exec_async(f"w({chunk!r})")
