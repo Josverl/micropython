@@ -34,11 +34,17 @@ import sys
 import os
 import unittest
 import asyncio
-import pty
 import subprocess
 import tempfile
 from pathlib import Path
 from unittest.mock import Mock
+
+# POSIX-only imports
+try:
+    import pty
+    HAS_PTY = True
+except ImportError:
+    HAS_PTY = False
 
 # Add mpremote to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -134,6 +140,9 @@ class MockTransportUnix(AsyncTransport):
             pass
 
 
+@unittest.skipUnless(HAS_ASYNC, "Async modules not available")
+@unittest.skipUnless(MICROPYTHON_BIN, "MicroPython unix port not found")
+@unittest.skipUnless(HAS_PTY, "PTY not available on this platform")
 @unittest.skipUnless(HAS_ASYNC, "Async modules not available")
 @unittest.skipUnless(MICROPYTHON_BIN, "MicroPython unix port not found")
 class TestREPLAsyncIntegration(unittest.TestCase):

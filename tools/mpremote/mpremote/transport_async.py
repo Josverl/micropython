@@ -193,8 +193,11 @@ class AsyncTransport(Transport):
         Returns:
             tuple: File stats (mode, size, etc.)
         """
-        result = await self.eval_async(f"import os; os.stat({src!r})")
-        return result
+        # Use exec_async with print(repr()) since eval_async can't handle imports
+        result = await self.exec_async(f"import os\nprint(repr(os.stat({src!r})))")
+        # Parse the repr() output back to tuple
+        import ast
+        return ast.literal_eval(result.decode().strip())
 
     async def fs_readfile_async(
         self, src: str, chunk_size: int = 256, progress_callback=None
@@ -209,9 +212,11 @@ class AsyncTransport(Transport):
         Returns:
             bytes: File contents
         """
-        # Implementation will be added by concrete transport classes
-        # This is a placeholder that uses the sync implementation
-        return self.fs_readfile(src, chunk_size, progress_callback)
+        # Read file contents using exec_async
+        result = await self.exec_async(f"print(open({src!r}, 'rb').read())")
+        # The result has b'...' format, need to decode it
+        import ast
+        return ast.literal_eval(result.decode().strip())
 
     async def fs_writefile_async(
         self, dest: str, data: bytes, chunk_size: int = 256, progress_callback=None
@@ -224,6 +229,15 @@ class AsyncTransport(Transport):
             chunk_size: Size of chunks to write
             progress_callback: Optional callback for progress updates
         """
-        # Implementation will be added by concrete transport classes
-        # This is a placeholder that uses the sync implementation
-        self.fs_writefile(dest, data, chunk_size, progress_callback)
+        # Open file and write data in chunks
+        await self.exec_async(f"f=open({dest!r},'wb')\nw=f.write")
+        
+        # Write data in chunks
+        for i in range(0, len(data), chunk_size):
+            chunk = data[i:i + chunk_size]
+            await self.exec_async(f"w({chunk!r})")
+            if progress_callback:
+                progress_callback(i + len(chunk), len(data))
+        
+        # Close file
+        await self.exec_async("f.close()")

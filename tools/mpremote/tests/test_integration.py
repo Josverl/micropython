@@ -14,98 +14,106 @@ from mpremote.main import State
 from mpremote.protocol import RawREPLProtocol
 
 
-async def test_async_workflow():
+def test_async_workflow(event_loop):
     """Test a complete async workflow (without actual hardware)."""
-    print("Testing async workflow integration...")
+    
+    async def _test():
+        print("Testing async workflow integration...")
 
-    # This tests that the API is correctly structured
-    # Actual connection would fail without hardware, but we can test
-    # that all the pieces fit together
+        # This tests that the API is correctly structured
+        # Actual connection would fail without hardware, but we can test
+        # that all the pieces fit together
 
-    transport = AsyncSerialTransport("/dev/null", baudrate=115200, wait=0)
+        transport = AsyncSerialTransport("/dev/null", baudrate=115200, wait=0)
 
-    # Test that all required attributes exist
-    assert hasattr(transport, "device_name")
-    assert hasattr(transport, "baudrate")
-    assert hasattr(transport, "in_raw_repl")
-    assert hasattr(transport, "use_raw_paste")
+        # Test that all required attributes exist
+        assert hasattr(transport, "device_name")
+        assert hasattr(transport, "baudrate")
+        assert hasattr(transport, "in_raw_repl")
+        assert hasattr(transport, "use_raw_paste")
 
-    # Test that all async methods exist and are coroutines
-    async_methods = [
-        "connect",
-        "read_async",
-        "write_async",
-        "read_until_async",
-        "enter_raw_repl_async",
-        "exit_raw_repl_async",
-        "exec_raw_no_follow_async",
-        "follow_async",
-        "exec_raw_async",
-        "exec_async",
-        "eval_async",
-        "close_async",
-    ]
+        # Test that all async methods exist and are coroutines
+        async_methods = [
+            "connect",
+            "read_async",
+            "write_async",
+            "read_until_async",
+            "enter_raw_repl_async",
+            "exit_raw_repl_async",
+            "exec_raw_no_follow_async",
+            "follow_async",
+            "exec_raw_async",
+            "exec_async",
+            "eval_async",
+            "close_async",
+        ]
 
-    for method_name in async_methods:
-        method = getattr(transport, method_name)
-        assert asyncio.iscoroutinefunction(method), f"{method_name} should be async"
+        for method_name in async_methods:
+            method = getattr(transport, method_name)
+            assert asyncio.iscoroutinefunction(method), f"{method_name} should be async"
 
-    # Test State integration
-    state = State()
-    assert hasattr(state, "ensure_raw_repl_async")
-    assert asyncio.iscoroutinefunction(state.ensure_raw_repl_async)
+        # Test State integration
+        state = State()
+        assert hasattr(state, "ensure_raw_repl_async")
+        assert asyncio.iscoroutinefunction(state.ensure_raw_repl_async)
 
-    # Test protocol integration
-    cmd = "print('test')"
-    encoded = RawREPLProtocol.encode_command_standard(cmd)
-    assert encoded == b"print('test')"
+        # Test protocol integration
+        cmd = "print('test')"
+        encoded = RawREPLProtocol.encode_command_standard(cmd)
+        assert encoded == b"print('test')"
 
-    header, cmd_bytes = RawREPLProtocol.encode_command_raw_paste(cmd)
-    assert cmd_bytes == b"print('test')"
-    assert len(header) == 7  # Ctrl-E A \x01 + 4 bytes length
+        header, cmd_bytes = RawREPLProtocol.encode_command_raw_paste(cmd)
+        assert cmd_bytes == b"print('test')"
+        assert len(header) == 7  # Ctrl-E A \x01 + 4 bytes length
 
-    return True
+        return True
+    
+    event_loop.run_until_complete(_test())
 
 
-async def test_concurrent_pattern():
+def test_concurrent_pattern(event_loop):
     """Test that async patterns work correctly."""
-    print("\nTesting async concurrent patterns...")
+    
+    async def _test():
+        print("\nTesting async concurrent patterns...")
 
-    # Simulate async operations
-    async def operation1():
-        await asyncio.sleep(0.01)
-        return "op1"
-
-    async def operation2():
-        await asyncio.sleep(0.01)
-        return "op2"
-
-    async def operation3():
-        await asyncio.sleep(0.01)
-        return "op3"
-
-    # Test gather pattern
-    results = await asyncio.gather(operation1(), operation2(), operation3())
-    assert results == ["op1", "op2", "op3"]
-
-    # Test task pattern
-    task1 = asyncio.create_task(operation1())
-    task2 = asyncio.create_task(operation2())
-
-    result1 = await task1
-    result2 = await task2
-
-    assert result1 == "op1"
-    assert result2 == "op2"
-
-    # Test timeout pattern
-    try:
-        async with asyncio.timeout(0.1):
+        # Simulate async operations
+        async def operation1():
             await asyncio.sleep(0.01)
-    except asyncio.TimeoutError:
-        return False
+            return "op1"
 
-    return True
+        async def operation2():
+            await asyncio.sleep(0.01)
+            return "op2"
+
+        async def operation3():
+            await asyncio.sleep(0.01)
+            return "op3"
+
+        # Test gather pattern
+        results = await asyncio.gather(operation1(), operation2(), operation3())
+        assert results == ["op1", "op2", "op3"]
+
+        # Test task pattern
+        task1 = asyncio.create_task(operation1())
+        task2 = asyncio.create_task(operation2())
+
+        result1 = await task1
+        result2 = await task2
+
+        assert result1 == "op1"
+        assert result2 == "op2"
+
+        # Test timeout pattern
+        try:
+            async with asyncio.timeout(0.1):
+                await asyncio.sleep(0.01)
+        except asyncio.TimeoutError:
+            return False
+
+        return True
+    
+    event_loop.run_until_complete(_test())
 
 
 def test_error_handling():

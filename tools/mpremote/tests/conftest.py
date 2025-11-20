@@ -268,6 +268,42 @@ async def connected_transport(hardware_device, async_modules):
         pass
 
 
+@pytest.fixture
+def get_writable_path():
+    """
+    Return a helper function that detects writable filesystem path on device.
+    
+    Usage:
+        writable_path = await get_writable_path(transport)
+        if writable_path is None:
+            pytest.skip("No writable filesystem available")
+    """
+    async def _get_writable_path(transport):
+        """Detect and return writable path on device, or None if none available."""
+        code = """
+import os
+writable_path = None
+test_paths = ['/', '/flash', '/sd']
+for path in test_paths:
+    try:
+        items = os.listdir(path)
+        test_file = path + '/.test_write'
+        with open(test_file, 'w') as f:
+            f.write('test')
+        os.remove(test_file)
+        writable_path = path
+        break
+    except (OSError, AttributeError):
+        continue
+print(writable_path if writable_path else 'NONE')
+"""
+        stdout = await transport.exec_async(code)
+        result = stdout.strip().decode()
+        return None if result == 'NONE' else result
+    
+    return _get_writable_path
+
+
 # ============================================================================
 # MicroPython Unix Port Fixtures
 # ============================================================================

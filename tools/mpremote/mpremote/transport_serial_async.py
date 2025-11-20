@@ -112,6 +112,7 @@ class AsyncSerialTransport(AsyncTransport):
             serial_kwargs["exclusive"] = exclusive
 
         delayed = False
+        last_error = None
         for attempt in range(int(self.wait) + 1):
             try:
                 # Create async serial connection
@@ -120,6 +121,7 @@ class AsyncSerialTransport(AsyncTransport):
                 )
                 break
             except (OSError, serial.SerialException) as e:
+                last_error = e
                 if self.wait == 0:
                     raise TransportError(f"failed to access {self.device_name}: {e}")
                 if attempt == 0:
@@ -131,7 +133,7 @@ class AsyncSerialTransport(AsyncTransport):
         else:
             if delayed:
                 print("")
-            raise TransportError(f"failed to access {self.device_name}")
+            raise TransportError(f"failed to access {self.device_name}: {last_error}")
 
         if delayed:
             print("")
