@@ -40,9 +40,10 @@ try:
 except ImportError:
     serial_asyncio = None
 
+from .async_compat import get_timeout
+from .protocol import RawREPLProtocol
 from .transport import TransportError, TransportExecError
 from .transport_async import AsyncTransport
-from .protocol import RawREPLProtocol
 
 
 class AsyncSerialTransport(AsyncTransport):
@@ -233,7 +234,7 @@ class AsyncSerialTransport(AsyncTransport):
                     if time.monotonic() >= begin_char + timeout:
                         # Use asyncio timeout for the read
                         try:
-                            async with asyncio.timeout(0.01):  # Small timeout to avoid blocking
+                            async with get_timeout(0.01):  # Small timeout to avoid blocking
                                 chunk = await self.reader.read(1)
                                 if chunk:
                                     if data_consumer:
@@ -247,7 +248,7 @@ class AsyncSerialTransport(AsyncTransport):
                     else:
                         # Still within timeout, try to read
                         try:
-                            async with asyncio.timeout(0.01):
+                            async with get_timeout(0.01):
                                 chunk = await self.reader.read(1)
                                 if chunk:
                                     if data_consumer:
@@ -288,7 +289,7 @@ class AsyncSerialTransport(AsyncTransport):
         await asyncio.sleep(0.1)  # Give time for data to arrive
         try:
             # Try to read any pending data with short timeout
-            async with asyncio.timeout(0.1):
+            async with get_timeout(0.1):
                 while True:
                     await self.reader.read(1024)
         except asyncio.TimeoutError:
