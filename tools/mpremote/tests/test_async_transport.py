@@ -34,7 +34,7 @@ import sys
 import os
 
 # Add mpremote to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+# sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 try:
     import asyncio
@@ -159,8 +159,6 @@ def test_protocol_decode_response():
 
 def run_all_tests():
     """Run all tests."""
-    print("Running async transport tests...")
-    print("=" * 60)
 
     test_async_transport_abstract()
     test_async_serial_transport_instantiation()
@@ -168,8 +166,6 @@ def run_all_tests():
     test_protocol_encode_command()
     test_protocol_decode_response()
 
-    print("=" * 60)
-    print("Tests complete!")
 
 
 if __name__ == "__main__":

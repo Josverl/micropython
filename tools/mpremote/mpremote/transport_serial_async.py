@@ -60,7 +60,7 @@ class AsyncSerialTransport(AsyncTransport):
         device: str,
         baudrate: int = 115200,
         wait: float = 0,
-        exclusive: bool = True,
+        exclusive: bool = None,
         timeout: float = None,
     ):
         """Initialize async serial transport.
@@ -103,7 +103,13 @@ class AsyncSerialTransport(AsyncTransport):
             "interCharTimeout": 1,
         }
         if serial.__version__ >= "3.3":
-            serial_kwargs["exclusive"] = self.exclusive
+            # On Windows, exclusive must be True (pyserial-asyncio limitation)
+            # On other platforms, use the provided value or default to True
+            if sys.platform == "win32":
+                exclusive = True
+            else:
+                exclusive = self.exclusive if self.exclusive is not None else True
+            serial_kwargs["exclusive"] = exclusive
 
         delayed = False
         for attempt in range(int(self.wait) + 1):
