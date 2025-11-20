@@ -403,31 +403,9 @@ def test_repl_main_loop_disconnect_on_write(mock_state, mock_console, event_loop
     event_loop.run_until_complete(_test())
 
 
-def test_repl_with_sync_transport(mock_state, mock_console, event_loop, async_modules):
-    """Test REPL with synchronous transport (fallback)."""
-    from mpremote.repl_async import do_repl_main_loop_async
-    
-    async def _test():
-        # Remove async methods to simulate sync transport
-        del mock_state.transport.write_async
-        del mock_state.transport.read_async
-        
-        # Add sync serial interface
-        mock_serial = Mock()
-        mock_serial.write = Mock(return_value=1)
-        mock_serial.inWaiting = Mock(return_value=0)
-        mock_state.transport.serial = mock_serial
-        
-        mock_console.input_queue = [b"a", b"\x1d"]
-        
-        result = await do_repl_main_loop_async(mock_state, mock_console)
-        
-        assert result is False
-        # Verify sync methods were used
-        mock_serial.write.assert_called()
-        mock_serial.inWaiting.assert_called()
-    
-    event_loop.run_until_complete(_test())
+# Removed test_repl_with_sync_transport - sync transports are no longer supported
+# in async REPL. Async REPL now requires an async transport and will raise
+# TypeError if a sync transport is provided (see test_async_repl_rejects_sync_transport)
 
 
 # Tests for do_repl_async wrapper
@@ -461,3 +439,212 @@ def test_do_repl_async_wrapper(mock_state, event_loop, async_modules):
             result = do_repl_async_wrapper(mock_state, args)
         
         assert result is False
+
+
+def test_async_repl_rejects_sync_transport(event_loop, capsys):
+    """Test that async REPL raises TypeError when given a sync transport without read_async."""
+    from mpremote.repl_async import do_repl_main_loop_async
+    
+    async def _test():
+        # Create mock state with sync transport (no read_async method)
+        mock_state = Mock()
+        mock_state.transport = Mock(spec=['serial', 'device_name'])  # No read_async
+        mock_state.transport.device_name = "test"
+        
+        # Create mock console with proper async mock
+        mock_console = Mock()
+        
+        async def mock_readchar():
+            await asyncio.sleep(0.001)
+            return b"\x1d"  # Exit character
+        
+        mock_console.readchar_async = mock_readchar
+        mock_console.write = Mock()
+        
+        # The TypeError is raised in the device_output task and caught by the task runner
+        # The function returns False (not disconnect), but prints the error
+        result = await do_repl_main_loop_async(
+            mock_state,
+            mock_console,
+            escape_non_printable=False,
+            code_to_inject=None,
+            file_to_inject=None
+        )
+        
+        # Returns False (not a disconnect), but the error message is printed
+        assert result is False
+    
+    event_loop.run_until_complete(_test())
+    
+    # Verify error message was printed
+    captured = capsys.readouterr()
+    assert "Task error:" in captured.out
+    assert "Async REPL requires an async transport" in captured.out
+
+
+def test_repl_with_capture_file(event_loop):
+    """Test that REPL captures output to file when capture_file is specified."""
+    from mpremote.repl_async import do_repl_async
+    
+    async def _test():
+        # Create mock state with async transport
+        mock_state = Mock()
+        mock_state.transport = Mock()
+        mock_state.transport.device_name = "test_device"
+        
+        # Mock async methods
+        async def mock_read_async(size):
+            await asyncio.sleep(0.001)
+            return b">>> Hello from device\r\n"
+        
+        mock_state.transport.read_async = mock_read_async
+        mock_state.transport.write_async = Mock(return_value=asyncio.sleep(0))
+        
+        # Mock state methods
+        async def mock_ensure_friendly():
+            pass
+        
+        mock_state.ensure_friendly_repl_async = mock_ensure_friendly
+        mock_state.did_action = Mock()
+        
+        # Create args with capture file
+        with tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='.txt') as capture:
+            capture_path = capture.name
+        
+        try:
+            args = Mock()
+            args.escape_non_printable = False
+            args.capture = capture_path
+            args.inject_code = None
+            args.inject_file = None
+            
+            # Mock AsyncConsole
+            with patch('mpremote.repl_async.AsyncConsole') as MockConsole:
+                mock_console_instance = Mock()
+                
+                # Simulate console that exits after receiving device output
+                call_count = [0]
+                
+                async def readchar():
+                    await asyncio.sleep(0.002)
+                    call_count[0] += 1
+                    if call_count[0] > 2:  # Exit after a couple iterations
+                        return b"\x1d"
+                    return b"x"  # Regular character
+                
+                mock_console_instance.readchar_async = readchar
+                
+                # Track what gets written to console
+                written_data = []
+                def mock_write(data):
+                    written_data.append(data)
+                
+                mock_console_instance.write = mock_write
+                mock_console_instance.enter = Mock()
+                mock_console_instance.exit = Mock()
+                
+                MockConsole.return_value = mock_console_instance
+                
+                with patch('builtins.print'):
+                    result = await do_repl_async(mock_state, args)
+                
+                assert result is False  # Not disconnected
+            
+            # Verify capture file contains the device output
+            with open(capture_path, 'rb') as f:
+                captured_content = f.read()
+            
+            assert b"Hello from device" in captured_content
+            
+            # Verify console.write was called with the same data
+            assert len(written_data) > 0
+            assert any(b"Hello from device" in data for data in written_data)
+            
+        finally:
+            # Cleanup
+            if os.path.exists(capture_path):
+                os.remove(capture_path)
+    
+    event_loop.run_until_complete(_test())
+
+
+def test_repl_capture_file_multiple_writes(event_loop):
+    """Test that capture file receives all device output correctly."""
+    from mpremote.repl_async import do_repl_async
+    
+    async def _test():
+        # Create mock state
+        mock_state = Mock()
+        mock_state.transport = Mock()
+        mock_state.transport.device_name = "test"
+        
+        # Mock read_async to return multiple chunks of data
+        read_count = [0]
+        async def mock_read_async(size):
+            await asyncio.sleep(0.001)
+            read_count[0] += 1
+            if read_count[0] == 1:
+                return b"First line\r\n"
+            elif read_count[0] == 2:
+                return b"Second line\r\n"
+            elif read_count[0] == 3:
+                return b"Third line\r\n"
+            return b""
+        
+        mock_state.transport.read_async = mock_read_async
+        mock_state.transport.write_async = Mock(return_value=asyncio.sleep(0))
+        
+        async def mock_ensure_friendly():
+            pass
+        
+        mock_state.ensure_friendly_repl_async = mock_ensure_friendly
+        mock_state.did_action = Mock()
+        
+        # Create capture file
+        with tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='.txt') as capture:
+            capture_path = capture.name
+        
+        try:
+            args = Mock()
+            args.escape_non_printable = False
+            args.capture = capture_path
+            args.inject_code = None
+            args.inject_file = None
+            
+            with patch('mpremote.repl_async.AsyncConsole') as MockConsole:
+                mock_console_instance = Mock()
+                
+                call_count = [0]
+                async def readchar():
+                    # Wait longer to ensure device output task has time to read all data
+                    await asyncio.sleep(0.02)
+                    call_count[0] += 1
+                    # Wait until all three lines have been read before exiting
+                    # This prevents race condition where keyboard exits before device reads all data
+                    if call_count[0] > 10 and read_count[0] >= 3:
+                        return b"\x1d"  # Exit
+                    return b"t"
+                
+                mock_console_instance.readchar_async = readchar
+                mock_console_instance.write = Mock()
+                mock_console_instance.enter = Mock()
+                mock_console_instance.exit = Mock()
+                
+                MockConsole.return_value = mock_console_instance
+                
+                with patch('builtins.print'):
+                    await do_repl_async(mock_state, args)
+            
+            # Verify all lines are in capture file
+            with open(capture_path, 'rb') as f:
+                captured_content = f.read()
+            
+            assert b"First line" in captured_content
+            assert b"Second line" in captured_content
+            assert b"Third line" in captured_content
+            
+        finally:
+            if os.path.exists(capture_path):
+                os.remove(capture_path)
+    
+    event_loop.run_until_complete(_test())

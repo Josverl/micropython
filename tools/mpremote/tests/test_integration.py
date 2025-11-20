@@ -6,14 +6,22 @@
 import sys
 import os
 import asyncio
+import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from mpremote.transport_serial_async import AsyncSerialTransport
 from mpremote.main import State
 from mpremote.protocol import RawREPLProtocol
 
+try:
+    from mpremote.transport_serial_async import AsyncSerialTransport, serial_asyncio
+    HAS_SERIAL_ASYNCIO = serial_asyncio is not None
+except ImportError:
+    HAS_SERIAL_ASYNCIO = False
+    AsyncSerialTransport = None
 
+
+@pytest.mark.skipif(not HAS_SERIAL_ASYNCIO, reason="pyserial-asyncio not installed")
 def test_async_workflow(event_loop):
     """Test a complete async workflow (without actual hardware)."""
     
@@ -163,64 +171,3 @@ def test_sync_async_coexistence():
         assert asyncio.iscoroutinefunction(getattr(state, method)), f"{method} should be async"
 
     return True
-
-
-def main():
-    """Run all integration tests."""
-    print("=" * 70)
-    print("INTEGRATION TESTS")
-    print("=" * 70)
-
-    results = []
-
-    # Run async tests
-    print("\nRunning async integration tests...")
-    try:
-        result = asyncio.run(test_async_workflow())
-        results.append(("Async Workflow", result))
-    except Exception as e:
-        print(f"  ✗ FAIL: {e}")
-        results.append(("Async Workflow", False))
-
-    try:
-        result = asyncio.run(test_concurrent_pattern())
-        results.append(("Concurrent Patterns", result))
-    except Exception as e:
-        print(f"  ✗ FAIL: {e}")
-        results.append(("Concurrent Patterns", False))
-
-    # Run sync tests
-    try:
-        result = test_error_handling()
-        results.append(("Error Handling", result))
-    except Exception as e:
-        print(f"  ✗ FAIL: {e}")
-        results.append(("Error Handling", False))
-
-    try:
-        result = test_sync_async_coexistence()
-        results.append(("Sync/Async Coexistence", result))
-    except Exception as e:
-        print(f"  ✗ FAIL: {e}")
-        results.append(("Sync/Async Coexistence", False))
-
-    # Summary
-    print("\n" + "=" * 70)
-
-    passed = sum(1 for _, result in results if result)
-    total = len(results)
-
-    for name, result in results:
-        status = "✓ PASS" if result else "✗ FAIL"
-        print(f"{status:8} {name}")
-
-    print("=" * 70)
-    print(f"Results: {passed}/{total} tests passed")
-    print("=" * 70)
-
-    return passed == total
-
-
-if __name__ == "__main__":
-    success = main()
-    sys.exit(0 if success else 1)

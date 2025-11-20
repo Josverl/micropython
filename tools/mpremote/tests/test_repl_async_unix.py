@@ -27,7 +27,8 @@
 """Tests for repl_async using MicroPython unix port as backend.
 
 This test uses the MicroPython unix port via pty/subprocess to test
-the async REPL functionality without requiring hardware.
+the async REPL functionality without requiring hardware. Includes both
+transport-level tests and full REPL integration tests.
 """
 
 import sys
@@ -35,7 +36,9 @@ import os
 import unittest
 import asyncio
 import subprocess
+import tempfile
 from pathlib import Path
+from unittest.mock import Mock
 
 # POSIX-only imports
 try:
@@ -48,7 +51,7 @@ except ImportError:
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 try:
-    from mpremote.repl_async import do_repl_main_loop_async
+    from mpremote.repl_async import do_repl_main_loop_async, do_repl_async, do_repl_async_wrapper
     from mpremote.console_async import AsyncConsole
     from mpremote.transport_async import AsyncTransport
 
@@ -74,6 +77,34 @@ for possible_path in [
         break
 
 
+class MockConsole:
+    """Mock console for REPL integration testing."""
+
+    def __init__(self):
+        self.output = []
+        self.input_queue = []
+        self.input_idx = 0
+
+    def enter(self):
+        pass
+
+    def exit(self):
+        pass
+
+    def write(self, data):
+        self.output.append(data)
+
+    async def readchar_async(self):
+        """Read a character from input queue."""
+        if self.input_idx < len(self.input_queue):
+            char = self.input_queue[self.input_idx]
+            self.input_idx += 1
+            return char
+        # Return exit character when no more input
+        await asyncio.sleep(0.01)
+        return b"\x1d"  # ctrl-]
+
+
 class MockAsyncTransportUnix(AsyncTransport):
     """Mock async transport that uses unix port via pty."""
 
@@ -84,11 +115,16 @@ class MockAsyncTransportUnix(AsyncTransport):
         self.in_raw_repl = False
         self.use_raw_paste = True
         self.mounted = False
+        self.serial = Mock()  # Mock serial for compatibility
 
     async def read_async(self, size=1):
         """Read bytes from the pty."""
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, os.read, self.master_fd, size)
+        try:
+            data = await loop.run_in_executor(None, os.read, self.master_fd, size)
+            return data
+        except OSError:
+            return b""
 
     async def write_async(self, data):
         """Write bytes to the pty."""
@@ -233,6 +269,168 @@ class TestREPLAsyncUnixBackend(unittest.TestCase):
 
 
 @unittest.skipUnless(HAS_ASYNC, "Async modules not available")
+@unittest.skipUnless(MICROPYTHON_BIN, "MicroPython unix port not found")
+@unittest.skipUnless(HAS_PTY, "PTY not available on this platform")
+class TestREPLAsyncIntegration(unittest.TestCase):
+    """Full integration tests for async REPL with unix backend."""
+
+    def setUp(self):
+        """Set up test - start MicroPython process."""
+        # Create pty pair
+        master_fd, slave_fd = pty.openpty()
+
+        # Start MicroPython on the slave pty
+        self.process = subprocess.Popen(
+            [MICROPYTHON_BIN], stdin=slave_fd, stdout=slave_fd, stderr=slave_fd, close_fds=True
+        )
+
+        # Close slave fd in parent
+        os.close(slave_fd)
+
+        self.master_fd = master_fd
+        self.transport = MockAsyncTransportUnix(self.process, master_fd)
+
+        # Create mock state
+        self.state = Mock()
+        self.state.transport = self.transport
+        self.state.did_action = Mock()
+
+    def tearDown(self):
+        """Clean up."""
+        try:
+            self.process.terminate()
+            self.process.wait(timeout=1)
+        except:
+            self.process.kill()
+        try:
+            os.close(self.master_fd)
+        except:
+            pass
+
+    async def _test_repl_main_loop_basic(self):
+        """Test basic REPL main loop."""
+        import time
+
+        time.sleep(0.3)  # Wait for REPL to start
+
+        # Create mock console with exit command
+        console = MockConsole()
+        console.input_queue = [b"\x1d"]  # ctrl-], exit immediately
+
+        # Run REPL loop
+        result = await asyncio.wait_for(
+            do_repl_main_loop_async(
+                self.state,
+                console,
+                escape_non_printable=False,
+                code_to_inject=None,
+                file_to_inject=None,
+            ),
+            timeout=2.0,
+        )
+
+        # Should have exited normally (not disconnected)
+        self.assertFalse(result)
+
+    def test_repl_main_loop_basic(self):
+        """Wrapper to run async test."""
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(self._test_repl_main_loop_basic())
+        finally:
+            loop.close()
+
+    async def _test_repl_with_code_injection(self):
+        """Test REPL with code injection."""
+        import time
+
+        time.sleep(0.3)
+
+        # Create mock console with code injection and exit
+        console = MockConsole()
+        # Send ctrl-j (inject code), then exit
+        console.input_queue = [b"\x0a", b"\x1d"]
+
+        # Run REPL loop with code to inject
+        result = await asyncio.wait_for(
+            do_repl_main_loop_async(
+                self.state,
+                console,
+                escape_non_printable=False,
+                code_to_inject=b"print('injected')\r",
+                file_to_inject=None,
+            ),
+            timeout=2.0,
+        )
+
+        self.assertFalse(result)
+
+    def test_repl_with_code_injection(self):
+        """Wrapper to run async test."""
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(self._test_repl_with_code_injection())
+        finally:
+            loop.close()
+
+    async def _test_repl_with_file_injection(self):
+        """Test REPL with file injection."""
+        import time
+
+        time.sleep(0.3)
+
+        # Create temporary Python file
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+            f.write("print('from file')\n")
+            temp_file = f.name
+
+        try:
+            # Create mock console
+            console = MockConsole()
+            # Send ctrl-k (inject file), then exit
+            console.input_queue = [b"\x0b", b"\x1d"]
+
+            # Mock enter_raw_repl_async
+            self.transport.enter_raw_repl_async = Mock(return_value=asyncio.Future())
+            self.transport.enter_raw_repl_async.return_value.set_result(None)
+
+            # Mock exec_raw_no_follow_async
+            self.transport.exec_raw_no_follow_async = Mock(return_value=asyncio.Future())
+            self.transport.exec_raw_no_follow_async.return_value.set_result(None)
+
+            # Mock exit_raw_repl_async
+            self.transport.exit_raw_repl_async = Mock(return_value=asyncio.Future())
+            self.transport.exit_raw_repl_async.return_value.set_result(None)
+
+            # Run REPL loop
+            result = await asyncio.wait_for(
+                do_repl_main_loop_async(
+                    self.state,
+                    console,
+                    escape_non_printable=False,
+                    code_to_inject=None,
+                    file_to_inject=temp_file,
+                ),
+                timeout=2.0,
+            )
+
+            self.assertFalse(result)
+        finally:
+            os.unlink(temp_file)
+
+    def test_repl_with_file_injection(self):
+        """Wrapper to run async test."""
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(self._test_repl_with_file_injection())
+        finally:
+            loop.close()
+
+
+@unittest.skipUnless(HAS_ASYNC, "Async modules not available")
 class TestREPLAsyncFunctions(unittest.TestCase):
     """Test REPL async functions without actual backend."""
 
@@ -240,6 +438,17 @@ class TestREPLAsyncFunctions(unittest.TestCase):
         """Test that do_repl_main_loop_async function exists."""
         self.assertTrue(callable(do_repl_main_loop_async))
         self.assertTrue(asyncio.iscoroutinefunction(do_repl_main_loop_async))
+
+    def test_do_repl_async_exists(self):
+        """Test that do_repl_async function exists."""
+        self.assertTrue(callable(do_repl_async))
+        self.assertTrue(asyncio.iscoroutinefunction(do_repl_async))
+
+    def test_do_repl_async_wrapper_exists(self):
+        """Test that do_repl_async_wrapper function exists."""
+        self.assertTrue(callable(do_repl_async_wrapper))
+        # Wrapper should not be async
+        self.assertFalse(asyncio.iscoroutinefunction(do_repl_async_wrapper))
 
     def test_repl_function_signature(self):
         """Test that REPL function has correct signature."""
@@ -267,6 +476,10 @@ if __name__ == "__main__":
     print(f"Async modules available: {HAS_ASYNC}")
     if not HAS_ASYNC:
         print(f"Import error: {IMPORT_ERROR}")
+    print("=" * 72)
+    print()
+    print("Note: This test uses unittest but is also compatible with pytest.")
+    print("Recommended: pytest tests/test_repl_async_unix.py -v")
     print("=" * 72)
     print()
 
