@@ -26,11 +26,12 @@
 
 """Pytest configuration and shared fixtures for mpremote async tests."""
 
-import sys
-import os
 import asyncio
-import pytest
+import os
+import sys
 from pathlib import Path
+
+import pytest
 
 # Add mpremote to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -38,11 +39,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 # Check for async module availability
 try:
+    from mpremote.commands_async import do_eval_async, do_exec_async
+    from mpremote.console_async import AsyncConsole
+    from mpremote.protocol import RawREPLProtocol
     from mpremote.transport_async import AsyncTransport
     from mpremote.transport_serial_async import AsyncSerialTransport
-    from mpremote.protocol import RawREPLProtocol
-    from mpremote.console_async import AsyncConsole
-    from mpremote.commands_async import do_exec_async, do_eval_async
 
     HAS_ASYNC = True
     ASYNC_IMPORT_ERROR = None
@@ -259,24 +260,60 @@ def hardware_device(test_device_port):
 
 
 @pytest.fixture
-async def connected_transport(hardware_device, async_modules):
+def connected_transport(hardware_device, async_modules, event_loop):
     """
     Create and connect an async transport to hardware device.
 
     Automatically cleans up connection after test.
+    Returns a function that provides (transport, writable_path) tuple.
     """
     AsyncSerialTransport = async_modules["AsyncSerialTransport"]
 
-    transport = AsyncSerialTransport(hardware_device, baudrate=115200)
-    await asyncio.wait_for(transport.connect(), timeout=5.0)
+    async def _get_transport():
+        transport = AsyncSerialTransport(hardware_device, baudrate=115200)
+        await asyncio.wait_for(transport.connect(), timeout=5.0)
+        await transport.enter_raw_repl_async()
 
-    yield transport
+        # Detect writable path
+        code = """
+import os
+writable_path = None
+test_paths = ['/', '/flash', '/sd']
+for path in test_paths:
+    try:
+        items = os.listdir(path)
+        test_file = path + '/.test_write'
+        with open(test_file, 'w') as f:
+            f.write('test')
+        os.remove(test_file)
+        writable_path = path
+        break
+    except (OSError, AttributeError):
+        continue
+print(writable_path if writable_path else 'NONE')
+"""
+        stdout, _ = await transport.exec_raw_async(code)
+        result = stdout.strip().decode()
+        writable_path = None if result == "NONE" else result
+
+        if writable_path is None:
+            pytest.skip("No writable filesystem available on device")
+
+        return transport, writable_path
+
+    # Run async setup
+    transport, writable_path = event_loop.run_until_complete(_get_transport())
+
+    yield (transport, writable_path)
 
     # Cleanup
-    try:
-        await transport.close_async()
-    except Exception:
-        pass
+    async def _cleanup():
+        try:
+            await transport.close_async()
+        except Exception:
+            pass
+
+    event_loop.run_until_complete(_cleanup())
 
 
 @pytest.fixture

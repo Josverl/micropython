@@ -3,13 +3,14 @@
 # Integration test for async transport
 # This tests the full integration without requiring hardware
 
-import sys
-import os
 import asyncio
+import os
+import sys
+
 import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
+from mpremote.async_compat import get_timeout
 from mpremote.main import State
 from mpremote.protocol import RawREPLProtocol
 
@@ -115,7 +116,7 @@ def test_concurrent_pattern(event_loop):
 
         # Test timeout pattern
         try:
-            async with asyncio.timeout(0.1):
+            async with get_timeout(0.1):
                 await asyncio.sleep(0.01)
         except asyncio.TimeoutError:
             return False
