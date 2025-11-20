@@ -31,544 +31,508 @@ MicroPython devices connected via serial or USB-CDC.
 
 Usage:
     # Test with first available device
-    python test_async_hardware.py
+    pytest test_async_hardware.py
 
     # Test with specific port
-    python test_async_hardware.py COM20
-    python test_async_hardware.py /dev/ttyUSB0
+    pytest --device=COM20 test_async_hardware.py
+    pytest --device=/dev/ttyUSB0 test_async_hardware.py
 
     # Run specific test
-    python test_async_hardware.py COM20 TestAsyncHardware.test_basic_connection
+    pytest --device=COM20 test_async_hardware.py::test_basic_connection
 
 Requirements:
     - A MicroPython device connected via serial/USB-CDC
     - pyserial-asyncio installed
 """
 
-import sys
-import os
-import unittest
 import asyncio
-import tempfile
-from pathlib import Path
-
-# Add mpremote to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
-try:
-    from mpremote.transport_serial_async import AsyncSerialTransport
-    from mpremote.transport import TransportError
-    import serial.tools.list_ports
-
-    HAS_ASYNC = True
-except ImportError as e:
-    HAS_ASYNC = False
-    IMPORT_ERROR = str(e)
-
-# Global test port - can be set via command line
-TEST_PORT = None
+import pytest
 
 
-def find_micropython_device():
-    """Find the first available MicroPython device."""
-    try:
-        ports = serial.tools.list_ports.comports()
-        if not ports:
-            return None
-
-        # Look for common MicroPython device identifiers
-        micropython_keywords = [
-            "USB Serial",
-            "USB-SERIAL",
-            "CH340",
-            "CH343",
-            "CP210",
-            "FT232",
-            "Arduino",
-            "Pico",
-            "ESP32",
-            "STM32",
-        ]
-
-        for port in ports:
-            description = port.description.upper()
-            for keyword in micropython_keywords:
-                if keyword.upper() in description:
-                    return port.device
-
-        # If no specific match, return first available
-        return ports[0].device
-    except Exception:
-        return None
+pytestmark = [pytest.mark.async_required, pytest.mark.hardware_required, pytest.mark.serial_required]
 
 
-@unittest.skipUnless(HAS_ASYNC, "Async modules not available")
-class TestAsyncHardware(unittest.TestCase):
-    """Hardware integration tests for async transport."""
+def test_basic_connection(hardware_device, async_modules, event_loop):
+    """Test basic connection and disconnection."""
+    AsyncSerialTransport = async_modules["AsyncSerialTransport"]
+    
+    async def _test():
+        transport = AsyncSerialTransport(hardware_device, baudrate=115200)
+        await asyncio.wait_for(transport.connect(), timeout=5.0)
+        
+        assert transport.reader is not None
+        assert transport.writer is not None
+        
+        await transport.close_async()
+    
+    event_loop.run_until_complete(_test())
 
-    @classmethod
-    def setUpClass(cls):
-        """Set up test class - verify device is available."""
-        global TEST_PORT
 
-        if TEST_PORT is None:
-            TEST_PORT = find_micropython_device()
+def test_enter_raw_repl(hardware_device, async_modules, event_loop):
+    """Test entering raw REPL mode."""
+    AsyncSerialTransport = async_modules["AsyncSerialTransport"]
+    
+    async def _test():
+        transport = AsyncSerialTransport(hardware_device, baudrate=115200)
+        await asyncio.wait_for(transport.connect(), timeout=5.0)
+        
+        await transport.enter_raw_repl_async(soft_reset=True)
+        assert transport.in_raw_repl is True
+        
+        await transport.close_async()
+    
+    event_loop.run_until_complete(_test())
 
-        if TEST_PORT is None:
-            raise unittest.SkipTest("No MicroPython device found")
 
-        print(f"\nUsing device: {TEST_PORT}")
+def test_exec_raw_async(hardware_device, async_modules, event_loop):
+    """Test executing raw commands."""
+    AsyncSerialTransport = async_modules["AsyncSerialTransport"]
+    
+    async def _test():
+        transport = AsyncSerialTransport(hardware_device, baudrate=115200)
+        await asyncio.wait_for(transport.connect(), timeout=5.0)
+        await transport.enter_raw_repl_async(soft_reset=True)
 
-    def setUp(self):
-        """Set up each test."""
-        self.transport = None
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
+        # Simple print command
+        stdout, stderr = await transport.exec_raw_async("print('hello')")
+        assert stdout.strip() == b"hello"
+        assert stderr == b""
 
-    def tearDown(self):
-        """Clean up after each test."""
-        if self.transport:
-            try:
-                self.loop.run_until_complete(self.transport.close_async())
-            except:
-                pass
-        self.loop.close()
+        # Command with result
+        stdout, stderr = await transport.exec_raw_async("print(2 + 2)")
+        assert stdout.strip() == b"4"
+        assert stderr == b""
+        
+        await transport.close_async()
+    
+    event_loop.run_until_complete(_test())
 
-    async def _connect_transport(self, timeout=5.0):
-        """Helper to connect transport with timeout."""
-        self.transport = AsyncSerialTransport(TEST_PORT, baudrate=115200)
-        await asyncio.wait_for(self.transport.connect(), timeout=timeout)
-        return self.transport
 
-    def test_basic_connection(self):
-        """Test basic connection and disconnection."""
+def test_exec_with_error(hardware_device, async_modules, event_loop):
+    """Test executing command that raises an error."""
+    AsyncSerialTransport = async_modules["AsyncSerialTransport"]
+    
+    async def _test():
+        transport = AsyncSerialTransport(hardware_device, baudrate=115200)
+        await asyncio.wait_for(transport.connect(), timeout=5.0)
+        await transport.enter_raw_repl_async(soft_reset=True)
 
-        async def _test():
-            transport = await self._connect_transport()
-            self.assertIsNotNone(transport.reader)
-            self.assertIsNotNone(transport.writer)
-            self.assertEqual(transport.device_name, TEST_PORT)
+        # Command that raises NameError
+        stdout, stderr = await transport.exec_raw_async("print(undefined_var)")
+        assert stdout == b""
+        assert b"NameError" in stderr
+        
+        await transport.close_async()
+    
+    event_loop.run_until_complete(_test())
 
-        self.loop.run_until_complete(_test())
 
-    def test_enter_raw_repl(self):
-        """Test entering raw REPL mode."""
+def test_eval_async(hardware_device, async_modules, event_loop):
+    """Test evaluating expressions."""
+    AsyncSerialTransport = async_modules["AsyncSerialTransport"]
+    
+    async def _test():
+        transport = AsyncSerialTransport(hardware_device, baudrate=115200)
+        await asyncio.wait_for(transport.connect(), timeout=5.0)
+        await transport.enter_raw_repl_async(soft_reset=True)
 
-        async def _test():
-            transport = await self._connect_transport()
-            await transport.enter_raw_repl_async(soft_reset=True)
-            self.assertTrue(transport.in_raw_repl)
+        # Arithmetic
+        result = await transport.eval_async("2 + 2")
+        assert result == 4
 
-        self.loop.run_until_complete(_test())
+        # String
+        result = await transport.eval_async("'hello world'")
+        assert result == "hello world"
 
-    def test_exec_raw_async(self):
-        """Test executing raw commands."""
+        # List
+        result = await transport.eval_async("[1, 2, 3]")
+        assert result == [1, 2, 3]
 
-        async def _test():
-            transport = await self._connect_transport()
-            await transport.enter_raw_repl_async(soft_reset=True)
+        # Dictionary
+        result = await transport.eval_async("{'a': 1, 'b': 2}")
+        assert result == {"a": 1, "b": 2}
+        
+        await transport.close_async()
+    
+    event_loop.run_until_complete(_test())
 
-            # Simple print command
-            stdout, stderr = await transport.exec_raw_async("print('hello')")
-            self.assertEqual(stdout.strip(), b"hello")
-            self.assertEqual(stderr, b"")
 
-            # Command with result
-            stdout, stderr = await transport.exec_raw_async("print(2 + 2)")
-            self.assertEqual(stdout.strip(), b"4")
-            self.assertEqual(stderr, b"")
+def test_exec_async(hardware_device, async_modules, event_loop):
+    """Test executing multi-line code."""
+    AsyncSerialTransport = async_modules["AsyncSerialTransport"]
+    
+    async def _test():
+        transport = AsyncSerialTransport(hardware_device, baudrate=115200)
+        await asyncio.wait_for(transport.connect(), timeout=5.0)
+        await transport.enter_raw_repl_async(soft_reset=True)
 
-        self.loop.run_until_complete(_test())
-
-    def test_exec_with_error(self):
-        """Test executing command that raises an error."""
-
-        async def _test():
-            transport = await self._connect_transport()
-            await transport.enter_raw_repl_async(soft_reset=True)
-
-            # Command that raises NameError
-            stdout, stderr = await transport.exec_raw_async("print(undefined_var)")
-            self.assertEqual(stdout, b"")
-            self.assertIn(b"NameError", stderr)
-
-        self.loop.run_until_complete(_test())
-
-    def test_eval_async(self):
-        """Test evaluating expressions."""
-
-        async def _test():
-            transport = await self._connect_transport()
-            await transport.enter_raw_repl_async(soft_reset=True)
-
-            # Arithmetic
-            result = await transport.eval_async("2 + 2")
-            self.assertEqual(result, 4)
-
-            # String
-            result = await transport.eval_async("'hello world'")
-            self.assertEqual(result, "hello world")
-
-            # List
-            result = await transport.eval_async("[1, 2, 3]")
-            self.assertEqual(result, [1, 2, 3])
-
-            # Dictionary
-            result = await transport.eval_async("{'a': 1, 'b': 2}")
-            self.assertEqual(result, {"a": 1, "b": 2})
-
-        self.loop.run_until_complete(_test())
-
-    def test_exec_async(self):
-        """Test executing multi-line code."""
-
-        async def _test():
-            transport = await self._connect_transport()
-            await transport.enter_raw_repl_async(soft_reset=True)
-
-            code = """
+        code = """
 x = 10
 y = 20
 print(x + y)
 """
-            stdout = await transport.exec_async(code)
-            self.assertEqual(stdout.strip(), b"30")
+        stdout = await transport.exec_async(code)
+        assert stdout.strip() == b"30"
+        
+        await transport.close_async()
+    
+    event_loop.run_until_complete(_test())
 
-        self.loop.run_until_complete(_test())
 
-    def test_multiple_commands(self):
-        """Test executing multiple commands in sequence."""
+def test_multiple_commands(hardware_device, async_modules, event_loop):
+    """Test executing multiple commands in sequence."""
+    AsyncSerialTransport = async_modules["AsyncSerialTransport"]
+    
+    async def _test():
+        transport = AsyncSerialTransport(hardware_device, baudrate=115200)
+        await asyncio.wait_for(transport.connect(), timeout=5.0)
+        await transport.enter_raw_repl_async(soft_reset=True)
 
-        async def _test():
-            transport = await self._connect_transport()
-            await transport.enter_raw_repl_async(soft_reset=True)
+        # Set a variable
+        stdout, stderr = await transport.exec_raw_async("x = 42")
+        assert stderr == b""
 
-            # Set a variable
-            stdout, stderr = await transport.exec_raw_async("x = 42")
-            self.assertEqual(stderr, b"")
+        # Read it back
+        result = await transport.eval_async("x")
+        assert result == 42
 
-            # Read it back
-            result = await transport.eval_async("x")
-            self.assertEqual(result, 42)
+        # Modify it
+        stdout, stderr = await transport.exec_raw_async("x = x * 2")
+        assert stderr == b""
 
-            # Modify it
-            stdout, stderr = await transport.exec_raw_async("x = x * 2")
-            self.assertEqual(stderr, b"")
+        # Read modified value
+        result = await transport.eval_async("x")
+        assert result == 84
+        
+        await transport.close_async()
+    
+    event_loop.run_until_complete(_test())
 
-            # Read modified value
-            result = await transport.eval_async("x")
-            self.assertEqual(result, 84)
 
-        self.loop.run_until_complete(_test())
+def test_concurrent_operations(hardware_device, async_modules, event_loop):
+    """Test that operations are properly serialized."""
+    AsyncSerialTransport = async_modules["AsyncSerialTransport"]
+    
+    async def _test():
+        transport = AsyncSerialTransport(hardware_device, baudrate=115200)
+        await asyncio.wait_for(transport.connect(), timeout=5.0)
+        await transport.enter_raw_repl_async(soft_reset=True)
 
-    def test_concurrent_operations(self):
-        """Test that operations are properly serialized (not truly concurrent on single device)."""
+        # These will execute sequentially due to device limitations
+        results = []
+        for expr in ["1 + 1", "2 + 2", "3 + 3"]:
+            result = await transport.eval_async(expr)
+            results.append(result)
 
-        async def _test():
-            transport = await self._connect_transport()
-            await transport.enter_raw_repl_async(soft_reset=True)
+        assert results == [2, 4, 6]
+        
+        await transport.close_async()
+    
+    event_loop.run_until_complete(_test())
 
-            # These will execute sequentially due to device limitations
-            # but the async API should handle them correctly
-            tasks = [
-                transport.eval_async("1 + 1"),
-                transport.eval_async("2 + 2"),
-                transport.eval_async("3 + 3"),
-            ]
 
-            results = []
-            for task in tasks:
-                results.append(await task)
+@pytest.mark.slow
+def test_raw_paste_mode(hardware_device, async_modules, event_loop):
+    """Test raw paste mode if supported."""
+    AsyncSerialTransport = async_modules["AsyncSerialTransport"]
+    
+    async def _test():
+        transport = AsyncSerialTransport(hardware_device, baudrate=115200)
+        await asyncio.wait_for(transport.connect(), timeout=5.0)
+        await transport.enter_raw_repl_async(soft_reset=True)
 
-            self.assertEqual(results, [2, 4, 6])
-
-        self.loop.run_until_complete(_test())
-
-    def test_raw_paste_mode(self):
-        """Test raw paste mode if supported."""
-
-        async def _test():
-            transport = await self._connect_transport()
-            await transport.enter_raw_repl_async(soft_reset=True)
-
-            if transport.use_raw_paste:
-                # Test with larger code block that benefits from raw paste
-                code = "\n".join(["print('line1')" for _ in range(50)])
-                stdout, stderr = await transport.exec_raw_async(code)
-                self.assertEqual(stderr, b"")
-                # Should have 50 lines of output
-                lines = stdout.strip().split(b"\r\n")
-                self.assertEqual(len(lines), 50)
-
-        self.loop.run_until_complete(_test())
-
-    def test_soft_reset(self):
-        """Test soft reset functionality."""
-
-        async def _test():
-            transport = await self._connect_transport()
-            await transport.enter_raw_repl_async(soft_reset=True)
-
-            # Set a variable
-            stdout, stderr = await transport.exec_raw_async("test_var = 'before reset'")
-            self.assertEqual(stderr, b"")
-
-            # Soft reset
-            await transport.enter_raw_repl_async(soft_reset=True)
-
-            # Variable should be gone
-            stdout, stderr = await transport.exec_raw_async("print(test_var)")
-            self.assertIn(b"NameError", stderr)
-
-        self.loop.run_until_complete(_test())
-
-    def test_exit_and_reenter_raw_repl(self):
-        """Test exiting and re-entering raw REPL."""
-
-        async def _test():
-            transport = await self._connect_transport()
-
-            # Enter raw REPL
-            await transport.enter_raw_repl_async(soft_reset=True)
-            self.assertTrue(transport.in_raw_repl)
-
-            # Exit raw REPL
-            await transport.exit_raw_repl_async()
-            self.assertFalse(transport.in_raw_repl)
-
-            # Re-enter raw REPL
-            await transport.enter_raw_repl_async(soft_reset=False)
-            self.assertTrue(transport.in_raw_repl)
-
-            # Should still be able to execute commands
-            result = await transport.eval_async("1 + 1")
-            self.assertEqual(result, 2)
-
-        self.loop.run_until_complete(_test())
-
-    def test_large_output(self):
-        """Test handling large output from device."""
-
-        async def _test():
-            transport = await self._connect_transport()
-            await transport.enter_raw_repl_async(soft_reset=True)
-
-            # Generate large output
-            code = "for i in range(100): print(f'Line {i:03d}: ' + 'x' * 50)"
+        if transport.use_raw_paste:
+            # Test with larger code block that benefits from raw paste
+            code = "\n".join(["print('line1')" for _ in range(50)])
             stdout, stderr = await transport.exec_raw_async(code)
-            self.assertEqual(stderr, b"")
-
+            assert stderr == b""
+            # Should have 50 lines of output
             lines = stdout.strip().split(b"\r\n")
-            self.assertEqual(len(lines), 100)
-            self.assertIn(b"Line 000:", lines[0])
-            self.assertIn(b"Line 099:", lines[99])
+            assert len(lines) == 50
+        
+        await transport.close_async()
+    
+    event_loop.run_until_complete(_test())
 
-        self.loop.run_until_complete(_test())
 
-    def test_unicode_handling(self):
-        """Test handling of Unicode characters."""
+def test_soft_reset(hardware_device, async_modules, event_loop):
+    """Test soft reset functionality."""
+    AsyncSerialTransport = async_modules["AsyncSerialTransport"]
+    
+    async def _test():
+        transport = AsyncSerialTransport(hardware_device, baudrate=115200)
+        await asyncio.wait_for(transport.connect(), timeout=5.0)
+        await transport.enter_raw_repl_async(soft_reset=True)
 
-        async def _test():
-            transport = await self._connect_transport()
-            await transport.enter_raw_repl_async(soft_reset=True)
+        # Set a variable
+        stdout, stderr = await transport.exec_raw_async("test_var = 'before reset'")
+        assert stderr == b""
 
-            # Test various Unicode characters
-            test_strings = [
-                "Hello, 世界",
-                "Привет, мир",
-                "مرحبا بالعالم",
-                "🐍 Python",
-            ]
+        # Soft reset
+        await transport.enter_raw_repl_async(soft_reset=True)
 
-            for test_str in test_strings:
-                result = await transport.eval_async(f"'{test_str}'")
-                self.assertEqual(result, test_str)
+        # Variable should be gone
+        stdout, stderr = await transport.exec_raw_async("print(test_var)")
+        assert b"NameError" in stderr
+        
+        await transport.close_async()
+    
+    event_loop.run_until_complete(_test())
 
-        self.loop.run_until_complete(_test())
 
-    def test_import_modules(self):
-        """Test importing standard MicroPython modules."""
+def test_exit_and_reenter_raw_repl(hardware_device, async_modules, event_loop):
+    """Test exiting and re-entering raw REPL."""
+    AsyncSerialTransport = async_modules["AsyncSerialTransport"]
+    
+    async def _test():
+        transport = AsyncSerialTransport(hardware_device, baudrate=115200)
+        await asyncio.wait_for(transport.connect(), timeout=5.0)
+        
+        # Enter raw REPL
+        await transport.enter_raw_repl_async(soft_reset=True)
+        assert transport.in_raw_repl is True
 
-        async def _test():
-            transport = await self._connect_transport()
-            await transport.enter_raw_repl_async(soft_reset=True)
+        # Exit raw REPL
+        await transport.exit_raw_repl_async()
+        assert transport.in_raw_repl is False
 
-            # Import and use sys module
-            code = """
+        # Re-enter raw REPL
+        await transport.enter_raw_repl_async(soft_reset=False)
+        assert transport.in_raw_repl is True
+
+        # Should still be able to execute commands
+        result = await transport.eval_async("1 + 1")
+        assert result == 2
+        
+        await transport.close_async()
+    
+    event_loop.run_until_complete(_test())
+
+
+@pytest.mark.slow
+def test_large_output(hardware_device, async_modules, event_loop):
+    """Test handling large output from device."""
+    AsyncSerialTransport = async_modules["AsyncSerialTransport"]
+    
+    async def _test():
+        transport = AsyncSerialTransport(hardware_device, baudrate=115200)
+        await asyncio.wait_for(transport.connect(), timeout=5.0)
+        await transport.enter_raw_repl_async(soft_reset=True)
+
+        # Generate large output
+        code = "for i in range(100): print(f'Line {i:03d}: ' + 'x' * 50)"
+        stdout, stderr = await transport.exec_raw_async(code)
+        assert stderr == b""
+
+        lines = stdout.strip().split(b"\r\n")
+        assert len(lines) == 100
+        assert b"Line 000:" in lines[0]
+        assert b"Line 099:" in lines[99]
+        
+        await transport.close_async()
+    
+    event_loop.run_until_complete(_test())
+
+
+def test_unicode_handling(hardware_device, async_modules, event_loop):
+    """Test handling of Unicode characters."""
+    AsyncSerialTransport = async_modules["AsyncSerialTransport"]
+    
+    async def _test():
+        transport = AsyncSerialTransport(hardware_device, baudrate=115200)
+        await asyncio.wait_for(transport.connect(), timeout=5.0)
+        await transport.enter_raw_repl_async(soft_reset=True)
+
+        # Test various Unicode characters
+        test_strings = [
+            "Hello, 世界",
+            "Привет, мир",
+            "مرحبا بالعالم",
+            "🐍 Python",
+        ]
+
+        for test_str in test_strings:
+            result = await transport.eval_async(f"'{test_str}'")
+            assert result == test_str
+        
+        await transport.close_async()
+    
+    event_loop.run_until_complete(_test())
+
+
+def test_import_modules(hardware_device, async_modules, event_loop):
+    """Test importing standard MicroPython modules."""
+    AsyncSerialTransport = async_modules["AsyncSerialTransport"]
+    
+    async def _test():
+        transport = AsyncSerialTransport(hardware_device, baudrate=115200)
+        await asyncio.wait_for(transport.connect(), timeout=5.0)
+        await transport.enter_raw_repl_async(soft_reset=True)
+
+        # Import and use sys module
+        code = """
 import sys
 print(sys.platform)
 """
-            stdout = await transport.exec_async(code)
-            self.assertGreater(len(stdout), 0)
+        stdout = await transport.exec_async(code)
+        assert len(stdout) > 0
 
-            # Import and use time module
-            code = """
+        # Import and use time module
+        code = """
 import time
 t = time.time()
 print(t > 0)
 """
-            stdout = await transport.exec_async(code)
-            self.assertIn(b"True", stdout)
+        stdout = await transport.exec_async(code)
+        assert b"True" in stdout
+        
+        await transport.close_async()
+    
+    event_loop.run_until_complete(_test())
 
-        self.loop.run_until_complete(_test())
+
+# Filesystem Tests
 
 
-@unittest.skipUnless(HAS_ASYNC, "Async modules not available")
-class TestAsyncHardwareFilesystem(unittest.TestCase):
-    """Filesystem operation tests on hardware."""
+def test_filesystem_operations(hardware_device, async_modules, event_loop):
+    """Test basic filesystem operations."""
+    AsyncSerialTransport = async_modules["AsyncSerialTransport"]
+    
+    async def _test():
+        transport = AsyncSerialTransport(hardware_device, baudrate=115200)
+        await asyncio.wait_for(transport.connect(), timeout=5.0)
+        await transport.enter_raw_repl_async(soft_reset=True)
 
-    @classmethod
-    def setUpClass(cls):
-        """Set up test class - verify device is available."""
-        if TEST_PORT is None:
-            raise unittest.SkipTest("No MicroPython device found")
+        # Detect writable filesystem location (handles pyboard, esp32, rp2, etc.)
+        code = """
+import os
+import sys
+# Try to find a writable filesystem
+writable_path = None
+test_paths = ['/', '/flash', '/sd']
+for path in test_paths:
+    try:
+        # Check if path exists and is writable
+        items = os.listdir(path)
+        # Try to create a test file
+        test_file = path + '/.test_write'
+        with open(test_file, 'w') as f:
+            f.write('test')
+        os.remove(test_file)
+        writable_path = path
+        break
+    except (OSError, AttributeError):
+        continue
+print(writable_path if writable_path else 'NONE')
+"""
+        stdout = await transport.exec_async(code)
+        writable_path = stdout.strip().decode()
+        
+        if writable_path == 'NONE':
+            # Skip test if no writable filesystem available
+            pytest.skip("No writable filesystem available on device")
+            return
 
-    def setUp(self):
-        """Set up each test."""
-        self.transport = None
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
-
-    def tearDown(self):
-        """Clean up after each test."""
-        if self.transport:
-            try:
-                self.loop.run_until_complete(self.transport.close_async())
-            except:
-                pass
-        self.loop.close()
-
-    async def _connect_transport(self, timeout=5.0):
-        """Helper to connect transport with timeout."""
-        self.transport = AsyncSerialTransport(TEST_PORT, baudrate=115200)
-        await asyncio.wait_for(self.transport.connect(), timeout=timeout)
-        return self.transport
-
-    def test_filesystem_operations(self):
-        """Test basic filesystem operations."""
-
-        async def _test():
-            transport = await self._connect_transport()
-            await transport.enter_raw_repl_async(soft_reset=True)
-
-            # Create a test file
-            code = """
-with open('/test_async.txt', 'w') as f:
+        # Create a test file
+        code = f"""
+with open('{writable_path}/test_async.txt', 'w') as f:
     f.write('async test content')
 print('created')
 """
-            stdout = await transport.exec_async(code)
-            self.assertIn(b"created", stdout)
+        stdout = await transport.exec_async(code)
+        assert b"created" in stdout
 
-            # Read the file back
-            code = """
-with open('/test_async.txt', 'r') as f:
+        # Read the file back
+        code = f"""
+with open('{writable_path}/test_async.txt', 'r') as f:
     content = f.read()
 print(content)
 """
-            stdout = await transport.exec_async(code)
-            self.assertIn(b"async test content", stdout)
+        stdout = await transport.exec_async(code)
+        assert b"async test content" in stdout
 
-            # Delete the file
-            code = """
+        # Delete the file
+        code = f"""
 import os
-os.remove('/test_async.txt')
+os.remove('{writable_path}/test_async.txt')
 print('deleted')
 """
-            stdout = await transport.exec_async(code)
-            self.assertIn(b"deleted", stdout)
+        stdout = await transport.exec_async(code)
+        assert b"deleted" in stdout
+        
+        await transport.close_async()
+    
+    event_loop.run_until_complete(_test())
 
-        self.loop.run_until_complete(_test())
 
-    def test_directory_operations(self):
-        """Test directory operations."""
+def test_directory_operations(hardware_device, async_modules, event_loop):
+    """Test directory operations."""
+    AsyncSerialTransport = async_modules["AsyncSerialTransport"]
+    
+    async def _test():
+        transport = AsyncSerialTransport(hardware_device, baudrate=115200)
+        await asyncio.wait_for(transport.connect(), timeout=5.0)
+        await transport.enter_raw_repl_async(soft_reset=True)
 
-        async def _test():
-            transport = await self._connect_transport()
-            await transport.enter_raw_repl_async(soft_reset=True)
+        # Detect writable filesystem location
+        code = """
+import os
+writable_path = None
+test_paths = ['/', '/flash', '/sd']
+for path in test_paths:
+    try:
+        items = os.listdir(path)
+        test_file = path + '/.test_write'
+        with open(test_file, 'w') as f:
+            f.write('test')
+        os.remove(test_file)
+        writable_path = path
+        break
+    except (OSError, AttributeError):
+        continue
+print(writable_path if writable_path else 'NONE')
+"""
+        stdout = await transport.exec_async(code)
+        writable_path = stdout.strip().decode()
+        
+        if writable_path == 'NONE':
+            pytest.skip("No writable filesystem available on device")
+            return
 
-            # Create directory
-            code = """
+        # Create directory
+        code = f"""
 import os
 try:
-    os.mkdir('/test_async_dir')
+    os.mkdir('{writable_path}/test_async_dir')
     print('created')
 except OSError:
     print('already exists')
 """
-            stdout = await transport.exec_async(code)
-            self.assertTrue(b"created" in stdout or b"already exists" in stdout)
+        stdout = await transport.exec_async(code)
+        assert b"created" in stdout or b"already exists" in stdout
 
-            # List directory
-            code = """
+        # List directory
+        code = f"""
 import os
-items = os.listdir('/')
+items = os.listdir('{writable_path}')
 print('test_async_dir' in items)
 """
-            stdout = await transport.exec_async(code)
-            self.assertIn(b"True", stdout)
+        stdout = await transport.exec_async(code)
+        assert b"True" in stdout
 
-            # Remove directory
-            code = """
+        # Remove directory
+        code = f"""
 import os
 try:
-    os.rmdir('/test_async_dir')
+    os.rmdir('{writable_path}/test_async_dir')
     print('removed')
 except OSError as e:
-    print(f'error: {e}')
+    print(f'error: {{e}}')
 """
-            stdout = await transport.exec_async(code)
-            self.assertTrue(b"removed" in stdout or b"error" in stdout)
+        stdout = await transport.exec_async(code)
+        assert b"removed" in stdout or b"error" in stdout
+        
+        await transport.close_async()
+    
+    event_loop.run_until_complete(_test())
 
-        self.loop.run_until_complete(_test())
-
-
-def print_available_ports():
-    """Print all available serial ports."""
-    try:
-        ports = serial.tools.list_ports.comports()
-        if not ports:
-            print("No serial ports found")
-            return
-
-        print("\\nAvailable serial ports:")
-        for port in ports:
-            print(f"  {port.device:12s} - {port.description}")
-    except Exception as e:
-        print(f"Error listing ports: {e}")
-
-
-if __name__ == "__main__":
-    print("=" * 72)
-    print("MicroPython Async Transport - Hardware Integration Tests")
-    print("=" * 72)
-
-    # Parse command line arguments
-    if len(sys.argv) > 1 and not sys.argv[1].startswith("Test"):
-        TEST_PORT = sys.argv[1]
-        # Remove port from argv so unittest doesn't see it
-        sys.argv.pop(1)
-
-    if not HAS_ASYNC:
-        print(f"ERROR: Async modules not available")
-        print(f"Import error: {IMPORT_ERROR}")
-        sys.exit(1)
-
-    print_available_ports()
-
-    if TEST_PORT is None:
-        TEST_PORT = find_micropython_device()
-
-    if TEST_PORT:
-        print(f"\\nTest device: {TEST_PORT}")
-    else:
-        print("\\nWARNING: No MicroPython device found - tests will be skipped")
-        print("\\nTo specify a device manually:")
-        print("  python test_async_hardware.py COM20")
-        print("  python test_async_hardware.py /dev/ttyUSB0")
-
-    print("=" * 72)
-    print()
-
-    # Run tests
-    unittest.main(verbosity=2)

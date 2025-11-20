@@ -59,7 +59,7 @@ class AsyncSerialTransport(AsyncTransport):
         self,
         device: str,
         baudrate: int = 115200,
-        wait: float = 0,
+        wait: float = 1,
         exclusive: bool = None,
         timeout: float = None,
     ):

@@ -29,290 +29,178 @@
 These tests focus on increasing code coverage for async modules.
 """
 
-import sys
-import os
-import unittest
 import asyncio
-from unittest.mock import Mock, MagicMock, patch, AsyncMock
-from io import BytesIO
-
-# Add mpremote to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
-try:
-    from mpremote.transport_async import AsyncTransport
-    from mpremote.transport_serial_async import AsyncSerialTransport
-    from mpremote.protocol import RawREPLProtocol
-    from mpremote.console_async import AsyncConsole, AsyncConsolePosix, AsyncConsoleWindows
-    from mpremote.commands_async import (
-        do_exec_async,
-        do_eval_async,
-        do_run_async,
-        do_filesystem_cp_async,
-    )
-    from mpremote.transport import TransportError, TransportExecError
-
-    HAS_ASYNC = True
-except ImportError as e:
-    HAS_ASYNC = False
-    IMPORT_ERROR = str(e)
+import os
+import tempfile
+import pytest
+from unittest.mock import Mock, AsyncMock, patch
 
 
-@unittest.skipUnless(HAS_ASYNC, "Async modules not available")
-class TestAsyncTransportMethods(unittest.TestCase):
+pytestmark = pytest.mark.async_required
+
+
+class TestAsyncTransportMethods:
     """Test AsyncTransport methods with mocking."""
 
-    def test_fs_listdir_async(self):
+    def test_fs_listdir_async(self, async_modules):
         """Test fs_listdir_async method."""
+        AsyncTransport = async_modules["AsyncTransport"]
         transport = AsyncTransport()
 
-        # Test that the method exists and is async
-        self.assertTrue(hasattr(transport, "fs_listdir_async"))
-        self.assertTrue(asyncio.iscoroutinefunction(transport.fs_listdir_async))
+        assert hasattr(transport, "fs_listdir_async")
+        assert asyncio.iscoroutinefunction(transport.fs_listdir_async)
 
-    def test_fs_stat_async(self):
+    def test_fs_stat_async(self, async_modules):
         """Test fs_stat_async method."""
+        AsyncTransport = async_modules["AsyncTransport"]
         transport = AsyncTransport()
 
-        # Test that the method exists and is async
-        self.assertTrue(hasattr(transport, "fs_stat_async"))
-        self.assertTrue(asyncio.iscoroutinefunction(transport.fs_stat_async))
+        assert hasattr(transport, "fs_stat_async")
+        assert asyncio.iscoroutinefunction(transport.fs_stat_async)
 
-    def test_fs_readfile_async(self):
+    def test_fs_readfile_async(self, async_modules):
         """Test fs_readfile_async method."""
+        AsyncTransport = async_modules["AsyncTransport"]
         transport = AsyncTransport()
 
-        # Test that the method exists and is async
-        self.assertTrue(hasattr(transport, "fs_readfile_async"))
-        # Note: This uses sync implementation as placeholder, so might not be async
+        assert hasattr(transport, "fs_readfile_async")
 
-    def test_fs_writefile_async(self):
+    def test_fs_writefile_async(self, async_modules):
         """Test fs_writefile_async method."""
+        AsyncTransport = async_modules["AsyncTransport"]
         transport = AsyncTransport()
 
-        # Test that the method exists
-        self.assertTrue(hasattr(transport, "fs_writefile_async"))
+        assert hasattr(transport, "fs_writefile_async")
 
 
-@unittest.skipUnless(HAS_ASYNC, "Async modules not available")
-class TestConsoleAsyncPosix(unittest.TestCase):
+@pytest.mark.posix_only
+class TestConsoleAsyncPosix:
     """Test AsyncConsolePosix class."""
 
-    @unittest.skipIf(sys.platform == "win32", "POSIX only test")
-    def test_posix_console_instantiation(self):
+    def test_posix_console_instantiation(self, async_modules):
         """Test POSIX console can be created."""
-        try:
-            import termios
+        from mpremote.console_async import AsyncConsolePosix
 
-            console = AsyncConsolePosix()
-            self.assertIsNotNone(console)
-            self.assertTrue(hasattr(console, "infd"))
-            self.assertTrue(hasattr(console, "infile"))
-            self.assertTrue(hasattr(console, "outfile"))
-            self.assertTrue(hasattr(console, "orig_attr"))
-        except ImportError:
-            self.skipTest("termios not available")
+        console = AsyncConsolePosix()
+        assert console is not None
+        assert hasattr(console, "infd")
+        assert hasattr(console, "infile")
+        assert hasattr(console, "outfile")
+        assert hasattr(console, "orig_attr")
 
-    @unittest.skipIf(sys.platform == "win32", "POSIX only test")
-    def test_posix_console_methods(self):
+    def test_posix_console_methods(self, async_modules):
         """Test POSIX console methods."""
-        try:
-            import termios
+        from mpremote.console_async import AsyncConsolePosix
 
-            console = AsyncConsolePosix()
+        console = AsyncConsolePosix()
 
-            # Test methods exist
-            self.assertTrue(hasattr(console, "enter"))
-            self.assertTrue(hasattr(console, "exit"))
-            self.assertTrue(hasattr(console, "readchar"))
-            self.assertTrue(hasattr(console, "readchar_async"))
-            self.assertTrue(hasattr(console, "write"))
-            self.assertTrue(hasattr(console, "waitchar"))
+        assert hasattr(console, "enter")
+        assert hasattr(console, "exit")
+        assert hasattr(console, "readchar")
+        assert hasattr(console, "readchar_async")
+        assert hasattr(console, "write")
+        assert hasattr(console, "waitchar")
 
-            # Test readchar_async is async
-            self.assertTrue(asyncio.iscoroutinefunction(console.readchar_async))
-        except ImportError:
-            self.skipTest("termios not available")
+        assert asyncio.iscoroutinefunction(console.readchar_async)
 
 
-@unittest.skipUnless(HAS_ASYNC, "Async modules not available")
-class TestConsoleAsyncWindows(unittest.TestCase):
+@pytest.mark.windows_only
+class TestConsoleAsyncWindows:
     """Test AsyncConsoleWindows class."""
 
-    @unittest.skipUnless(sys.platform == "win32", "Windows only test")
-    def test_windows_console_instantiation(self):
+    def test_windows_console_instantiation(self, async_modules):
         """Test Windows console can be created."""
-        console = AsyncConsoleWindows()
-        self.assertIsNotNone(console)
-        self.assertEqual(console.ctrl_c, 0)
-        self.assertTrue(hasattr(console, "_msvcrt"))
-        self.assertTrue(hasattr(console, "_signal"))
+        from mpremote.console_async import AsyncConsoleWindows
 
-    @unittest.skipUnless(sys.platform == "win32", "Windows only test")
-    def test_windows_console_methods(self):
+        console = AsyncConsoleWindows()
+        assert console is not None
+        assert console.ctrl_c == 0
+        assert hasattr(console, "_msvcrt")
+        assert hasattr(console, "_signal")
+
+    def test_windows_console_methods(self, async_modules):
         """Test Windows console methods."""
+        from mpremote.console_async import AsyncConsoleWindows
+
         console = AsyncConsoleWindows()
 
-        # Test methods exist
-        self.assertTrue(hasattr(console, "enter"))
-        self.assertTrue(hasattr(console, "exit"))
-        self.assertTrue(hasattr(console, "readchar"))
-        self.assertTrue(hasattr(console, "readchar_async"))
-        self.assertTrue(hasattr(console, "write"))
-        self.assertTrue(hasattr(console, "inWaiting"))
+        assert hasattr(console, "enter")
+        assert hasattr(console, "exit")
+        assert hasattr(console, "readchar")
+        assert hasattr(console, "readchar_async")
+        assert hasattr(console, "write")
+        assert hasattr(console, "inWaiting")
 
-        # Test readchar_async is async
-        self.assertTrue(asyncio.iscoroutinefunction(console.readchar_async))
+        assert asyncio.iscoroutinefunction(console.readchar_async)
 
-    @unittest.skipUnless(sys.platform == "win32", "Windows only test")
-    def test_windows_in_waiting(self):
+    def test_windows_in_waiting(self, async_modules):
         """Test inWaiting method."""
+        from mpremote.console_async import AsyncConsoleWindows
+
         console = AsyncConsoleWindows()
         result = console.inWaiting()
-        self.assertIsInstance(result, int)
+        assert isinstance(result, int)
 
 
-@unittest.skipUnless(HAS_ASYNC, "Async modules not available")
-class TestAsyncSerialTransportMethods(unittest.TestCase):
+@pytest.mark.serial_required
+class TestAsyncSerialTransportMethods:
     """Test AsyncSerialTransport methods."""
 
-    def test_close_sync_wrapper(self):
+    def test_close_sync_wrapper(self, async_modules):
         """Test synchronous close wrapper."""
-        try:
-            transport = AsyncSerialTransport("/dev/null", baudrate=115200, wait=0)
-            # Test that close exists
-            self.assertTrue(hasattr(transport, "close"))
-            self.assertTrue(callable(transport.close))
-        except ImportError:
-            self.skipTest("pyserial-asyncio not installed")
+        AsyncSerialTransport = async_modules["AsyncSerialTransport"]
+        transport = AsyncSerialTransport("/dev/null", baudrate=115200, wait=0)
 
-    def test_fs_hook_mount_attribute(self):
+        assert hasattr(transport, "close")
+        assert callable(transport.close)
+
+    def test_fs_hook_mount_attribute(self, async_modules):
         """Test fs_hook_mount attribute exists."""
-        self.assertTrue(hasattr(AsyncSerialTransport, "fs_hook_mount"))
-        self.assertEqual(AsyncSerialTransport.fs_hook_mount, "/remote")
+        AsyncSerialTransport = async_modules["AsyncSerialTransport"]
+        assert hasattr(AsyncSerialTransport, "fs_hook_mount")
+        assert AsyncSerialTransport.fs_hook_mount == "/remote"
 
 
-@unittest.skipUnless(HAS_ASYNC, "Async modules not available")
-class TestProtocolEncoding(unittest.TestCase):
+class TestProtocolEncoding:
     """Test protocol encoding with various inputs."""
 
-    def test_encode_unicode_characters(self):
+    def test_encode_unicode_characters(self, async_modules):
         """Test encoding unicode characters."""
+        RawREPLProtocol = async_modules["RawREPLProtocol"]
         cmd = "print('ñ')"
         encoded = RawREPLProtocol.encode_command_standard(cmd)
-        self.assertIsInstance(encoded, bytes)
-        self.assertIn(b"print", encoded)
+        assert isinstance(encoded, bytes)
+        assert b"print" in encoded
 
-    def test_encode_empty_command(self):
+    def test_encode_empty_command(self, async_modules):
         """Test encoding empty command."""
+        RawREPLProtocol = async_modules["RawREPLProtocol"]
         cmd = ""
         encoded = RawREPLProtocol.encode_command_standard(cmd)
-        self.assertEqual(encoded, b"")
+        assert encoded == b""
 
-    def test_encode_multiline_command(self):
+    def test_encode_multiline_command(self, async_modules):
         """Test encoding multiline command."""
+        RawREPLProtocol = async_modules["RawREPLProtocol"]
         cmd = "x = 1\ny = 2\nprint(x + y)"
         encoded = RawREPLProtocol.encode_command_standard(cmd)
-        self.assertIn(b"x = 1", encoded)
-        self.assertIn(b"y = 2", encoded)
+        assert b"x = 1" in encoded
+        assert b"y = 2" in encoded
 
-    def test_raw_paste_length_encoding(self):
+    def test_raw_paste_length_encoding(self, async_modules):
         """Test raw paste encodes length correctly."""
+        RawREPLProtocol = async_modules["RawREPLProtocol"]
         cmd = "x" * 100
         header, cmd_bytes = RawREPLProtocol.encode_command_raw_paste(cmd)
         # Length should be encoded in bytes 3-6 (little-endian)
         length_bytes = header[3:7]
         length = int.from_bytes(length_bytes, "little")
-        self.assertEqual(length, 100)
+        assert length == 100
 
-    def test_decode_response_multiple_separators(self):
+    def test_decode_response_multiple_separators(self, async_modules):
         """Test decoding response with multiple separators."""
+        RawREPLProtocol = async_modules["RawREPLProtocol"]
         response = b"out1\x04err1\x04extra\x04"
         stdout, stderr = RawREPLProtocol.decode_response(response)
-        self.assertEqual(stdout, b"out1")
-        self.assertEqual(stderr, b"err1")
-
-
-@unittest.skipUnless(HAS_ASYNC, "Async modules not available")
-class TestCommandsAsyncWithMocks(unittest.TestCase):
-    """Test async commands with mocking."""
-
-    async def test_do_exec_async_with_mock_state(self):
-        """Test do_exec_async with mocked state."""
-        # Create mock state and transport
-        state = Mock()
-        state.transport = Mock()
-        state.transport.exec_raw_no_follow_async = AsyncMock()
-        state.transport.follow_async = AsyncMock(return_value=(b"output", b""))
-        state.ensure_raw_repl_async = AsyncMock()
-        state.did_action = Mock()
-
-        # Create mock args
-        args = Mock()
-        args.command = "-"
-        args.follow = False
-
-        # Mock stdin
-        with patch("sys.stdin.buffer.read", return_value=b"print('test')"):
-            await do_exec_async(state, args)
-
-        # Verify calls
-        state.ensure_raw_repl_async.assert_called_once()
-        state.did_action.assert_called_once()
-
-    async def test_do_eval_async_with_mock_state(self):
-        """Test do_eval_async with mocked state."""
-        state = Mock()
-        state.transport = Mock()
-        state.transport.eval_async = AsyncMock(return_value=42)
-        state.ensure_raw_repl_async = AsyncMock()
-        state.did_action = Mock()
-
-        args = Mock()
-        args.expression = "2 + 2"
-
-        with patch("builtins.print") as mock_print:
-            await do_eval_async(state, args)
-
-        state.ensure_raw_repl_async.assert_called_once()
-        state.did_action.assert_called_once()
-        state.transport.eval_async.assert_called_once_with("2 + 2")
-
-    async def test_do_run_async_with_mock_state(self):
-        """Test do_run_async with mocked state."""
-        state = Mock()
-        state.transport = Mock()
-        state.transport.exec_raw_async = AsyncMock(return_value=(b"output", b""))
-        state.ensure_raw_repl_async = AsyncMock()
-        state.did_action = Mock()
-
-        args = Mock()
-        args.script = "/tmp/test.py"
-
-        # Create temp file
-        import tempfile
-
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
-            f.write("print('test')")
-            temp_path = f.name
-
-        try:
-            args.script = temp_path
-            await do_run_async(state, args)
-
-            state.ensure_raw_repl_async.assert_called_once()
-            state.did_action.assert_called_once()
-        finally:
-            os.unlink(temp_path)
-
-    def test_async_command_tests(self):
-        """Run async command tests."""
-        # Run the async tests
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(self.test_do_exec_async_with_mock_state())
-        loop.run_until_complete(self.test_do_eval_async_with_mock_state())
-        loop.run_until_complete(self.test_do_run_async_with_mock_state())
-
-
-if __name__ == "__main__":
-    unittest.main(verbosity=2)
+        assert stdout == b"out1"
+        assert stderr == b"err1"

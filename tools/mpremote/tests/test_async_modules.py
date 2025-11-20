@@ -24,131 +24,129 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-"""Unit tests for async transport modules using unittest framework.
+"""Unit tests for async transport modules using pytest framework.
 
-These tests provide proper coverage tracking and follow unittest conventions.
+These tests provide proper coverage tracking and follow pytest conventions.
 """
 
-import sys
-import os
-import unittest
 import asyncio
-
-# Add mpremote to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
-try:
-    from mpremote.transport_async import AsyncTransport
-    from mpremote.transport_serial_async import AsyncSerialTransport
-    from mpremote.protocol import RawREPLProtocol
-    from mpremote.console_async import AsyncConsole
-    from mpremote.commands_async import do_exec_async, do_eval_async
-    from mpremote.main import State
-
-    HAS_ASYNC = True
-except ImportError as e:
-    HAS_ASYNC = False
-    IMPORT_ERROR = str(e)
+import pytest
 
 
-@unittest.skipUnless(HAS_ASYNC, "Async modules not available")
-class TestProtocol(unittest.TestCase):
+pytestmark = pytest.mark.async_required
+
+
+class TestProtocol:
     """Test RawREPLProtocol class."""
 
-    def test_control_codes(self):
+    def test_control_codes(self, async_modules):
         """Test protocol control codes are correct."""
-        self.assertEqual(RawREPLProtocol.CTRL_A, b"\x01")
-        self.assertEqual(RawREPLProtocol.CTRL_B, b"\x02")
-        self.assertEqual(RawREPLProtocol.CTRL_C, b"\x03")
-        self.assertEqual(RawREPLProtocol.CTRL_D, b"\x04")
-        self.assertEqual(RawREPLProtocol.CTRL_E, b"\x05")
+        RawREPLProtocol = async_modules["RawREPLProtocol"]
+        assert RawREPLProtocol.CTRL_A == b"\x01"
+        assert RawREPLProtocol.CTRL_B == b"\x02"
+        assert RawREPLProtocol.CTRL_C == b"\x03"
+        assert RawREPLProtocol.CTRL_D == b"\x04"
+        assert RawREPLProtocol.CTRL_E == b"\x05"
 
-    def test_sequences(self):
+    def test_sequences(self, async_modules):
         """Test protocol sequences."""
-        self.assertEqual(RawREPLProtocol.RAW_REPL_ENTER, b"\r\x03\x03")
-        self.assertEqual(RawREPLProtocol.RAW_REPL_EXIT, b"\r\x02")
-        self.assertEqual(RawREPLProtocol.RAW_PASTE_START, b"\x05A\x01")
+        RawREPLProtocol = async_modules["RawREPLProtocol"]
+        assert RawREPLProtocol.RAW_REPL_ENTER == b"\r\x03\x03"
+        assert RawREPLProtocol.RAW_REPL_EXIT == b"\r\x02"
+        assert RawREPLProtocol.RAW_PASTE_START == b"\x05A\x01"
 
-    def test_expected_responses(self):
+    def test_expected_responses(self, async_modules):
         """Test expected protocol responses."""
-        self.assertEqual(RawREPLProtocol.RAW_REPL_PROMPT, b"raw REPL; CTRL-B to exit\r\n>")
-        self.assertEqual(RawREPLProtocol.RAW_REPL_OK, b"OK")
-        self.assertEqual(RawREPLProtocol.SOFT_REBOOT_MSG, b"soft reboot\r\n")
+        RawREPLProtocol = async_modules["RawREPLProtocol"]
+        assert RawREPLProtocol.RAW_REPL_PROMPT == b"raw REPL; CTRL-B to exit\r\n>"
+        assert RawREPLProtocol.RAW_REPL_OK == b"OK"
+        assert RawREPLProtocol.SOFT_REBOOT_MSG == b"soft reboot\r\n"
 
-    def test_is_raw_paste_supported(self):
+    def test_is_raw_paste_supported(self, async_modules):
         """Test raw paste support detection."""
-        self.assertTrue(RawREPLProtocol.is_raw_paste_supported(b"OK"))
-        self.assertTrue(RawREPLProtocol.is_raw_paste_supported(b"raw REPL"))
-        self.assertFalse(RawREPLProtocol.is_raw_paste_supported(b"error"))
+        RawREPLProtocol = async_modules["RawREPLProtocol"]
+        assert RawREPLProtocol.is_raw_paste_supported(b"OK") is True
+        assert RawREPLProtocol.is_raw_paste_supported(b"raw REPL") is True
+        assert RawREPLProtocol.is_raw_paste_supported(b"error") is False
 
-    def test_encode_command_standard(self):
+    def test_encode_command_standard(self, async_modules):
         """Test standard command encoding."""
+        RawREPLProtocol = async_modules["RawREPLProtocol"]
         cmd = "print('hello')"
         encoded = RawREPLProtocol.encode_command_standard(cmd)
-        self.assertEqual(encoded, b"print('hello')")
-        self.assertIsInstance(encoded, bytes)
+        assert encoded == b"print('hello')"
+        assert isinstance(encoded, bytes)
 
-    def test_encode_command_raw_paste(self):
+    def test_encode_command_raw_paste(self, async_modules):
         """Test raw paste command encoding."""
+        RawREPLProtocol = async_modules["RawREPLProtocol"]
         cmd = "print('hello')"
         header, cmd_bytes = RawREPLProtocol.encode_command_raw_paste(cmd)
-        self.assertTrue(header.startswith(RawREPLProtocol.RAW_PASTE_START))
-        self.assertEqual(cmd_bytes, b"print('hello')")
-        self.assertEqual(len(header), 7)  # Ctrl-E A \x01 + 4 bytes length
+        assert header.startswith(RawREPLProtocol.RAW_PASTE_START)
+        assert cmd_bytes == b"print('hello')"
+        assert len(header) == 7
 
-    def test_decode_response_normal(self):
+    def test_decode_response_normal(self, async_modules):
         """Test decoding normal response."""
+        RawREPLProtocol = async_modules["RawREPLProtocol"]
         response = b"hello world\x04\x04"
         stdout, stderr = RawREPLProtocol.decode_response(response)
-        self.assertEqual(stdout, b"hello world")
-        self.assertEqual(stderr, b"")
+        assert stdout == b"hello world"
+        assert stderr == b""
 
-    def test_decode_response_with_error(self):
+    def test_decode_response_with_error(self, async_modules):
         """Test decoding response with error."""
+        RawREPLProtocol = async_modules["RawREPLProtocol"]
         response = b"output\x04error message\x04"
         stdout, stderr = RawREPLProtocol.decode_response(response)
-        self.assertEqual(stdout, b"output")
-        self.assertEqual(stderr, b"error message")
+        assert stdout == b"output"
+        assert stderr == b"error message"
 
-    def test_decode_response_empty(self):
+    def test_decode_response_empty(self, async_modules):
         """Test decoding empty response."""
+        RawREPLProtocol = async_modules["RawREPLProtocol"]
         stdout, stderr = RawREPLProtocol.decode_response(b"")
-        self.assertEqual(stdout, b"")
-        self.assertEqual(stderr, b"")
+        assert stdout == b""
+        assert stderr == b""
 
-    def test_decode_response_no_separator(self):
+    def test_decode_response_no_separator(self, async_modules):
         """Test decoding response without separator."""
+        RawREPLProtocol = async_modules["RawREPLProtocol"]
         stdout, stderr = RawREPLProtocol.decode_response(b"no separator")
-        self.assertEqual(stdout, b"no separator")
-        self.assertEqual(stderr, b"")
+        assert stdout == b"no separator"
+        assert stderr == b""
 
-    def test_check_error_with_error(self):
+    def test_check_error_with_error(self, async_modules):
         """Test error checking with error present."""
+        RawREPLProtocol = async_modules["RawREPLProtocol"]
         error = RawREPLProtocol.check_error(b"error message")
-        self.assertEqual(error, "error message")
+        assert error == "error message"
 
-    def test_check_error_empty(self):
+    def test_check_error_empty(self, async_modules):
         """Test error checking with empty stderr."""
+        RawREPLProtocol = async_modules["RawREPLProtocol"]
         error = RawREPLProtocol.check_error(b"")
-        self.assertIsNone(error)
+        assert error is None
 
-    def test_check_error_whitespace(self):
+    def test_check_error_whitespace(self, async_modules):
         """Test error checking with whitespace only."""
+        RawREPLProtocol = async_modules["RawREPLProtocol"]
         error = RawREPLProtocol.check_error(b"   \n  ")
-        self.assertIsNone(error)
+        assert error is None
 
-    def test_check_error_with_whitespace(self):
+    def test_check_error_with_whitespace(self, async_modules):
         """Test error checking strips whitespace."""
+        RawREPLProtocol = async_modules["RawREPLProtocol"]
         error = RawREPLProtocol.check_error(b"  error  \n")
-        self.assertEqual(error, "error")
+        assert error == "error"
 
 
-@unittest.skipUnless(HAS_ASYNC, "Async modules not available")
-class TestAsyncTransport(unittest.TestCase):
+class TestAsyncTransport:
     """Test AsyncTransport base class."""
 
-    def test_has_required_methods(self):
+    def test_has_required_methods(self, async_modules):
         """Test that AsyncTransport has all required async methods."""
+        AsyncTransport = async_modules["AsyncTransport"]
         required_methods = [
             "read_async",
             "write_async",
@@ -167,10 +165,11 @@ class TestAsyncTransport(unittest.TestCase):
             "fs_writefile_async",
         ]
         for method in required_methods:
-            self.assertTrue(hasattr(AsyncTransport, method), f"AsyncTransport missing {method}")
+            assert hasattr(AsyncTransport, method), f"AsyncTransport missing {method}"
 
-    def test_methods_are_async(self):
+    def test_methods_are_async(self, async_modules):
         """Test that async methods are coroutines."""
+        AsyncTransport = async_modules["AsyncTransport"]
         async_methods = [
             "read_async",
             "write_async",
@@ -186,34 +185,33 @@ class TestAsyncTransport(unittest.TestCase):
         ]
         for method_name in async_methods:
             method = getattr(AsyncTransport, method_name)
-            self.assertTrue(
-                asyncio.iscoroutinefunction(method), f"{method_name} should be a coroutine"
-            )
+            assert asyncio.iscoroutinefunction(method), f"{method_name} should be a coroutine"
 
 
-@unittest.skipUnless(HAS_ASYNC, "Async modules not available")
-class TestAsyncSerialTransport(unittest.TestCase):
+class TestAsyncSerialTransport:
     """Test AsyncSerialTransport class."""
 
-    def test_instantiation(self):
+    @pytest.mark.serial_required
+    def test_instantiation(self, async_modules):
         """Test that AsyncSerialTransport can be instantiated."""
-        try:
-            transport = AsyncSerialTransport("/dev/null", baudrate=115200, wait=0)
-            self.assertEqual(transport.device_name, "/dev/null")
-            self.assertEqual(transport.baudrate, 115200)
-            self.assertEqual(transport.wait, 0)
-            self.assertFalse(transport.in_raw_repl)
-            self.assertTrue(transport.use_raw_paste)
-            self.assertFalse(transport.mounted)
-        except ImportError:
-            self.skipTest("pyserial-asyncio not installed")
+        AsyncSerialTransport = async_modules["AsyncSerialTransport"]
+        transport = AsyncSerialTransport("/dev/null", baudrate=115200, wait=0)
+        assert transport.device_name == "/dev/null"
+        assert transport.baudrate == 115200
+        assert transport.wait == 0
+        assert transport.in_raw_repl is False
+        assert transport.use_raw_paste is True
+        assert transport.mounted is False
 
-    def test_inherits_from_async_transport(self):
+    def test_inherits_from_async_transport(self, async_modules):
         """Test that AsyncSerialTransport inherits from AsyncTransport."""
-        self.assertTrue(issubclass(AsyncSerialTransport, AsyncTransport))
+        AsyncTransport = async_modules["AsyncTransport"]
+        AsyncSerialTransport = async_modules["AsyncSerialTransport"]
+        assert issubclass(AsyncSerialTransport, AsyncTransport)
 
-    def test_has_async_methods(self):
+    def test_has_async_methods(self, async_modules):
         """Test that AsyncSerialTransport implements async methods."""
+        AsyncSerialTransport = async_modules["AsyncSerialTransport"]
         async_methods = [
             "connect",
             "read_async",
@@ -229,80 +227,84 @@ class TestAsyncSerialTransport(unittest.TestCase):
             "close_async",
         ]
         for method_name in async_methods:
-            self.assertTrue(
-                hasattr(AsyncSerialTransport, method_name),
-                f"AsyncSerialTransport missing {method_name}",
-            )
+            assert hasattr(
+                AsyncSerialTransport, method_name
+            ), f"AsyncSerialTransport missing {method_name}"
 
 
-@unittest.skipUnless(HAS_ASYNC, "Async modules not available")
-class TestAsyncConsole(unittest.TestCase):
+class TestAsyncConsole:
     """Test AsyncConsole factory and classes."""
 
-    def test_console_factory(self):
+    def test_console_factory(self, async_modules):
         """Test that AsyncConsole factory returns correct type."""
+        AsyncConsole = async_modules["AsyncConsole"]
         console = AsyncConsole()
-        self.assertIsNotNone(console)
-        # Check it has required methods
-        self.assertTrue(hasattr(console, "enter"))
-        self.assertTrue(hasattr(console, "exit"))
-        self.assertTrue(hasattr(console, "readchar_async"))
-        self.assertTrue(hasattr(console, "write"))
+        assert console is not None
+        assert hasattr(console, "enter")
+        assert hasattr(console, "exit")
+        assert hasattr(console, "readchar_async")
+        assert hasattr(console, "write")
 
-    def test_readchar_async_is_async(self):
+    def test_readchar_async_is_async(self, async_modules):
         """Test that readchar_async is a coroutine."""
+        AsyncConsole = async_modules["AsyncConsole"]
         console = AsyncConsole()
-        self.assertTrue(asyncio.iscoroutinefunction(console.readchar_async))
+        assert asyncio.iscoroutinefunction(console.readchar_async)
 
 
-@unittest.skipUnless(HAS_ASYNC, "Async modules not available")
-class TestAsyncCommands(unittest.TestCase):
+class TestAsyncCommands:
     """Test async command handlers."""
 
-    def test_async_commands_exist(self):
+    def test_async_commands_exist(self, async_modules):
         """Test that async command functions exist."""
-        self.assertTrue(callable(do_exec_async))
-        self.assertTrue(callable(do_eval_async))
+        do_exec_async = async_modules["do_exec_async"]
+        do_eval_async = async_modules["do_eval_async"]
+        assert callable(do_exec_async)
+        assert callable(do_eval_async)
 
-    def test_async_commands_are_async(self):
+    def test_async_commands_are_async(self, async_modules):
         """Test that async commands are coroutines."""
-        self.assertTrue(asyncio.iscoroutinefunction(do_exec_async))
-        self.assertTrue(asyncio.iscoroutinefunction(do_eval_async))
+        do_exec_async = async_modules["do_exec_async"]
+        do_eval_async = async_modules["do_eval_async"]
+        assert asyncio.iscoroutinefunction(do_exec_async)
+        assert asyncio.iscoroutinefunction(do_eval_async)
 
 
-@unittest.skipUnless(HAS_ASYNC, "Async modules not available")
-class TestStateAsync(unittest.TestCase):
+class TestStateAsync:
     """Test State class async methods."""
 
-    def test_state_has_async_methods(self):
+    def test_state_has_async_methods(self, async_modules):
         """Test that State class has async methods."""
-        state = State()
-        self.assertTrue(hasattr(state, "ensure_connected_async"))
-        self.assertTrue(hasattr(state, "ensure_raw_repl_async"))
-        self.assertTrue(hasattr(state, "ensure_friendly_repl_async"))
+        from mpremote.main import State
 
-    def test_state_async_methods_are_async(self):
+        state = State()
+        assert hasattr(state, "ensure_connected_async")
+        assert hasattr(state, "ensure_raw_repl_async")
+        assert hasattr(state, "ensure_friendly_repl_async")
+
+    def test_state_async_methods_are_async(self, async_modules):
         """Test that State async methods are coroutines."""
-        state = State()
-        self.assertTrue(asyncio.iscoroutinefunction(state.ensure_connected_async))
-        self.assertTrue(asyncio.iscoroutinefunction(state.ensure_raw_repl_async))
-        self.assertTrue(asyncio.iscoroutinefunction(state.ensure_friendly_repl_async))
+        from mpremote.main import State
 
-    def test_state_has_sync_methods(self):
+        state = State()
+        assert asyncio.iscoroutinefunction(state.ensure_connected_async)
+        assert asyncio.iscoroutinefunction(state.ensure_raw_repl_async)
+        assert asyncio.iscoroutinefunction(state.ensure_friendly_repl_async)
+
+    def test_state_has_sync_methods(self, async_modules):
         """Test that State still has sync methods (backward compat)."""
-        state = State()
-        self.assertTrue(hasattr(state, "ensure_connected"))
-        self.assertTrue(hasattr(state, "ensure_raw_repl"))
-        self.assertTrue(hasattr(state, "ensure_friendly_repl"))
+        from mpremote.main import State
 
-    def test_state_sync_methods_are_not_async(self):
+        state = State()
+        assert hasattr(state, "ensure_connected")
+        assert hasattr(state, "ensure_raw_repl")
+        assert hasattr(state, "ensure_friendly_repl")
+
+    def test_state_sync_methods_are_not_async(self, async_modules):
         """Test that State sync methods are not coroutines."""
+        from mpremote.main import State
+
         state = State()
-        self.assertFalse(asyncio.iscoroutinefunction(state.ensure_connected))
-        self.assertFalse(asyncio.iscoroutinefunction(state.ensure_raw_repl))
-        self.assertFalse(asyncio.iscoroutinefunction(state.ensure_friendly_repl))
-
-
-if __name__ == "__main__":
-    # Run with unittest
-    unittest.main(verbosity=2)
+        assert not asyncio.iscoroutinefunction(state.ensure_connected)
+        assert not asyncio.iscoroutinefunction(state.ensure_raw_repl)
+        assert not asyncio.iscoroutinefunction(state.ensure_friendly_repl)
