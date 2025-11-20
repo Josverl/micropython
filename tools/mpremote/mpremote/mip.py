@@ -2,15 +2,14 @@
 # Ported from micropython-lib/micropython/mip/mip.py.
 # MIT license; Copyright (c) 2022 Jim Mussared
 
-import urllib.error
-import urllib.request
 import json
-import tempfile
 import os
 import os.path
+import tempfile
+import urllib.error
+import urllib.request
 
 from .commands import CommandError, show_progress_bar
-
 
 _PACKAGE_INDEX = "https://micropython.org/pi/v2"
 
@@ -217,3 +216,148 @@ def do_mip(state, args):
             print("Done")
     else:
         raise CommandError(f"mip: '{args.command[0]}' is not a command")
+
+
+# Async versions
+async def _install_package_async(transport, package, index, target, version, mpy):
+    """Async version of _install_package."""
+    if package.startswith(allowed_mip_url_prefixes):
+        if package.endswith(".py") or package.endswith(".mpy"):
+            print(f"Downloading {package} to {target}")
+            await _download_file_async(
+                transport, _rewrite_url(package, version), target + "/" + package.rsplit("/")[-1]
+            )
+            return
+        else:
+            if not package.endswith(".json"):
+                if not package.endswith("/"):
+                    package += "/"
+                package += "package.json"
+            print(f"Installing {package} to {target}")
+    elif package.endswith(".json"):
+        pass
+    else:
+        if not version:
+            version = "latest"
+        print(f"Installing {package} ({version}) from {index} to {target}")
+
+        mpy_version = "py"
+        if mpy:
+            await transport.exec_async("import sys")
+            mpy_version = (
+                await transport.eval_async("getattr(sys.implementation, '_mpy', 0) & 0xFF") or "py"
+            )
+
+        package = f"{index}/package/{mpy_version}/{package}/{version}.json"
+
+    await _install_json_async(transport, package, index, target, version, mpy)
+
+
+async def _install_json_async(transport, package_json_url, index, target, version, mpy):
+    """Async version of _install_json."""
+    base_url = ""
+    if package_json_url.startswith(allowed_mip_url_prefixes):
+        try:
+            with urllib.request.urlopen(_rewrite_url(package_json_url, version)) as response:
+                package_json = json.load(response)
+        except urllib.error.HTTPError as e:
+            if e.status == 404:
+                raise CommandError(f"Package not found: {package_json_url}")
+            else:
+                raise CommandError(f"Error {e.status} requesting {package_json_url}")
+        except urllib.error.URLError as e:
+            raise CommandError(f"{e.reason} requesting {package_json_url}")
+        base_url = package_json_url.rpartition("/")[0]
+    elif package_json_url.endswith(".json"):
+        try:
+            with open(package_json_url, "r") as f:
+                package_json = json.load(f)
+        except OSError:
+            raise CommandError(f"Error opening {package_json_url}")
+        base_url = os.path.dirname(package_json_url)
+    else:
+        raise CommandError(f"Invalid url for package: {package_json_url}")
+
+    for target_path, short_hash in package_json.get("hashes", ()):
+        fs_target_path = target + "/" + target_path
+        if await _check_exists_async(transport, fs_target_path, short_hash):
+            print("Exists:", fs_target_path)
+        else:
+            file_url = f"{index}/file/{short_hash[:2]}/{short_hash}"
+            await _download_file_async(transport, file_url, fs_target_path)
+
+    for target_path, url in package_json.get("urls", ()):
+        fs_target_path = target + "/" + target_path
+        if base_url and not url.startswith(allowed_mip_url_prefixes):
+            url = f"{base_url}/{url}"  # Relative URLs
+        await _download_file_async(transport, _rewrite_url(url, version), fs_target_path)
+
+    for dep, dep_version in package_json.get("deps", ()):
+        await _install_package_async(transport, dep, index, target, dep_version, mpy)
+
+
+async def _download_file_async(transport, url, dest):
+    """Async version of _download_file."""
+    if url.startswith(allowed_mip_url_prefixes):
+        try:
+            with urllib.request.urlopen(url) as src:
+                data = src.read()
+        except urllib.error.HTTPError as e:
+            if e.status == 404:
+                raise CommandError(f"File not found: {url}")
+            else:
+                raise CommandError(f"Error {e.status} requesting {url}")
+        except urllib.error.URLError as e:
+            raise CommandError(f"{e.reason} requesting {url}")
+    else:
+        if "\\" in url:
+            raise CommandError(f'Use "/" instead of "\\" in file URLs: {url!r}\n')
+        try:
+            with open(url, "rb") as f:
+                data = f.read()
+        except OSError as e:
+            raise CommandError(f"{e.strerror} opening {url}")
+
+    print("Installing:", dest)
+    await _ensure_path_exists_async(transport, dest)
+    await transport.fs_writefile_async(dest, data, progress_callback=show_progress_bar)
+
+
+async def _ensure_path_exists_async(transport, path):
+    """Async version of _ensure_path_exists."""
+    split = path.split("/")
+
+    # Handle paths starting with "/"
+    if not split[0]:
+        split.pop(0)
+        split[0] = "/" + split[0]
+
+    prefix = ""
+    for i in range(len(split) - 1):
+        prefix += split[i]
+        try:
+            stat = await transport.fs_stat_async(prefix)
+            # Check if it exists (if no exception, it exists)
+        except OSError:
+            # Doesn't exist, create it
+            await transport.exec_async(f"import os\nos.mkdir({prefix!r})")
+        prefix += "/"
+
+
+async def _check_exists_async(transport, path, short_hash):
+    """Async version of _check_exists."""
+    try:
+        # Compute hash on device
+        await transport.exec_async(
+            f"import hashlib\n"
+            f"with open({path!r},'rb') as f:\n"
+            f" h=hashlib.sha256()\n"
+            f" while 1:\n"
+            f"  b=f.read(256)\n"
+            f"  if not b:break\n"
+            f"  h.update(b)"
+        )
+        remote_hash = await transport.eval_async("h.digest()", parse=False)
+        return remote_hash.hex()[: len(short_hash)] == short_hash
+    except Exception:
+        return False

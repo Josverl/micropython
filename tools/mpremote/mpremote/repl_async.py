@@ -33,6 +33,7 @@ of keyboard input and device output without blocking.
 import asyncio
 import sys
 
+from .async_compat import get_timeout
 from .console_async import AsyncConsole
 from .transport import TransportError
 
@@ -132,7 +133,7 @@ async def do_repl_main_loop_async(
                 # Read data from device (async transport)
                 # Check if there's data available (non-blocking)
                 try:
-                    async with asyncio.timeout(0.1):
+                    async with get_timeout(0.1):
                         dev_data_in = await state.transport.read_async(256)
                         if dev_data_in:
                             if escape_non_printable:

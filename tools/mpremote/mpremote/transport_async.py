@@ -25,6 +25,7 @@
 # THE SOFTWARE.
 
 import ast
+
 from .transport import Transport, stdout_write_bytes
 
 
@@ -294,3 +295,104 @@ class AsyncTransport(Transport):
 
         # Close file
         await self.exec_async("f.close()")
+
+    async def fs_exists_async(self, src: str) -> bool:
+        """Check if file or directory exists asynchronously.
+
+        Args:
+            src: Remote file or directory path
+
+        Returns:
+            bool: True if path exists, False otherwise
+        """
+        try:
+            await self.fs_stat_async(src)
+            return True
+        except OSError:
+            return False
+
+    async def fs_isdir_async(self, src: str) -> bool:
+        """Check if path is a directory asynchronously.
+
+        Args:
+            src: Remote path
+
+        Returns:
+            bool: True if path is a directory, False otherwise
+        """
+        try:
+            stat = await self.fs_stat_async(src)
+            return bool(stat[0] & 0x4000)  # Check directory bit
+        except OSError:
+            return False
+
+    async def fs_mkdir_async(self, path: str) -> None:
+        """Create directory asynchronously.
+
+        Args:
+            path: Remote directory path
+        """
+        await self.exec_async(f"import os\nos.mkdir({path!r})")
+
+    async def fs_rmdir_async(self, path: str) -> None:
+        """Remove directory asynchronously.
+
+        Args:
+            path: Remote directory path
+        """
+        await self.exec_async(f"import os\nos.rmdir({path!r})")
+
+    async def fs_rmfile_async(self, path: str) -> None:
+        """Remove file asynchronously.
+
+        Args:
+            path: Remote file path
+        """
+        await self.exec_async(f"import os\nos.remove({path!r})")
+
+    async def fs_touchfile_async(self, path: str) -> None:
+        """Touch file (create if doesn't exist) asynchronously.
+
+        Args:
+            path: Remote file path
+        """
+        await self.exec_async(f"f=open({path!r},'a')\nf.close()")
+
+    async def fs_hashfile_async(self, path: str, algo: str, chunk_size: int = 256) -> bytes:
+        """Compute file hash asynchronously.
+
+        Args:
+            path: Remote file path
+            algo: Hash algorithm (e.g., 'sha256', 'md5')
+            chunk_size: Size of chunks to read
+
+        Returns:
+            bytes: Hash digest
+        """
+        # Compute hash on device
+        await self.exec_async(
+            f"import hashlib\n"
+            f"h=hashlib.{algo}()\n"
+            f"with open({path!r},'rb') as f:\n"
+            f" while 1:\n"
+            f"  b=f.read({chunk_size})\n"
+            f"  if not b:break\n"
+            f"  h.update(b)"
+        )
+        result = await self.eval_async("h.digest()", parse=False)
+        return result
+
+    async def fs_printfile_async(self, src: str, chunk_size: int = 256) -> None:
+        """Print file contents asynchronously.
+
+        Args:
+            src: Remote file path
+            chunk_size: Size of chunks to read
+        """
+        await self.exec_async(
+            f"with open({src!r}, 'rb') as f:\n"
+            f" while 1:\n"
+            f"  b=f.read({chunk_size})\n"
+            f"  if not b:break\n"
+            f"  print(b,end='')"
+        )

@@ -34,26 +34,33 @@ These tests are inspired by the shell script tests in:
 - test_resume.sh
 """
 
-import sys
-import os
 import asyncio
-import pytest
-import tempfile
 import hashlib
+import os
+import sys
+import tempfile
+import uuid
+from io import BytesIO, StringIO
 from pathlib import Path
-from unittest.mock import Mock, AsyncMock, MagicMock, patch
-from io import StringIO, BytesIO
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
+
+import pytest
 
 # Add mpremote to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from mpremote.commands_async import (
-    do_exec_async,
+    _do_fs_mkdir_async,
+    _do_fs_rmdir_async,
+    _do_fs_rmfile_async,
+    _do_fs_touchfile_async,
     do_eval_async,
-    do_run_async,
-    do_filesystem_cp_async,
-    do_exec_sync_wrapper,
     do_eval_sync_wrapper,
+    do_exec_async,
+    do_exec_sync_wrapper,
+    do_filesystem_async,
+    do_filesystem_cp_async,
+    do_run_async,
     do_run_sync_wrapper,
 )
 from mpremote.transport import TransportExecError
@@ -771,5 +778,173 @@ def test_filesystem_cp_empty_file(mock_state, temp_dir, event_loop):
         # Verify empty file was handled
         call_args = mock_state.transport.fs_writefile_async.call_args[0]
         assert call_args[1] == b""
+
+    event_loop.run_until_complete(_test())
+
+
+# ============================================================================
+# Tests for New Async Filesystem Commands
+# ============================================================================
+
+
+def _create_transport_state(transport):
+    class TransportState:
+        def __init__(self, transport):
+            self.transport = transport
+            self._did_action_called = False
+
+        def did_action(self):
+            self._did_action_called = True
+
+        async def ensure_raw_repl_async(self):
+            # Transport fixture already enters raw REPL.
+            return None
+
+    return TransportState(transport)
+
+
+def _unique_remote_dir(writable_path, prefix):
+    base = writable_path.rstrip("/")
+    name = f"{prefix}_{uuid.uuid4().hex[:8]}"
+    return f"/{name}" if not base else f"{base}/{name}"
+
+
+async def _cleanup_remote_artifacts(transport, dir_path, file_paths=None):
+    file_paths = file_paths or []
+    for file_path in file_paths:
+        if not file_path:
+            continue
+        try:
+            await transport.fs_rmfile_async(file_path)
+        except (OSError, TransportExecError):
+            pass
+
+    if dir_path:
+        try:
+            await transport.fs_rmdir_async(dir_path)
+        except (OSError, TransportExecError):
+            pass
+
+
+def test_filesystem_async_operations_integrated(connected_transport, event_loop):
+    """Integration test for filesystem async operations."""
+    transport, writable_path = connected_transport
+
+    async def _test():
+        state = _create_transport_state(transport)
+
+        test_dir = _unique_remote_dir(writable_path, "async_test_dir")
+        test_file = f"{test_dir}/test.txt"
+
+        await _cleanup_remote_artifacts(transport, test_dir, [test_file])
+
+        try:
+            # Test mkdir
+            await _do_fs_mkdir_async(state, test_dir)
+
+            # Verify directory exists
+            stat = await transport.fs_stat_async(test_dir)
+            assert stat[0] & 0x4000  # Is directory
+
+            # Test touch
+            await _do_fs_touchfile_async(state, test_file)
+
+            # Verify file exists
+            stat = await transport.fs_stat_async(test_file)
+            assert not (stat[0] & 0x4000)  # Is not directory
+
+            # Test rm
+            await _do_fs_rmfile_async(state, test_file)
+
+            # Verify file removed
+            with pytest.raises(TransportExecError):
+                await transport.fs_stat_async(test_file)
+
+            # Test rmdir
+            await _do_fs_rmdir_async(state, test_dir)
+
+            # Verify directory removed
+            with pytest.raises(TransportExecError):
+                await transport.fs_stat_async(test_dir)
+        finally:
+            await _cleanup_remote_artifacts(transport, test_dir, [test_file])
+
+    event_loop.run_until_complete(_test())
+
+
+def test_filesystem_async_mkdir_creates_directory(connected_transport, event_loop):
+    transport, writable_path = connected_transport
+
+    async def _test():
+        state = _create_transport_state(transport)
+        test_dir = _unique_remote_dir(writable_path, "mkdir_dir")
+
+        await _cleanup_remote_artifacts(transport, test_dir)
+        try:
+            await _do_fs_mkdir_async(state, test_dir)
+            stat = await transport.fs_stat_async(test_dir)
+            assert stat[0] & 0x4000
+        finally:
+            await _cleanup_remote_artifacts(transport, test_dir)
+
+    event_loop.run_until_complete(_test())
+
+
+def test_filesystem_async_touchfile_creates_file(connected_transport, event_loop):
+    transport, writable_path = connected_transport
+
+    async def _test():
+        state = _create_transport_state(transport)
+        test_dir = _unique_remote_dir(writable_path, "touch_dir")
+        test_file = f"{test_dir}/touch.txt"
+
+        await _cleanup_remote_artifacts(transport, test_dir, [test_file])
+        try:
+            await _do_fs_mkdir_async(state, test_dir)
+            await _do_fs_touchfile_async(state, test_file)
+            stat = await transport.fs_stat_async(test_file)
+            assert not (stat[0] & 0x4000)
+        finally:
+            await _cleanup_remote_artifacts(transport, test_dir, [test_file])
+
+    event_loop.run_until_complete(_test())
+
+
+def test_filesystem_async_rmfile_removes_file(connected_transport, event_loop):
+    transport, writable_path = connected_transport
+
+    async def _test():
+        state = _create_transport_state(transport)
+        test_dir = _unique_remote_dir(writable_path, "rmfile_dir")
+        test_file = f"{test_dir}/remove.txt"
+
+        await _cleanup_remote_artifacts(transport, test_dir, [test_file])
+        try:
+            await _do_fs_mkdir_async(state, test_dir)
+            await _do_fs_touchfile_async(state, test_file)
+            await _do_fs_rmfile_async(state, test_file)
+            with pytest.raises(TransportExecError):
+                await transport.fs_stat_async(test_file)
+        finally:
+            await _cleanup_remote_artifacts(transport, test_dir, [test_file])
+
+    event_loop.run_until_complete(_test())
+
+
+def test_filesystem_async_rmdir_removes_directory(connected_transport, event_loop):
+    transport, writable_path = connected_transport
+
+    async def _test():
+        state = _create_transport_state(transport)
+        test_dir = _unique_remote_dir(writable_path, "rmdir_dir")
+
+        await _cleanup_remote_artifacts(transport, test_dir)
+        try:
+            await _do_fs_mkdir_async(state, test_dir)
+            await _do_fs_rmdir_async(state, test_dir)
+            with pytest.raises(TransportExecError):
+                await transport.fs_stat_async(test_dir)
+        finally:
+            await _cleanup_remote_artifacts(transport, test_dir)
 
     event_loop.run_until_complete(_test())
