@@ -223,15 +223,26 @@ def find_micropython_device():
 @pytest.fixture(scope="session")
 def test_device_port(request):
     """
-    Get test device port from command line or auto-detect.
-
-    Usage: pytest --device=COM20 or pytest --device=/dev/ttyUSB0
+    Get test device port from command line, environment, or auto-detect.
+    
+    Priority order:
+    1. Command line: pytest --device=COM20 or pytest --device=/dev/ttyUSB0
+    2. Environment: MICROPYTHON_DEVICE=COM20 pytest ...
+    3. Auto-detect: First available serial port (cross-platform)
+    
+    Returns None if no device is found, causing hardware tests to be skipped.
     """
+    # 1. Check command line argument
     device = request.config.getoption("--device", default=None)
     if device:
         return device
+    
+    # 2. Check environment variable
+    device = os.environ.get("MICROPYTHON_DEVICE")
+    if device:
+        return device
 
-    # Try to auto-detect
+    # 3. Try to auto-detect first available serial port
     device = find_micropython_device()
     if device:
         return device

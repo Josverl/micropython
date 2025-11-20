@@ -120,37 +120,23 @@ async def do_repl_main_loop_async(
 
     async def handle_device_output():
         """Coroutine: read device output and write to console."""
+        # Verify transport has async capabilities
+        if not hasattr(state.transport, "read_async"):
+            raise TypeError(
+                "Async REPL requires an async transport with read_async() method. "
+                "Use AsyncSerialTransport instead of SerialTransport."
+            )
+
         while True:
             try:
-                # Read data from device
-                if hasattr(state.transport, "read_async"):
-                    # Async transport
-                    # Check if there's data available (non-blocking)
-                    try:
-                        async with asyncio.timeout(0.1):
-                            dev_data_in = await state.transport.read_async(256)
-                            if dev_data_in:
-                                if escape_non_printable:
-                                    # Pass data through to the console, with escaping
-                                    console_data_out = bytearray()
-                                    for c in dev_data_in:
-                                        if c in (8, 9, 10, 13, 27) or 32 <= c <= 126:
-                                            console_data_out.append(c)
-                                        else:
-                                            console_data_out.extend(b"[%02x]" % c)
-                                else:
-                                    console_data_out = dev_data_in
-                                console.write(console_data_out)
-                    except asyncio.TimeoutError:
-                        # No data available, just continue
-                        await asyncio.sleep(0.01)
-                else:
-                    # Sync transport - use polling
-                    n = state.transport.serial.inWaiting()
-                    if n > 0:
-                        dev_data_in = state.transport.serial.read(n)
-                        if dev_data_in is not None:
+                # Read data from device (async transport)
+                # Check if there's data available (non-blocking)
+                try:
+                    async with asyncio.timeout(0.1):
+                        dev_data_in = await state.transport.read_async(256)
+                        if dev_data_in:
                             if escape_non_printable:
+                                # Pass data through to the console, with escaping
                                 console_data_out = bytearray()
                                 for c in dev_data_in:
                                     if c in (8, 9, 10, 13, 27) or 32 <= c <= 126:
@@ -160,8 +146,9 @@ async def do_repl_main_loop_async(
                             else:
                                 console_data_out = dev_data_in
                             console.write(console_data_out)
-                    else:
-                        await asyncio.sleep(0.01)  # Yield control
+                except asyncio.TimeoutError:
+                    # No data available, just continue
+                    await asyncio.sleep(0.01)
             except OSError as er:
                 if _is_disconnect_exception(er):
                     return "disconnect"
