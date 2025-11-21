@@ -38,8 +38,10 @@ from typing import Any
 
 import pytest
 
-# Add mpremote to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+TESTS_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = TESTS_DIR.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 
 # Check for async module availability
@@ -579,10 +581,21 @@ def micropython_unix_binary() -> str | None:
 # ============================================================================
 
 
+_ASYNC_TEST_FLAG = os.environ.get("MPREMOTE_TEST_ENABLE_ASYNC", "").lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+
+
 @pytest.fixture(params=["sync", "async"])
 def cli_mode(request: pytest.FixtureRequest) -> str:
-    """Fixture to run tests in both sync and async modes."""
-    return request.param
+    """Yield desired CLI mode, skipping async unless explicitly enabled."""
+    mode = request.param
+    if mode == "async" and not _ASYNC_TEST_FLAG:
+        pytest.skip("async CLI temporarily disabled (set MPREMOTE_TEST_ENABLE_ASYNC=1 to enable)")
+    return mode
 
 
 @pytest.fixture

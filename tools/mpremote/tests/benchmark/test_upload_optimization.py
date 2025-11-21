@@ -13,15 +13,12 @@ Run with hardware: pytest test_upload_optimization.py::test_auto_detection_with_
 """
 
 import asyncio
-import sys
 import time
-from pathlib import Path
 from unittest.mock import AsyncMock
-import pytest
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-from mpremote.transport_serial_async import AsyncSerialTransport
+import pytest
 from mpremote.transport_async import MIN_FILE_SIZE_FOR_AUTO_DETECTION
+from mpremote.transport_serial_async import AsyncSerialTransport
 
 
 @pytest.mark.skip(reason="WIP")

@@ -1,14 +1,20 @@
+import os
 import subprocess
 from pathlib import Path
 from textwrap import dedent
+
 
 def write_script(file_path: Path, code: str):
     """Write dedented code to a script file."""
     with open(file_path, "w") as f:
         f.write(dedent(code).strip())
 
-def run_mpremote(mpremote_cmd:list[str], *args):
+
+def run_mpremote(mpremote_cmd: list[str], *args, env: dict[str, str] | None = None):
     """Run mpremote command and return output."""
     cmd = mpremote_cmd + list(args)
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+    run_env = os.environ.copy()
+    if env:
+        run_env.update(env)
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=10, env=run_env)
     return result

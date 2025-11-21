@@ -18,7 +18,6 @@ transport-level tests and full REPL integration tests.
 import asyncio
 import os
 import subprocess
-import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -31,9 +30,6 @@ try:
     HAS_PTY = True
 except ImportError:
     HAS_PTY = False
-
-# Add mpremote to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 try:
     from mpremote.console_async import AsyncConsole

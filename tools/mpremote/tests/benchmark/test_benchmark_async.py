@@ -6,22 +6,15 @@ Run with: pytest test_benchmark_async.py -v
 Run with detailed output: pytest test_benchmark_async.py -v -s
 """
 
-import os
-import sys
-import time
 import asyncio
-import tempfile
 import hashlib
-from pathlib import Path
+import os
+import tempfile
+import time
 
 import pytest
-
-# Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from mpremote.transport_serial_async import AsyncSerialTransport
 from mpremote.transport_serial import SerialTransport
-
+from mpremote.transport_serial_async import AsyncSerialTransport
 
 # Test data sizes (in bytes)
 # Note: Using small sizes due to limited flash on test devices (<20KB free on PyBoard)

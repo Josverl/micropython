@@ -4,12 +4,8 @@
 # This tests the full integration without requiring hardware
 
 import asyncio
-import os
-import sys
 
 import pytest
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from mpremote.async_compat import get_timeout
 from mpremote.main import State
 from mpremote.protocol import RawREPLProtocol

@@ -4,11 +4,8 @@
 import asyncio
 import os
 import sys
-from pathlib import Path
 
 import pytest
-
-sys.path.insert(0, str(Path(__file__).parent.parent))
 from mpremote.transport_serial_async import AsyncSerialTransport
 
 pytestmark = [pytest.mark.hardware_required, pytest.mark.serial_required]

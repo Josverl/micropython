@@ -53,6 +53,17 @@ This is the single source of truth for the asyncio migration effort. Keep it con
    - ensure docs in this folder stay ≤3 files (plan, user guide, reports) and reflect the latest reality.
    - run ruff format and lint checks: `ruff check tools/mpremote`.
 
+## Shell-to-Pytest Migration Guide (Example: `test_eval_exec_run`)
+Use this playbook when converting legacy `.sh` harnesses (plus `.exp` golden files) into pytest suites that exercise both sync and async CLI paths.
+
+1. **Create a helper-backed pytest module.** Mirror the shell script filename (e.g. `test_eval_exec_run.sh` → `test_eval_exec_run.py`). Use existing fixtures from `conftest.py` such as `mpremote_cmd`, `cli_mode`, and `temp_script` so tests automatically cover `mpremote` and `mpremote --async`.
+2. **Port commands verbatim.** Each logical CLI snippet in the shell script becomes its own `@pytest.mark.cli` test (e.g. simple exec, eval, run with `--no-follow`). Call `helpers.run_mpremote()` to spawn the command and assert on `result.returncode`, `stdout`, and `stderr` instead of diffing against a `.exp` file.
+3. **Replace heredocs with `write_script`.** Instead of `cat <<EOF` blocks, call `helpers.write_script(temp_script, code)`; the helper wraps `textwrap.dedent`, keeping fixtures tidy while matching the original script contents.
+4. **Handle timing-sensitive cases explicitly.** The shell version relied on `sleep` to allow `--no-follow` commands to finish. The pytest port documents that we intentionally do not assert on output for those cases, keeping parity without introducing flaky waits.
+5. **DO NOT delete the `.sh` and `.exp` files**—they must stay in the tree for the next two minor releases so the legacy harness keeps working while the async pytest suite matures.
+
+Future migrations should follow the same pattern: enumerate each CLI action as its own test, reuse the shared helpers, and capture expectations directly in Python asserts instead of external goldens.
+
 ## Backlog (ordered)
 1. **Async CLI adoption path**
    - ✅ 2025-11-21: CLI flag/env parsing plus REPL dispatch landed; `--async` and `MPREMOTE_ASYNC=1` select async handlers with sync fallback messaging.

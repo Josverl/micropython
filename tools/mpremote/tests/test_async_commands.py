@@ -45,10 +45,6 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
-
-# Add mpremote to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
 from mpremote.commands_async import (
     _do_fs_mkdir_async,
     _do_fs_rmdir_async,
