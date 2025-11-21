@@ -7,6 +7,9 @@ Tests:
 3. Chunk size selection based on device memory
 4. Caching behavior
 5. Boundary cases
+
+Run unit tests: python test_upload_optimization.py
+Run with hardware: pytest test_upload_optimization.py::test_auto_detection_with_device -v
 """
 
 import asyncio
@@ -26,6 +29,12 @@ def event_loop():
     loop = asyncio.new_event_loop()
     yield loop
     loop.close()
+
+
+def test_constant_value():
+    """Verify MIN_FILE_SIZE_FOR_AUTO_DETECTION constant."""
+    assert MIN_FILE_SIZE_FOR_AUTO_DETECTION == 3 * 1024
+    print(f"✓ MIN_FILE_SIZE_FOR_AUTO_DETECTION = {MIN_FILE_SIZE_FOR_AUTO_DETECTION} bytes (3KB)")
 
 
 def test_small_file_single_shot():
@@ -155,5 +164,18 @@ def test_auto_detection_with_device(event_loop, hardware_device):
     event_loop.run_until_complete(_test())
 
 
-if __name__ == \"__main__\":
-    print(\"Running async upload optimization tests...\\n\")\n    print(\"=\" * 60)\n    \n    # Run unit tests (no hardware required)\n    print(\"\\n1. Unit Tests (mocked, no hardware):\\n\")\n    test_small_file_single_shot()\n    test_large_file_chunked()\n    test_boundary_cases()\n    \n    print(\"\\n\" + \"=\" * 60)\n    print(\"\\n\u2713 All unit tests passed!\")\n    print(\"\\nRun with pytest for hardware tests: pytest test_auto_chunk.py::test_auto_detection_with_device -v\")
+if __name__ == "__main__":
+    print("Running async upload optimization tests...\n")
+    print("=" * 60)
+    
+    # Run unit tests (no hardware required)
+    print("\n1. Unit Tests (mocked, no hardware):\n")
+    test_constant_value()
+    test_small_file_single_shot()
+    test_large_file_chunked()
+    test_boundary_cases()
+    
+    print("\n" + "=" * 60)
+    print("\n✓ All unit tests passed!")
+    print("\nFor hardware tests, run:")
+    print("  pytest test_upload_optimization.py::test_auto_detection_with_device -v")

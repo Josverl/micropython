@@ -4,28 +4,37 @@
 import asyncio
 import sys
 from pathlib import Path
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from mpremote.transport_serial_async import AsyncSerialTransport
 
 
-async def test_heavy_fragmentation():
-    device = "COM29"  # ESP8266
+@pytest.fixture
+def event_loop():
+    loop = asyncio.new_event_loop()
+    yield loop
+    loop.close()
 
-    print(f"\nStress test: Heavy memory fragmentation on ESP8266 ({device})\n")
 
-    transport = AsyncSerialTransport(device, baudrate=115200)
-    await transport.connect()
-    await transport.enter_raw_repl_async()
+def test_heavy_fragmentation(event_loop):
+    async def _test():
+        device = "COM29"  # ESP8266
 
-    # Check initial memory
-    free_before = await transport.eval_async("__import__('gc').mem_free()", parse=False)
-    free_before_kb = int(free_before.decode().strip()) / 1024
-    print(f"Initial free memory: {free_before_kb:.1f} KB")
+        print(f"\nStress test: Heavy memory fragmentation on ESP8266 ({device})\n")
 
-    # Heavy fragmentation - allocate many small buffers
-    print("\nCreating heavy memory fragmentation...")
-    await transport.exec_async("""
+        transport = AsyncSerialTransport(device, baudrate=115200)
+        await transport.connect()
+        await transport.enter_raw_repl_async()
+
+        # Check initial memory
+        free_before = await transport.eval_async("__import__('gc').mem_free()", parse=False)
+        free_before_kb = int(free_before.decode().strip()) / 1024
+        print(f"Initial free memory: {free_before_kb:.1f} KB")
+
+        # Heavy fragmentation - allocate many small buffers
+        print("\nCreating heavy memory fragmentation...")
+        await transport.exec_async("""
 import gc
 _bufs = []
 # Allocate many small buffers to create fragmentation
@@ -38,79 +47,89 @@ gc.collect()
 print(f"Allocated {len(_bufs)} buffers = {len(_bufs) * 800} bytes")
 """)
 
-    # Check severely constrained memory
-    free_after = await transport.eval_async("__import__('gc').mem_free()", parse=False)
-    free_after_kb = int(free_after.decode().strip()) / 1024
-    print(f"Free memory after fragmentation: {free_after_kb:.1f} KB")
-    print(f"Memory consumed: {free_before_kb - free_after_kb:.1f} KB")
+        # Check severely constrained memory
+        free_after = await transport.eval_async("__import__('gc').mem_free()", parse=False)
+        free_after_kb = int(free_after.decode().strip()) / 1024
+        print(f"Free memory after fragmentation: {free_after_kb:.1f} KB")
+        print(f"Memory consumed: {free_before_kb - free_after_kb:.1f} KB")
 
-    # Test scenarios
-    scenarios = [
-        ("Heavily fragmented", None),
-        ("After GC", "gc.collect()"),
-        ("After cleanup", "del _bufs; gc.collect()"),
-    ]
+        # Test scenarios
+        scenarios = [
+            ("Heavily fragmented", None),
+            ("After GC", "gc.collect()"),
+            ("After cleanup", "del _bufs; gc.collect()"),
+        ]
 
-    for scenario_name, cleanup_code in scenarios:
-        if cleanup_code:
-            await transport.exec_async(cleanup_code)
-            free_mem = await transport.eval_async("__import__('gc').mem_free()", parse=False)
-            free_kb = int(free_mem.decode().strip()) / 1024
-        else:
-            free_kb = free_after_kb
+        for scenario_name, cleanup_code in scenarios:
+            if cleanup_code:
+                await transport.exec_async(cleanup_code)
+                free_mem = await transport.eval_async("__import__('gc').mem_free()", parse=False)
+                free_kb = int(free_mem.decode().strip()) / 1024
+            else:
+                free_kb = free_after_kb
 
-        print(f"\n{scenario_name} (Free: {free_kb:.1f} KB):")
+            print(f"\n{scenario_name} (Free: {free_kb:.1f} KB):")
 
-        # Force re-detection by clearing cache
-        transport._optimal_chunk_size = None
-        transport._free_memory_kb = None
+            # Force re-detection by clearing cache
+            transport._optimal_chunk_size = None
+            transport._free_memory_kb = None
 
-        optimal_chunk = await transport.detect_optimal_chunk_size_async()
-        print(f"  Selected chunk size: {optimal_chunk} bytes")
+            optimal_chunk = await transport.detect_optimal_chunk_size_async()
+            print(f"  Selected chunk size: {optimal_chunk} bytes")
 
-        # Verify it's appropriate for available memory
-        if free_kb < 20:
-            assert optimal_chunk == 256, (
-                f"Should use 256 bytes for <20KB free, got {optimal_chunk}"
-            )
-            print(f"  ✓ Correctly using minimal chunk (256) for very low memory")
-        elif free_kb < 50:
-            assert optimal_chunk == 512, (
-                f"Should use 512 bytes for 20-50KB free, got {optimal_chunk}"
-            )
-            print(f"  ✓ Correctly using small chunk (512) for low memory")
-        else:
-            print(f"  ✓ Using {optimal_chunk} bytes for {free_kb:.1f} KB free")
+            # Verify it's appropriate for available memory
+            if free_kb < 20:
+                assert optimal_chunk == 256, (
+                    f"Should use 256 bytes for <20KB free, got {optimal_chunk}"
+                )
+                print(f"  ✓ Correctly using minimal chunk (256) for very low memory")
+            elif free_kb < 50:
+                assert optimal_chunk == 512, (
+                    f"Should use 512 bytes for 20-50KB free, got {optimal_chunk}"
+                )
+                print(f"  ✓ Correctly using small chunk (512) for low memory")
+            else:
+                print(f"  ✓ Using {optimal_chunk} bytes for {free_kb:.1f} KB free")
 
-    # Test actual upload with minimal memory
-    print("\nTesting upload with constrained memory...")
-    test_data = b"X" * 2048  # 2KB
+        # Test actual upload with minimal memory
+        print("\nTesting upload with constrained memory...")
+        test_data = b"X" * 2048  # 2KB
 
-    import time
+        import time
 
-    start = time.perf_counter()
-    try:
-        await transport.fs_writefile_async("/test_stress.bin", test_data)
-        duration = time.perf_counter() - start
-        print(f"  ✓ Upload successful: {len(test_data)} bytes in {duration:.3f}s")
+        start = time.perf_counter()
+        try:
+            await transport.fs_writefile_async("/test_stress.bin", test_data)
+            duration = time.perf_counter() - start
+            print(f"  ✓ Upload successful: {len(test_data)} bytes in {duration:.3f}s")
 
-        # Verify file
-        verify = await transport.eval_async("len(open('/test_stress.bin','rb').read())")
-        assert verify == len(test_data), f"File size mismatch: {verify} != {len(test_data)}"
-        print(f"  ✓ File verified: {verify} bytes")
+            # Verify file
+            verify = await transport.eval_async("len(open('/test_stress.bin','rb').read())")
+            assert verify == len(test_data), f"File size mismatch: {verify} != {len(test_data)}"
+            print(f"  ✓ File verified: {verify} bytes")
 
-    except Exception as e:
-        print(f"  ✗ Upload failed: {e}")
+        except Exception as e:
+            print(f"  ✗ Upload failed: {e}")
 
-    # Cleanup
-    try:
-        await transport.exec_raw_async('import os; os.remove("/test_stress.bin")')
-    except:
-        pass
+        # Cleanup
+        try:
+            await transport.exec_raw_async('import os; os.remove("/test_stress.bin")')
+        except:
+            pass
 
-    await transport.close_async()
-    print("\n✓ Stress test complete!")
+        await transport.close_async()
+        print("\n✓ Stress test complete!")
+
+    event_loop.run_until_complete(_test())
 
 
 if __name__ == "__main__":
-    asyncio.run(test_heavy_fragmentation())
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        class MockEventLoop:
+            def run_until_complete(self, coro):
+                return asyncio.run(coro)
+        test_heavy_fragmentation(MockEventLoop())
+    finally:
+        loop.close()

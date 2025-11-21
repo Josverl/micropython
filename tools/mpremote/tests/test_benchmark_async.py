@@ -27,6 +27,8 @@ from mpremote.transport_serial import SerialTransport
 # Note: Using small sizes due to limited flash on test devices (<20KB free on PyBoard)
 TEST_SIZES = [
     (1024, "1KB"),
+    (2 * 1024, "2KB"),
+    (3 * 1024, "3KB"),
     (5 * 1024, "5KB"),
     (10 * 1024, "10KB"),
 ]

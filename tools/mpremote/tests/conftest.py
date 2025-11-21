@@ -222,7 +222,7 @@ def find_micropython_device():
 
 
 @pytest.fixture(scope="session")
-def test_device_port(request):
+def test_device_port(request) -> str | None:
     """
     Get test device port from command line, environment, or auto-detect.
 

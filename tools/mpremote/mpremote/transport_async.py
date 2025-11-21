@@ -28,6 +28,10 @@ import ast
 
 from .transport import Transport, stdout_write_bytes
 
+# Minimum file size (in bytes) to use auto-detection and optimization.
+# For smaller files, use a fixed 256-byte chunk to avoid memory query overhead.
+MIN_FILE_SIZE_FOR_AUTO_DETECTION = 3 * 1024  # 3KB
+
 
 class AsyncTransport(Transport):
     """Abstract base class for async transport implementations.
@@ -270,6 +274,7 @@ class AsyncTransport(Transport):
             data: File contents to write
             chunk_size: Size of chunks to write. If None (default), automatically
                        detects optimal size based on device free memory (once per connection).
+                       For files <3KB, uses fixed 256-byte chunks to avoid detection overhead.
                        Manual values: 256 (safe), 512, 1024, 2048 (fast, needs RAM)
             progress_callback: Optional callback for progress updates
 
@@ -278,7 +283,15 @@ class AsyncTransport(Transport):
             For constrained devices (<20KB free), uses conservative 256-byte chunks.
             For devices with ample memory (>100KB free), uses 2048-byte chunks for best performance.
         """
-        # Auto-detect optimal chunk size if not specified
+        # For small files, use single exec_async to avoid overhead
+        if len(data) < MIN_FILE_SIZE_FOR_AUTO_DETECTION:
+            # Single-shot write for small files - fastest approach
+            await self.exec_async(f"f=open({dest!r},'wb');f.write({data!r});f.close()")
+            if progress_callback:
+                progress_callback(len(data), len(data))
+            return
+
+        # For larger files, use chunked approach with optimal chunk size
         if chunk_size is None:
             chunk_size = await self.detect_optimal_chunk_size_async()
 

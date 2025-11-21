@@ -495,10 +495,11 @@ async | download  | 10KB |   0.936s |   10.69 KB/s |  +52.8%  ✓ MAINTAINED
    - Reduces drain() calls from ~40 to ~2-3 per 10KB
    - Platform-specific tuning (Windows: 2048B buffer, Unix: 1024B)
 
-2. **Automatic chunk size detection** (NEW!)
-   - Queries device free memory once per connection
-   - Caches result for subsequent file operations
-   - Auto-selects optimal chunk size:
+2. **Smart file size optimization** (NEW!)
+   - **Small files (<3KB)**: Single-shot write in one exec_async call (fastest!)
+   - **Large files (≥3KB)**: Chunked writes with auto-detected optimal chunk size
+   - Auto-detection queries device free memory once per connection and caches result
+   - Optimal chunk size selection for large files:
      - >100KB free: 2048 bytes (best performance)
      - 50-100KB free: 1024 bytes (good performance)
      - 20-50KB free: 512 bytes (safe)
@@ -512,13 +513,19 @@ async | download  | 10KB |   0.936s |   10.69 KB/s |  +52.8%  ✓ MAINTAINED
 ### How It Works
 
 ```python
-# First file operation auto-detects optimal chunk size
+# Small files (<3KB) use single-shot write - only ONE exec_async call!
 async with AsyncSerialTransport('COM7') as transport:
-    # Automatically detects: 293 KB free → selects 2048 byte chunks
-    await transport.fs_writefile_async('file.bin', data)  # Fast!
+    small_data = b'x' * 2048  # 2KB
+    # Single exec: f=open('small.bin','wb');f.write(data);f.close()
+    await transport.fs_writefile_async('small.bin', small_data)  # FAST! No chunks, no detection
     
-    # Second file operation uses cached chunk size (no re-detection)
-    await transport.fs_writefile_async('file2.bin', data2)  # Also fast!
+    # First large file (≥3KB) auto-detects optimal chunk size
+    large_data = b'x' * 10240  # 10KB
+    # Multiple exec calls with optimal chunks based on device memory
+    await transport.fs_writefile_async('file.bin', large_data)  # Detects: 293 KB free → 2048 bytes
+    
+    # Subsequent large files use cached chunk size (no re-detection)
+    await transport.fs_writefile_async('file2.bin', large_data)  # Uses cached 2048 bytes
 ```
 
 ### Success Metrics Achieved ✅
