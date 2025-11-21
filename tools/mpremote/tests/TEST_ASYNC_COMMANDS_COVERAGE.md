@@ -1,5 +1,10 @@
 # Test Coverage for commands_async.py
 
+
+
+
+
+
 ## Overview
 
 This document describes the comprehensive test suite created for `mpremote/commands_async.py` to achieve 100% code coverage. The tests are inspired by the existing shell script tests and follow pytest best practices using fixtures for test artifact preparation.

@@ -82,3 +82,18 @@ Examples:
     mpremote mip install aioble
     mpremote mip install github:org/repo@branch
     mpremote mip install gitlab:org/repo@branch
+
+## Async mode (experimental)
+
+Some commands now have asynchronous implementations that can significantly
+improve throughput for long-running operations. To enable these code paths
+from the CLI, pass the global `--async` flag before your commands:
+
+```
+mpremote --async fs ls
+mpremote --async exec "print('hello async world')"
+```
+
+Alternatively, set the `MPREMOTE_ASYNC=1` environment variable to turn on
+async mode for every invocation. Use `--no-async` to temporarily fall back
+to the synchronous defaults when the environment variable is enabled.
