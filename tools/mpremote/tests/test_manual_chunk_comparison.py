@@ -8,15 +8,18 @@ Run standalone: python test_manual_chunk_comparison.py
 """
 
 import asyncio
+import os
 import sys
 import tempfile
-import os
 import time
 from pathlib import Path
+
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from mpremote.transport_serial_async import AsyncSerialTransport
+
+pytestmark = [pytest.mark.hardware_required, pytest.mark.serial_required]
 
 
 @pytest.fixture
@@ -26,9 +29,9 @@ def event_loop():
     loop.close()
 
 
-def test_chunk_sizes(event_loop):
+def test_chunk_sizes(event_loop, hardware_device):
     async def _test():
-        device = "COM29"
+        device = hardware_device
 
         # Create test data
         data = b"0123456789ABCDEF" * 640  # 10KB

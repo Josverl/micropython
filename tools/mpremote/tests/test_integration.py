@@ -114,14 +114,12 @@ def test_concurrent_pattern(event_loop):
         assert result1 == "op1"
         assert result2 == "op2"
 
-        # Test timeout pattern
+        # Test timeout pattern; should not raise for short sleep
         try:
             async with get_timeout(0.1):
                 await asyncio.sleep(0.01)
         except asyncio.TimeoutError:
-            return False
-
-        return True
+            pytest.fail("Timeout raised unexpectedly for short operation")
 
     event_loop.run_until_complete(_test())
 
@@ -144,8 +142,6 @@ def test_error_handling():
     stderr = b"   \n  "
     error = RawREPLProtocol.check_error(stderr)
     assert error is None
-
-    return True
 
 
 def test_sync_async_coexistence():
@@ -171,5 +167,3 @@ def test_sync_async_coexistence():
     for method in async_methods:
         assert hasattr(state, method), f"Missing async method: {method}"
         assert asyncio.iscoroutinefunction(getattr(state, method)), f"{method} should be async"
-
-    return True

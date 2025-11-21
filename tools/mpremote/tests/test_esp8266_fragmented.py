@@ -2,31 +2,27 @@
 """Test auto-detection on ESP8266 with memory fragmentation."""
 
 import asyncio
+import os
 import sys
+import time
 from pathlib import Path
+
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from mpremote.transport_serial_async import AsyncSerialTransport
 
-
-@pytest.fixture
-def event_loop():
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
+pytestmark = [pytest.mark.hardware_required, pytest.mark.serial_required]
 
 
-def test_esp8266_fragmented_memory(event_loop):
-    async def _test():
-        device = "COM29"  # ESP8266
+async def _run_fragmentation_test(device: str):
+    print(f"\nTesting auto-detection on ESP8266 ({device}) with memory fragmentation\n")
 
-        print(f"\nTesting auto-detection on ESP8266 ({device}) with memory fragmentation\n")
+    transport = AsyncSerialTransport(device, baudrate=115200)
+    await transport.connect()
+    await transport.enter_raw_repl_async()
 
-        transport = AsyncSerialTransport(device, baudrate=115200)
-        await transport.connect()
-        await transport.enter_raw_repl_async()
-
+    try:
         # Check initial memory
         free_before = await transport.eval_async("__import__('gc').mem_free()", parse=False)
         free_before_kb = int(free_before.decode().strip()) / 1024
@@ -34,7 +30,8 @@ def test_esp8266_fragmented_memory(event_loop):
 
         # Fragment memory by allocating some large buffers
         print("\nFragmenting memory with allocations...")
-        await transport.exec_async("""
+        await transport.exec_async(
+            """
 # Allocate some buffers to fragment memory
 _bufs = []
 for i in range(5):
@@ -43,7 +40,8 @@ for i in range(5):
     except:
         break
 print(f"Allocated {len(_bufs)} buffers")
-""")
+"""
+        )
 
         # Check memory after fragmentation
         free_after = await transport.eval_async("__import__('gc').mem_free()", parse=False)
@@ -72,15 +70,13 @@ print(f"Allocated {len(_bufs)} buffers")
         print(f"  Expected chunk size: {expected} bytes")
 
         if optimal_chunk == expected:
-            print(f"  ✓ Correct chunk size selected!")
+            print("  ✓ Correct chunk size selected!")
         else:
-            print(f"  ⚠ Different from expected (may be due to fragmentation)")
+            print("  ⚠ Different from expected (may be due to fragmentation)")
 
         # Test file upload with auto-detected chunk
         print("\nTesting file upload with auto-detected chunk size...")
         test_data = b"0123456789ABCDEF" * 320  # 5KB (safer for ESP8266)
-
-        import time
 
         start = time.perf_counter()
         await transport.fs_writefile_async("/test_esp.bin", test_data)  # Auto chunk
@@ -90,12 +86,12 @@ print(f"Allocated {len(_bufs)} buffers")
             f"  Upload: {len(test_data)} bytes in {duration:.3f}s ({len(test_data) / 1024 / duration:.2f} KB/s)"
         )
 
-        # Cleanup
+        # Cleanup on device
         try:
             await transport.exec_async("del _bufs")  # Free the buffers
             await transport.exec_async("__import__('gc').collect()")
             await transport.exec_raw_async('import os; os.remove("/test_esp.bin")')
-        except:
+        except Exception:
             pass
 
         # Final memory check
@@ -103,19 +99,25 @@ print(f"Allocated {len(_bufs)} buffers")
         free_final_kb = int(free_final.decode().strip()) / 1024
         print(f"\nFinal free memory: {free_final_kb:.1f} KB")
 
-        await transport.close_async()
         print("\n✓ ESP8266 fragmentation test complete!")
+    finally:
+        await transport.close_async()
 
-    event_loop.run_until_complete(_test())
+
+def test_esp8266_fragmented_memory(event_loop, hardware_device, require_target_platform):
+    require_target_platform(platform="esp8266")
+    event_loop.run_until_complete(_run_fragmentation_test(hardware_device))
 
 
 if __name__ == "__main__":
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    try:
-        class MockEventLoop:
-            def run_until_complete(self, coro):
-                return asyncio.run(coro)
-        test_esp8266_fragmented_memory(MockEventLoop())
-    finally:
-        loop.close()
+    device = (
+        os.environ.get("ESP8266_DEVICE")
+        or os.environ.get("MICROPYTHON_DEVICE")
+        or (sys.argv[1] if len(sys.argv) > 1 else None)
+    )
+
+    if not device:
+        print("Set ESP8266_DEVICE/MICROPYTHON_DEVICE or pass serial port as argument.")
+        sys.exit(1)
+
+    asyncio.run(_run_fragmentation_test(device))

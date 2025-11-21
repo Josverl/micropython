@@ -154,6 +154,19 @@ def test_auto_detection_with_device(event_loop, hardware_device):
 
     event_loop.run_until_complete(_test())
 
+if __name__ == "__main__":
+    print("Running async upload optimization tests...\n")
+    print("=" * 60)
 
-if __name__ == \"__main__\":
-    print(\"Running async upload optimization tests...\\n\")\n    print(\"=\" * 60)\n    \n    # Run unit tests (no hardware required)\n    print(\"\\n1. Unit Tests (mocked, no hardware):\\n\")\n    test_small_file_single_shot()\n    test_large_file_chunked()\n    test_boundary_cases()\n    \n    print(\"\\n\" + \"=\" * 60)\n    print(\"\\n\u2713 All unit tests passed!\")\n    print(\"\\nRun with pytest for hardware tests: pytest test_auto_chunk.py::test_auto_detection_with_device -v\")
+    # Run unit tests (no hardware required)
+    print("\n1. Unit Tests (mocked, no hardware):\n")
+    test_small_file_single_shot()
+    test_large_file_chunked()
+    test_boundary_cases()
+
+    print("\n" + "=" * 60)
+    print("\n✓ All unit tests passed!")
+    print(
+        "\nRun with pytest for hardware tests: "
+        "pytest test_auto_chunk.py::test_auto_detection_with_device -v"
+    )

@@ -26,6 +26,7 @@
 
 """Pytest configuration and shared fixtures for mpremote async tests."""
 
+import ast
 import asyncio
 import os
 import sys
@@ -182,6 +183,44 @@ def event_loop():
 # Hardware Device Fixtures
 # ============================================================================
 
+_TARGET_INFO_SCRIPT = """
+import sys
+_impl = getattr(sys, 'implementation', None)
+info = {
+    'platform': getattr(sys, 'platform', ''),
+    'version': getattr(sys, 'version', ''),
+    'implementation_name': getattr(_impl, 'name', '') if _impl else '',
+    'implementation_version': tuple(getattr(_impl, 'version', ())) if _impl else (),
+    'implementation_mpy': getattr(_impl, '_mpy', None) if _impl else None,
+    'implementation_build': getattr(_impl, '_build', '') if _impl else '',
+    'implementation_machine': getattr(_impl, '_machine', '') if _impl else '',
+    'implementation_thread': getattr(_impl, '_thread', '') if _impl else '',
+}
+if hasattr(sys, 'machine'):
+    info['machine'] = getattr(sys, 'machine')
+else:
+    info['machine'] = info['implementation_machine']
+print(repr(info))
+"""
+
+
+def _parse_target_info(payload: str) -> dict:
+    """Parse the target info payload emitted by the device."""
+
+    payload = payload.strip()
+    if not payload:
+        return {}
+
+    try:
+        result = ast.literal_eval(payload)
+    except (ValueError, SyntaxError) as exc:  # pragma: no cover
+        raise RuntimeError(f"Unable to parse target metadata: {payload}") from exc
+
+    if not isinstance(result, dict):  # pragma: no cover - sanity check
+        raise RuntimeError(f"Unexpected metadata payload: {payload}")
+
+    return result
+
 
 def find_micropython_device():
     """Find the first available MicroPython device."""
@@ -251,6 +290,74 @@ def test_device_port(request) -> str | None:
     return None
 
 
+@pytest.fixture(scope="session")
+def hardware_target_info(test_device_port):
+    """Collect sys.platform/sys.implementation metadata for the connected device."""
+
+    if test_device_port is None:
+        pytest.skip("No MicroPython device available")
+
+    if not HAS_ASYNC:
+        pytest.skip(f"Async modules not available: {ASYNC_IMPORT_ERROR}")
+
+    transport = AsyncSerialTransport(test_device_port, baudrate=115200)
+    loop = asyncio.new_event_loop()
+
+    async def _probe():
+        try:
+            await asyncio.wait_for(transport.connect(), timeout=5.0)
+            await transport.enter_raw_repl_async()
+            stdout, _ = await transport.exec_raw_async(_TARGET_INFO_SCRIPT)
+            return stdout.decode(errors="ignore")
+        finally:
+            try:
+                await transport.close_async()
+            except Exception:
+                pass
+
+    try:
+        payload = loop.run_until_complete(_probe())
+    finally:
+        loop.close()
+
+    info = _parse_target_info(payload)
+    info.setdefault("device", test_device_port)
+    return info
+
+
+@pytest.fixture
+def require_target_platform(hardware_target_info):
+    """Skip tests when the connected device does not match the requested platform."""
+
+    def _require(*, platform=None, implementation=None, machine_substring=None):
+        actual_platform = str(hardware_target_info.get("platform", "")).lower()
+        actual_impl = str(hardware_target_info.get("implementation_name", "")).lower()
+        actual_machine = str(hardware_target_info.get("implementation_machine", "")).lower()
+
+        if platform is not None:
+            expected = (
+                {platform.lower()} if isinstance(platform, str) else {p.lower() for p in platform}
+            )
+            if actual_platform not in expected:
+                pytest.skip(
+                    f"Test requires platform {expected}, device reports platform '{actual_platform or 'unknown'}'"
+                )
+
+        if implementation is not None and actual_impl != implementation.lower():
+            pytest.skip(
+                f"Test requires implementation '{implementation}', device reports '{actual_impl or 'unknown'}'"
+            )
+
+        if machine_substring is not None and machine_substring.lower() not in actual_machine:
+            pytest.skip(
+                f"Test requires machine containing '{machine_substring}', device reports '{actual_machine or 'unknown'}'"
+            )
+
+        return hardware_target_info
+
+    return _require
+
+
 @pytest.fixture
 def hardware_device(test_device_port):
     """Provide hardware device port or skip test if not available."""
@@ -260,12 +367,13 @@ def hardware_device(test_device_port):
 
 
 @pytest.fixture
-def connected_transport(hardware_device, async_modules, event_loop):
+def connected_transport(hardware_device, hardware_target_info, async_modules, event_loop):
     """
     Create and connect an async transport to hardware device.
 
     Automatically cleans up connection after test.
-    Returns a function that provides (transport, writable_path) tuple.
+    Returns a tuple of (transport, writable_path) and adds a `target_info`
+    attribute to the transport containing sys.platform/sys.implementation metadata.
     """
     AsyncSerialTransport = async_modules["AsyncSerialTransport"]
 
@@ -299,6 +407,7 @@ print(writable_path if writable_path else 'NONE')
         if writable_path is None:
             pytest.skip("No writable filesystem available on device")
 
+        transport.target_info = dict(hardware_target_info)
         return transport, writable_path
 
     # Run async setup

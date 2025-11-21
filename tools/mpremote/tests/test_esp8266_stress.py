@@ -2,31 +2,26 @@
 """Stress test auto-detection with heavy memory fragmentation."""
 
 import asyncio
+import os
 import sys
 from pathlib import Path
+
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from mpremote.transport_serial_async import AsyncSerialTransport
 
-
-@pytest.fixture
-def event_loop():
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
+pytestmark = [pytest.mark.hardware_required, pytest.mark.serial_required]
 
 
-def test_heavy_fragmentation(event_loop):
-    async def _test():
-        device = "COM29"  # ESP8266
+async def _run_heavy_fragmentation(device: str):
+    print(f"\nStress test: Heavy memory fragmentation on ESP8266 ({device})\n")
 
-        print(f"\nStress test: Heavy memory fragmentation on ESP8266 ({device})\n")
+    transport = AsyncSerialTransport(device, baudrate=115200)
+    await transport.connect()
+    await transport.enter_raw_repl_async()
 
-        transport = AsyncSerialTransport(device, baudrate=115200)
-        await transport.connect()
-        await transport.enter_raw_repl_async()
-
+    try:
         # Check initial memory
         free_before = await transport.eval_async("__import__('gc').mem_free()", parse=False)
         free_before_kb = int(free_before.decode().strip()) / 1024
@@ -34,7 +29,8 @@ def test_heavy_fragmentation(event_loop):
 
         # Heavy fragmentation - allocate many small buffers
         print("\nCreating heavy memory fragmentation...")
-        await transport.exec_async("""
+        await transport.exec_async(
+            """
 import gc
 _bufs = []
 # Allocate many small buffers to create fragmentation
@@ -45,7 +41,8 @@ for i in range(20):
         break
 gc.collect()
 print(f"Allocated {len(_bufs)} buffers = {len(_bufs) * 800} bytes")
-""")
+"""
+        )
 
         # Check severely constrained memory
         free_after = await transport.eval_async("__import__('gc').mem_free()", parse=False)
@@ -82,12 +79,12 @@ print(f"Allocated {len(_bufs)} buffers = {len(_bufs) * 800} bytes")
                 assert optimal_chunk == 256, (
                     f"Should use 256 bytes for <20KB free, got {optimal_chunk}"
                 )
-                print(f"  ✓ Correctly using minimal chunk (256) for very low memory")
+                print("  ✓ Correctly using minimal chunk (256) for very low memory")
             elif free_kb < 50:
                 assert optimal_chunk == 512, (
                     f"Should use 512 bytes for 20-50KB free, got {optimal_chunk}"
                 )
-                print(f"  ✓ Correctly using small chunk (512) for low memory")
+                print("  ✓ Correctly using small chunk (512) for low memory")
             else:
                 print(f"  ✓ Using {optimal_chunk} bytes for {free_kb:.1f} KB free")
 
@@ -108,28 +105,34 @@ print(f"Allocated {len(_bufs)} buffers = {len(_bufs) * 800} bytes")
             assert verify == len(test_data), f"File size mismatch: {verify} != {len(test_data)}"
             print(f"  ✓ File verified: {verify} bytes")
 
-        except Exception as e:
-            print(f"  ✗ Upload failed: {e}")
+        except Exception as exc:
+            print(f"  ✗ Upload failed: {exc}")
 
-        # Cleanup
+        # Cleanup on device
         try:
             await transport.exec_raw_async('import os; os.remove("/test_stress.bin")')
-        except:
+        except Exception:
             pass
 
-        await transport.close_async()
         print("\n✓ Stress test complete!")
+    finally:
+        await transport.close_async()
 
-    event_loop.run_until_complete(_test())
+
+def test_heavy_fragmentation(event_loop, hardware_device, require_target_platform):
+    require_target_platform(platform="esp8266")
+    event_loop.run_until_complete(_run_heavy_fragmentation(hardware_device))
 
 
 if __name__ == "__main__":
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    try:
-        class MockEventLoop:
-            def run_until_complete(self, coro):
-                return asyncio.run(coro)
-        test_heavy_fragmentation(MockEventLoop())
-    finally:
-        loop.close()
+    device = (
+        os.environ.get("ESP8266_DEVICE")
+        or os.environ.get("MICROPYTHON_DEVICE")
+        or (sys.argv[1] if len(sys.argv) > 1 else None)
+    )
+
+    if not device:
+        print("Set ESP8266_DEVICE/MICROPYTHON_DEVICE or pass serial port as argument.")
+        sys.exit(1)
+
+    asyncio.run(_run_heavy_fragmentation(device))
