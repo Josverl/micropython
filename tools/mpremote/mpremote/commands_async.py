@@ -48,6 +48,51 @@ from .commands import (
 from .transport import TransportError, TransportExecError, stdout_write_bytes
 
 
+def _get_follow_flag(args, default=True):
+    follow = getattr(args, "follow", None)
+    return follow if follow is not None else default
+
+
+def _resolve_exec_buffer(args):
+    """Return the bytes object that should be executed by exec.*"""
+
+    # CLI path uses args.expr (list), but tests exercise args.command directly.
+    expr = getattr(args, "expr", None)
+    if isinstance(expr, (list, tuple)) and expr:
+        buf = expr[0]
+        return buf if isinstance(buf, (bytes, bytearray)) else bytes(buf, "utf-8")
+
+    command = getattr(args, "command", None)
+    if isinstance(command, (str, bytes, bytearray)):
+        if command == "-":
+            return sys.stdin.buffer.read()
+        with open(command, "rb") as f:
+            data = f.read()
+        return data
+
+    raise CommandError("exec: missing command or expression")
+
+
+def _resolve_eval_expression(args):
+    expr = getattr(args, "expr", None)
+    if isinstance(expr, (list, tuple)) and expr:
+        return expr[0]
+    expression = getattr(args, "expression", None)
+    if isinstance(expression, str):
+        return expression
+    raise CommandError("eval: missing expression")
+
+
+def _resolve_run_script(args):
+    path = getattr(args, "path", None)
+    if isinstance(path, (list, tuple)) and path:
+        return path[0]
+    script = getattr(args, "script", None)
+    if isinstance(script, str):
+        return script
+    raise CommandError("run: missing script path")
+
+
 async def do_exec_async(state, args):
     """Async version of exec command.
 
@@ -58,35 +103,36 @@ async def do_exec_async(state, args):
     await state.ensure_raw_repl_async()
     state.did_action()
 
-    # Get the expression to execute
-    buf = args.expr[0]
+    pyfile = _resolve_exec_buffer(args)
+    follow = _get_follow_flag(args, True)
 
-    # Convert to bytes if needed
-    if isinstance(buf, str):
-        pyfile = buf.encode()
-    else:
-        pyfile = buf
-
-    # Execute the command
-    if hasattr(state.transport, "exec_raw_no_follow_async"):
-        await state.transport.exec_raw_no_follow_async(pyfile)
-
-        # Follow output if requested
-        if args.follow:
-            ret, ret_err = await state.transport.follow_async(
-                timeout=None, data_consumer=stdout_write_bytes
-            )
-            if ret_err:
-                stdout_write_bytes(ret_err)
-                raise TransportExecError(1, ret_err)
-    else:
-        # Fall back to sync version
-        state.transport.exec_raw_no_follow(pyfile)
-        if args.follow:
-            ret, ret_err = state.transport.follow(timeout=None, data_consumer=stdout_write_bytes)
-            if ret_err:
-                stdout_write_bytes(ret_err)
-                raise TransportExecError(1, ret_err)
+    try:
+        transport = state.transport
+        if hasattr(transport, "exec_raw_no_follow_async"):
+            await transport.exec_raw_no_follow_async(pyfile)
+            if follow:
+                if hasattr(transport, "follow_async"):
+                    ret, ret_err = await transport.follow_async(
+                        timeout=None, data_consumer=stdout_write_bytes
+                    )
+                else:
+                    ret, ret_err = transport.follow(timeout=None, data_consumer=stdout_write_bytes)
+                if ret_err:
+                    stdout_write_bytes(ret_err)
+                    raise TransportExecError(1, ret_err)
+        else:
+            transport.exec_raw_no_follow(pyfile)
+            if follow:
+                ret, ret_err = transport.follow(timeout=None, data_consumer=stdout_write_bytes)
+                if ret_err:
+                    stdout_write_bytes(ret_err)
+                    raise TransportExecError(1, ret_err)
+    except TransportExecError:
+        raise
+    except TransportError as er:
+        raise CommandError(er.args[0])
+    except KeyboardInterrupt:
+        raise
 
 
 async def do_eval_async(state, args):
@@ -99,21 +145,14 @@ async def do_eval_async(state, args):
     await state.ensure_raw_repl_async()
     state.did_action()
 
-    # Evaluate expression using same approach as sync version
-    buf = "print(" + args.expr[0] + ")"
+    expression = _resolve_eval_expression(args)
 
-    # Execute and get result
-    if hasattr(state.transport, "exec_raw_async"):
-        ret, ret_err = await state.transport.exec_raw_async(
-            buf.encode(), data_consumer=stdout_write_bytes
-        )
-        if ret_err:
-            stdout_write_bytes(ret_err)
+    if hasattr(state.transport, "eval_async"):
+        result = await state.transport.eval_async(expression)
     else:
-        # Fall back to sync method
-        ret, ret_err = state.transport.exec_raw(buf.encode(), data_consumer=stdout_write_bytes)
-        if ret_err:
-            stdout_write_bytes(ret_err)
+        result = state.transport.eval(expression)
+
+    print(result)
 
 
 async def do_run_async(state, args):
@@ -126,23 +165,36 @@ async def do_run_async(state, args):
     await state.ensure_raw_repl_async()
     state.did_action()
 
-    # Read script file
-    filename = args.path[0]
+    filename = _resolve_run_script(args)
     with open(filename, "rb") as f:
         pyfile = f.read()
 
-    # Execute the script
-    if args.follow:
-        if hasattr(state.transport, "exec_raw_async"):
-            ret, ret_err = await state.transport.exec_raw_async(
-                pyfile, data_consumer=stdout_write_bytes
-            )
-        else:
-            ret, ret_err = state.transport.exec_raw(pyfile, data_consumer=stdout_write_bytes)
+    follow = _get_follow_flag(args, True)
+    transport = state.transport
 
-    if ret_err:
-        stdout_write_bytes(ret_err)
-        raise TransportExecError(1, ret_err)
+    try:
+        if follow:
+            if hasattr(transport, "exec_raw_async"):
+                ret, ret_err = await transport.exec_raw_async(
+                    pyfile, data_consumer=stdout_write_bytes
+                )
+            else:
+                ret, ret_err = transport.exec_raw(pyfile, data_consumer=stdout_write_bytes)
+
+            if ret_err:
+                stdout_write_bytes(ret_err)
+                raise TransportExecError(1, ret_err)
+        else:
+            if hasattr(transport, "exec_raw_no_follow_async"):
+                await transport.exec_raw_no_follow_async(pyfile)
+            else:
+                transport.exec_raw_no_follow(pyfile)
+    except TransportExecError:
+        raise
+    except TransportError as er:
+        raise CommandError(er.args[0])
+    except KeyboardInterrupt:
+        raise
 
 
 async def do_filesystem_cp_async(state, src, dest, check_hash=False):
