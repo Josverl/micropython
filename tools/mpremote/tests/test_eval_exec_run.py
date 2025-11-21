@@ -8,27 +8,13 @@ Based on test_eval_exec_run.sh
 import os
 import sys
 import tempfile
-import subprocess
 from pathlib import Path
-from textwrap import dedent
 import pytest
+
+from helpers import write_script, run_mpremote
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
-
-
-def write_script(file_path, code):
-    """Write dedented code to a script file."""
-    with open(file_path, "w") as f:
-        f.write(dedent(code).strip())
-
-
-def run_mpremote(mpremote_cmd, *args):
-    """Run mpremote command and return output."""
-    cmd = mpremote_cmd + list(args)
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
-    return result
-
 
 @pytest.mark.cli
 def test_exec_simple(mpremote_cmd, cli_mode):

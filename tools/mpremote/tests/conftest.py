@@ -30,8 +30,10 @@ import ast
 import asyncio
 import os
 import sys
+import tempfile
 from collections.abc import Callable, Generator
 from pathlib import Path
+from textwrap import dedent
 from typing import Any
 
 import pytest
@@ -41,6 +43,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 
 # Check for async module availability
+AsyncConsole = None
+AsyncTransport = None
+AsyncSerialTransport = None
+RawREPLProtocol = None
+do_exec_async = None
+do_eval_async = None
 try:
     from mpremote.commands_async import do_eval_async, do_exec_async
     from mpremote.console_async import AsyncConsole
@@ -55,12 +63,22 @@ except ImportError as e:
     ASYNC_IMPORT_ERROR = str(e)
 
 # Check for serial module availability
+serial_list_ports = None
 try:
-    import serial.tools.list_ports
+    from serial.tools import list_ports as serial_list_ports
 
     HAS_SERIAL = True
 except ImportError:
     HAS_SERIAL = False
+
+# Check for serial_asyncio availability
+try:
+    import serial_asyncio
+
+    HAS_SERIAL_ASYNCIO = True
+except ImportError:
+    HAS_SERIAL_ASYNCIO = False
+    serial_asyncio = None
 
 
 # Platform detection
@@ -100,14 +118,8 @@ def pytest_collection_modifyitems(config, items):
             )
 
         # Skip tests that require pyserial-asyncio if not available
-        if "serial_required" in item.keywords:
-            # Try to import to check if it's available
-            try:
-                import serial_asyncio
-
-                pass  # It's available
-            except ImportError:
-                item.add_marker(pytest.mark.skip(reason="pyserial-asyncio not installed"))
+        if "serial_required" in item.keywords and not HAS_SERIAL_ASYNCIO:
+            item.add_marker(pytest.mark.skip(reason="pyserial-asyncio not installed"))
 
         # Skip Windows-only tests on non-Windows
         if "windows_only" in item.keywords and not IS_WINDOWS:
@@ -185,25 +197,27 @@ def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
 # Hardware Device Fixtures
 # ============================================================================
 
-_TARGET_INFO_SCRIPT = """
-import sys
-_impl = getattr(sys, 'implementation', None)
-info = {
-    'platform': getattr(sys, 'platform', ''),
-    'version': getattr(sys, 'version', ''),
-    'implementation_name': getattr(_impl, 'name', '') if _impl else '',
-    'implementation_version': tuple(getattr(_impl, 'version', ())) if _impl else (),
-    'implementation_mpy': getattr(_impl, '_mpy', None) if _impl else None,
-    'implementation_build': getattr(_impl, '_build', '') if _impl else '',
-    'implementation_machine': getattr(_impl, '_machine', '') if _impl else '',
-    'implementation_thread': getattr(_impl, '_thread', '') if _impl else '',
-}
-if hasattr(sys, 'machine'):
-    info['machine'] = getattr(sys, 'machine')
-else:
-    info['machine'] = info['implementation_machine']
-print(repr(info))
-"""
+_TARGET_INFO_SCRIPT = dedent(
+    """
+    import sys
+    _impl = getattr(sys, 'implementation', None)
+    info = {
+        'platform': getattr(sys, 'platform', ''),
+        'version': getattr(sys, 'version', ''),
+        'implementation_name': getattr(_impl, 'name', '') if _impl else '',
+        'implementation_version': tuple(getattr(_impl, 'version', ())) if _impl else (),
+        'implementation_mpy': getattr(_impl, '_mpy', None) if _impl else None,
+        'implementation_build': getattr(_impl, '_build', '') if _impl else '',
+        'implementation_machine': getattr(_impl, '_machine', '') if _impl else '',
+        'implementation_thread': getattr(_impl, '_thread', '') if _impl else '',
+    }
+    if hasattr(sys, 'machine'):
+        info['machine'] = getattr(sys, 'machine')
+    else:
+        info['machine'] = info['implementation_machine']
+    print(repr(info))
+    """
+)
 
 
 def _parse_target_info(payload: str) -> dict:
@@ -226,13 +240,11 @@ def _parse_target_info(payload: str) -> dict:
 
 def find_micropython_device() -> str | None:
     """Find the first available MicroPython device."""
-    if not HAS_SERIAL:
+    if not HAS_SERIAL or serial_list_ports is None:
         return None
 
     try:
-        import serial.tools.list_ports
-
-        ports = serial.tools.list_ports.comports()
+        ports = serial_list_ports.comports()
         if not ports:
             return None
 
@@ -302,7 +314,7 @@ def hardware_target_info(test_device_port: str | None) -> dict[str, Any]:
     if not HAS_ASYNC:
         pytest.skip(f"Async modules not available: {ASYNC_IMPORT_ERROR}")
 
-    transport = AsyncSerialTransport(test_device_port, baudrate=115200)
+    transport = AsyncSerialTransport(test_device_port, baudrate=115200)  # type: ignore
     loop = asyncio.new_event_loop()
 
     async def _probe():
@@ -328,7 +340,10 @@ def hardware_target_info(test_device_port: str | None) -> dict[str, Any]:
 
 
 @pytest.fixture
-def require_dut(hardware_target_info: dict[str, Any]) -> Callable[..., dict[str, Any]]:
+def require_dut(
+    hardware_target_info: dict[str, Any],
+    request: pytest.FixtureRequest,
+) -> Callable[..., dict[str, Any]]:
     """
     Skip tests when the connected device (DUT, device under test) does not match the requested platform.
 
@@ -381,6 +396,11 @@ def require_dut(hardware_target_info: dict[str, Any]) -> Callable[..., dict[str,
             assert info["implementation_name"] == "micropython"
     """
 
+    test_id = request.node.nodeid
+
+    def _skip(reason: str) -> None:
+        pytest.skip(f"{test_id}: {reason}")
+
     def _require(
         *,
         platform: str | list[str] | None = None,
@@ -396,18 +416,18 @@ def require_dut(hardware_target_info: dict[str, Any]) -> Callable[..., dict[str,
                 {platform.lower()} if isinstance(platform, str) else {p.lower() for p in platform}
             )
             if actual_platform not in expected:
-                pytest.skip(
-                    f"Test requires platform {expected}, device reports platform '{actual_platform or 'unknown'}'"
+                _skip(
+                    f"requires platform {expected}, device reports platform '{actual_platform or 'unknown'}'"
                 )
 
         if implementation is not None and actual_impl != implementation.lower():
-            pytest.skip(
-                f"Test requires implementation '{implementation}', device reports '{actual_impl or 'unknown'}'"
+            _skip(
+                f"requires implementation '{implementation}', device reports '{actual_impl or 'unknown'}'"
             )
 
         if machine_substring is not None and machine_substring.lower() not in actual_machine:
-            pytest.skip(
-                f"Test requires machine containing '{machine_substring}', device reports '{actual_machine or 'unknown'}'"
+            _skip(
+                f"requires machine containing '{machine_substring}', device reports '{actual_machine or 'unknown'}'"
             )
 
         return hardware_target_info
@@ -445,23 +465,25 @@ def connected_transport(
         await transport.enter_raw_repl_async()
 
         # Detect writable path
-        code = """
-import os
-writable_path = None
-test_paths = ['/', '/flash', '/sd']
-for path in test_paths:
-    try:
-        items = os.listdir(path)
-        test_file = path + '/.test_write'
-        with open(test_file, 'w') as f:
-            f.write('test')
-        os.remove(test_file)
-        writable_path = path
-        break
-    except (OSError, AttributeError):
-        continue
-print(writable_path if writable_path else 'NONE')
-"""
+        code = dedent(
+            """
+            import os
+            writable_path = None
+            test_paths = ['/', '/flash', '/sd']
+            for path in test_paths:
+                try:
+                    items = os.listdir(path)
+                    test_file = path + '/.test_write'
+                    with open(test_file, 'w') as f:
+                        f.write('test')
+                    os.remove(test_file)
+                    writable_path = path
+                    break
+                except (OSError, AttributeError):
+                    continue
+            print(writable_path if writable_path else 'NONE')
+            """
+        )
         stdout, _ = await transport.exec_raw_async(code)
         result = stdout.strip().decode()
         writable_path = None if result == "NONE" else result
@@ -500,23 +522,25 @@ def get_writable_path() -> Callable[[Any], Any]:
 
     async def _get_writable_path(transport: Any) -> str | None:
         """Detect and return writable path on device, or None if none available."""
-        code = """
-import os
-writable_path = None
-test_paths = ['/', '/flash', '/sd']
-for path in test_paths:
-    try:
-        items = os.listdir(path)
-        test_file = path + '/.test_write'
-        with open(test_file, 'w') as f:
-            f.write('test')
-        os.remove(test_file)
-        writable_path = path
-        break
-    except (OSError, AttributeError):
-        continue
-print(writable_path if writable_path else 'NONE')
-"""
+        code = dedent(
+            """
+            import os
+            writable_path = None
+            test_paths = ['/', '/flash', '/sd']
+            for path in test_paths:
+                try:
+                    items = os.listdir(path)
+                    test_file = path + '/.test_write'
+                    with open(test_file, 'w') as f:
+                        f.write('test')
+                    os.remove(test_file)
+                    writable_path = path
+                    break
+                except (OSError, AttributeError):
+                    continue
+            print(writable_path if writable_path else 'NONE')
+            """
+        )
         stdout = await transport.exec_async(code)
         result = stdout.strip().decode()
         return None if result == "NONE" else result
@@ -574,8 +598,6 @@ def mpremote_cmd(cli_mode: str) -> list[str]:
 @pytest.fixture
 def temp_script() -> Generator[str, None, None]:
     """Create temporary script file."""
-    import tempfile
-
     fd, path = tempfile.mkstemp(suffix=".py", prefix="mpremote_test_")
     os.close(fd)
     yield path
