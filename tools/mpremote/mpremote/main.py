@@ -18,7 +18,10 @@ MicroPython device over a serial connection.  Commands supported are:
 """
 
 import argparse
-import os, sys, time
+import asyncio
+import os
+import sys
+import time
 from collections.abc import Mapping
 from textwrap import dedent
 
@@ -29,21 +32,58 @@ from .commands import (
     do_connect,
     do_disconnect,
     do_edit,
+    do_eval,
+    do_exec,
     do_filesystem,
     do_mount,
-    do_umount,
-    do_exec,
-    do_eval,
-    do_run,
     do_resume,
-    do_rtc,
-    do_soft_reset,
     do_romfs,
+    do_rtc,
+    do_run,
+    do_soft_reset,
+    do_umount,
+)
+from .commands_async import (
+    do_edit_async,
+    do_eval_async,
+    do_exec_async,
+    do_filesystem_async,
+    do_mip_async,
+    do_mount_async,
+    do_romfs_async,
+    do_run_async,
+    do_umount_async,
 )
 from .mip import do_mip
 from .repl import do_repl
 
 _PROG = "mpremote"
+
+_ASYNC_ENV_VAR = "MPREMOTE_ASYNC"
+_ASYNC_TRUE_VALUES = {"1", "true", "yes", "on"}
+
+
+# Map of commands that have async versions
+_ASYNC_COMMAND_MAP = {
+    "exec": do_exec_async,
+    "eval": do_eval_async,
+    "run": do_run_async,
+    "fs": do_filesystem_async,
+    "edit": do_edit_async,
+    "mount": do_mount_async,
+    "umount": do_umount_async,
+    "mip": do_mip_async,
+    "romfs": do_romfs_async,
+}
+
+
+def async_wrapper(async_func):
+    """Wrapper to run async functions synchronously."""
+
+    def wrapper(state, args):
+        return asyncio.run(async_func(state, args))
+
+    return wrapper
 
 
 def do_sleep(state, args):
@@ -62,6 +102,11 @@ def do_help(state, _args=None):
 
     print(_PROG, "-- MicroPython remote control")
     print("See https://docs.micropython.org/en/latest/reference/mpremote.html")
+
+    print("\nGlobal options:")
+    print("  --async              Use async methods for supported commands")
+    print("  --no-async           Use sync methods (default)")
+    print("                       Can also be set via MPREMOTE_ASYNC environment variable")
 
     print("\nList of commands:")
     print_commands_help(
@@ -529,10 +574,11 @@ def do_command_expansion(args):
 
 
 class State:
-    def __init__(self):
+    def __init__(self, use_async=False):
         self.transport = None
         self._did_action = False
         self._auto_soft_reset = True
+        self.use_async = use_async
 
     def did_action(self):
         self._did_action = True
@@ -585,12 +631,37 @@ class State:
                 self.transport.exit_raw_repl()
 
 
+def _determine_async_mode(args, env=None):
+    """Return (use_async, filtered_args) based on CLI flags and environment."""
+
+    env = env if env is not None else os.environ
+    filtered_args = []
+    cli_override = None
+
+    for arg in args:
+        if arg == "--async":
+            cli_override = True
+        elif arg == "--no-async":
+            cli_override = False
+        else:
+            filtered_args.append(arg)
+
+    env_value = env.get(_ASYNC_ENV_VAR, "").strip().lower()
+    env_async = env_value in _ASYNC_TRUE_VALUES
+    use_async = cli_override if cli_override is not None else env_async
+
+    return use_async, filtered_args
+
+
 def main():
     config = load_user_config()
     prepare_command_expansions(config)
 
+    # Check for --async flag or MPREMOTE_ASYNC environment variable
     remaining_args = sys.argv[1:]
-    state = State()
+    use_async, remaining_args = _determine_async_mode(remaining_args)
+
+    state = State(use_async=use_async)
 
     try:
         while remaining_args:
@@ -638,8 +709,14 @@ def main():
             )
             args = cmd_parser.parse_args(command_args)
 
-            # Execute command.
-            handler_func(state, args)
+            # Execute command - use async version if available and requested
+            if state.use_async and cmd in _ASYNC_COMMAND_MAP:
+                # Use async version
+                async_handler = _ASYNC_COMMAND_MAP[cmd]
+                asyncio.run(async_handler(state, args))
+            else:
+                # Use sync version
+                handler_func(state, args)
 
             # Get any leftover unprocessed args.
             remaining_args = args.next_command + extra_args

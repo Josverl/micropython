@@ -53,17 +53,19 @@ async def do_exec_async(state, args):
 
     Args:
         state: State object with transport connection
-        args: Command arguments
+        args: Command arguments (expects args.expr[0])
     """
     await state.ensure_raw_repl_async()
     state.did_action()
 
-    # Read command
-    if args.command == "-":
-        pyfile = sys.stdin.buffer.read()
+    # Get the expression to execute
+    buf = args.expr[0]
+
+    # Convert to bytes if needed
+    if isinstance(buf, str):
+        pyfile = buf.encode()
     else:
-        with open(args.command, "rb") as f:
-            pyfile = f.read()
+        pyfile = buf
 
     # Execute the command
     if hasattr(state.transport, "exec_raw_no_follow_async"):
@@ -92,18 +94,26 @@ async def do_eval_async(state, args):
 
     Args:
         state: State object with transport connection
-        args: Command arguments
+        args: Command arguments (expects args.expr[0])
     """
     await state.ensure_raw_repl_async()
     state.did_action()
 
-    # Evaluate expression
-    if hasattr(state.transport, "eval_async"):
-        result = await state.transport.eval_async(args.expression)
-    else:
-        result = state.transport.eval(args.expression)
+    # Evaluate expression using same approach as sync version
+    buf = "print(" + args.expr[0] + ")"
 
-    print(result)
+    # Execute and get result
+    if hasattr(state.transport, "exec_raw_async"):
+        ret, ret_err = await state.transport.exec_raw_async(
+            buf.encode(), data_consumer=stdout_write_bytes
+        )
+        if ret_err:
+            stdout_write_bytes(ret_err)
+    else:
+        # Fall back to sync method
+        ret, ret_err = state.transport.exec_raw(buf.encode(), data_consumer=stdout_write_bytes)
+        if ret_err:
+            stdout_write_bytes(ret_err)
 
 
 async def do_run_async(state, args):
@@ -111,22 +121,24 @@ async def do_run_async(state, args):
 
     Args:
         state: State object with transport connection
-        args: Command arguments
+        args: Command arguments (expects args.path[0])
     """
     await state.ensure_raw_repl_async()
     state.did_action()
 
     # Read script file
-    with open(args.script, "rb") as f:
+    filename = args.path[0]
+    with open(filename, "rb") as f:
         pyfile = f.read()
 
     # Execute the script
-    if hasattr(state.transport, "exec_raw_async"):
-        ret, ret_err = await state.transport.exec_raw_async(
-            pyfile, data_consumer=stdout_write_bytes
-        )
-    else:
-        ret, ret_err = state.transport.exec_raw(pyfile, data_consumer=stdout_write_bytes)
+    if args.follow:
+        if hasattr(state.transport, "exec_raw_async"):
+            ret, ret_err = await state.transport.exec_raw_async(
+                pyfile, data_consumer=stdout_write_bytes
+            )
+        else:
+            ret, ret_err = state.transport.exec_raw(pyfile, data_consumer=stdout_write_bytes)
 
     if ret_err:
         stdout_write_bytes(ret_err)
