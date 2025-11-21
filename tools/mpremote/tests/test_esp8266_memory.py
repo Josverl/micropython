@@ -194,17 +194,17 @@ print(f"Allocated {len(_bufs)} buffers = {len(_bufs) * 800} bytes")
         await transport.close_async()
 
 
-def test_esp8266_fragmented_memory(event_loop, hardware_device, require_target_platform):
+def test_esp8266_fragmented_memory(event_loop, hardware_device, require_dut):
     """Test auto-detection on ESP8266 with memory fragmentation."""
 
-    require_target_platform(platform="esp8266")
+    require_dut(platform="esp8266")
     event_loop.run_until_complete(_run_fragmented_memory_test(hardware_device))
 
 
-def test_esp8266_heavy_stress(event_loop, hardware_device, require_target_platform):
+def test_esp8266_heavy_stress(event_loop, hardware_device, require_dut):
     """Stress test with heavy memory fragmentation on ESP8266."""
 
-    require_target_platform(platform="esp8266")
+    require_dut(platform="esp8266")
     event_loop.run_until_complete(_run_heavy_stress_test(hardware_device))
 
 

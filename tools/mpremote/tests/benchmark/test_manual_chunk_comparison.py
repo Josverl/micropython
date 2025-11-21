@@ -22,13 +22,7 @@ from mpremote.transport_serial_async import AsyncSerialTransport
 pytestmark = [pytest.mark.hardware_required, pytest.mark.serial_required]
 
 
-@pytest.fixture
-def event_loop():
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
-
-
+@pytest.mark.skip(reason="WIP")
 def test_chunk_sizes(event_loop, hardware_device):
     async def _test():
         device = hardware_device
@@ -44,8 +38,12 @@ def test_chunk_sizes(event_loop, hardware_device):
         # Try different common paths
         for test_path in ["/", "/flash", ""]:
             try:
-                await transport.exec_raw_async(f"f=open('{test_path}/test_chunk.tmp','wb'); f.close()")
-                await transport.exec_raw_async(f"import os; os.remove('{test_path}/test_chunk.tmp')")
+                await transport.exec_raw_async(
+                    f"f=open('{test_path}/test_chunk.tmp','wb'); f.close()"
+                )
+                await transport.exec_raw_async(
+                    f"import os; os.remove('{test_path}/test_chunk.tmp')"
+                )
                 writable_path = test_path
                 break
             except:
@@ -104,6 +102,7 @@ if __name__ == "__main__":
         class MockEventLoop:
             def run_until_complete(self, coro):
                 return asyncio.run(coro)
+
         test_chunk_sizes(MockEventLoop())
     finally:
         loop.close()

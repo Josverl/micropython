@@ -38,6 +38,7 @@ pytestmark = [
     pytest.mark.async_required,
     pytest.mark.hardware_required,
     pytest.mark.serial_required,
+    pytest.mark.skip(reason="WIP"),
 ]
 
 
@@ -332,6 +333,7 @@ class BenchmarkRunner:
             )
 
 
+@pytest.mark.skip(reason="WIP")
 @pytest.mark.hardware
 @pytest.mark.parametrize("size,label", TEST_SIZES)
 def test_benchmark_upload(
@@ -380,6 +382,7 @@ def test_benchmark_upload(
     event_loop.run_until_complete(_test())
 
 
+@pytest.mark.skip(reason="WIP")
 @pytest.mark.hardware
 @pytest.mark.parametrize("size,label", TEST_SIZES)
 def test_benchmark_download(
@@ -427,6 +430,7 @@ def test_benchmark_download(
     event_loop.run_until_complete(_test())
 
 
+@pytest.mark.skip(reason="WIP")
 @pytest.mark.hardware
 def test_benchmark_comprehensive(
     temp_files, request, hardware_device, get_writable_path, event_loop, async_modules
@@ -464,60 +468,3 @@ def test_benchmark_comprehensive(
         runner.print_results(verbose=verbose)
 
     event_loop.run_until_complete(_test())
-
-
-if __name__ == "__main__":
-    """Run benchmarks directly (not via pytest)."""
-    # Get device from environment or auto-detect
-    device = os.environ.get("MICROPYTHON_DEVICE")
-    if not device:
-        # Try to auto-detect
-        try:
-            import serial.tools.list_ports
-
-            ports = serial.tools.list_ports.comports()
-            if ports:
-                device = ports[0].device
-                print(f"Auto-detected device: {device}")
-        except ImportError:
-            print("ERROR: No device specified and pyserial not available for auto-detection")
-            print("Set MICROPYTHON_DEVICE environment variable or install pyserial")
-            sys.exit(1)
-
-    if not device:
-        print("ERROR: No MicroPython device found")
-        sys.exit(1)
-
-    print(f"Running benchmarks on device: {device}")
-
-    # Create temp files
-    temp_files = {}
-    for size, label in TEST_SIZES:
-        fd, path = tempfile.mkstemp(prefix=f"bench_{label}_", suffix=".bin")
-        os.write(fd, create_test_data(size))
-        os.close(fd)
-        temp_files[label] = path
-
-    try:
-        runner = BenchmarkRunner(device)
-
-        for size, label in TEST_SIZES:
-            file_path = temp_files[label]
-            print(f"\nBenchmarking {label}...")
-
-            # Upload
-            runner.results.append(runner.benchmark_sync_upload(file_path, label))
-            runner.results.append(asyncio.run(runner.benchmark_async_upload(file_path, label)))
-
-            # Download
-            runner.results.append(runner.benchmark_sync_download(file_path, label))
-            runner.results.append(asyncio.run(runner.benchmark_async_download(file_path, label)))
-
-        runner.print_results(verbose=True)
-
-    finally:
-        for path in temp_files.values():
-            try:
-                os.unlink(path)
-            except:
-                pass

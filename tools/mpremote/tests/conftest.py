@@ -30,7 +30,9 @@ import ast
 import asyncio
 import os
 import sys
+from collections.abc import Callable, Generator
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -126,7 +128,7 @@ def pytest_collection_modifyitems(config, items):
 
 
 @pytest.fixture
-def platform_info():
+def platform_info() -> dict[str, Any]:
     """Provide platform information."""
     return {
         "is_windows": IS_WINDOWS,
@@ -142,7 +144,7 @@ def platform_info():
 
 
 @pytest.fixture
-def async_modules():
+def async_modules() -> dict[str, Any]:
     """Provide async module imports if available."""
     if not HAS_ASYNC:
         pytest.skip(f"Async modules not available: {ASYNC_IMPORT_ERROR}")
@@ -163,7 +165,7 @@ def async_modules():
 
 
 @pytest.fixture
-def event_loop():
+def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
     """Create and clean up event loop for async tests."""
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
@@ -222,7 +224,7 @@ def _parse_target_info(payload: str) -> dict:
     return result
 
 
-def find_micropython_device():
+def find_micropython_device() -> str | None:
     """Find the first available MicroPython device."""
     if not HAS_SERIAL:
         return None
@@ -291,7 +293,7 @@ def test_device_port(request) -> str | None:
 
 
 @pytest.fixture(scope="session")
-def hardware_target_info(test_device_port):
+def hardware_target_info(test_device_port: str | None) -> dict[str, Any]:
     """Collect sys.platform/sys.implementation metadata for the connected device."""
 
     if test_device_port is None:
@@ -326,10 +328,65 @@ def hardware_target_info(test_device_port):
 
 
 @pytest.fixture
-def require_target_platform(hardware_target_info):
-    """Skip tests when the connected device does not match the requested platform."""
+def require_dut(hardware_target_info: dict[str, Any]) -> Callable[..., dict[str, Any]]:
+    """
+    Skip tests when the connected device (DUT, device under test) does not match the requested platform.
 
-    def _require(*, platform=None, implementation=None, machine_substring=None):
+    This fixture provides a callable that checks if the connected MicroPython device
+    meets the specified requirements for platform, implementation, and machine type.
+    If the requirements are not met, the test is skipped with an appropriate message.
+
+    Args:
+        hardware_target_info: Dictionary containing information about the connected device,
+            including 'platform', 'implementation_name', and 'implementation_machine'.
+
+    Returns:
+        A callable that accepts the following keyword arguments:
+            platform: str | list[str] | None
+                The required MicroPython platform(s) (sys.platform). Can be a single string
+                or a list of acceptable platforms.
+            implementation: str | None
+                The required MicroPython implementation name (e.g., 'micropython', 'circuitpython').
+            machine_substring: str | None
+                A substring that must be present in the machine description.
+        The callable returns the hardware_target_info dictionary if all requirements are met,
+        otherwise it skips the test.
+
+    Example:
+        def test_esp32_specific_feature(require_dut):
+            # Skip this test if the device is not an ESP32
+            require_dut(platform="esp32")
+            # Test code here will only run on ESP32 devices
+            assert True
+
+        def test_unix_or_rp2_feature(require_dut):
+            # Skip if device is neither unix nor rp2
+            require_dut(platform=["unix", "rp2"])
+            # Test code here runs on unix or rp2 platforms
+            assert True
+
+        def test_pico_board(require_dut):
+            # Skip if not running on a Raspberry Pi Pico variant
+            require_dut(
+                platform="rp2",
+                machine_substring="Pico"
+            )
+            # Test code specific to Pico boards
+            assert True
+
+        def test_micropython_implementation(require_dut):
+            # Skip if not running official MicroPython implementation
+            info = require_dut(implementation="micropython")
+            # Use returned info if needed
+            assert info["implementation_name"] == "micropython"
+    """
+
+    def _require(
+        *,
+        platform: str | list[str] | None = None,
+        implementation: str | None = None,
+        machine_substring: str | None = None,
+    ) -> dict[str, Any]:
         actual_platform = str(hardware_target_info.get("platform", "")).lower()
         actual_impl = str(hardware_target_info.get("implementation_name", "")).lower()
         actual_machine = str(hardware_target_info.get("implementation_machine", "")).lower()
@@ -359,7 +416,7 @@ def require_target_platform(hardware_target_info):
 
 
 @pytest.fixture
-def hardware_device(test_device_port):
+def hardware_device(test_device_port: str | None) -> str:
     """Provide hardware device port or skip test if not available."""
     if test_device_port is None:
         pytest.skip("No MicroPython device available")
@@ -367,7 +424,12 @@ def hardware_device(test_device_port):
 
 
 @pytest.fixture
-def connected_transport(hardware_device, hardware_target_info, async_modules, event_loop):
+def connected_transport(
+    hardware_device: str,
+    hardware_target_info: dict[str, Any],
+    async_modules: dict[str, Any],
+    event_loop: asyncio.AbstractEventLoop,
+) -> Generator[tuple[Any, str], None, None]:
     """
     Create and connect an async transport to hardware device.
 
@@ -426,7 +488,7 @@ print(writable_path if writable_path else 'NONE')
 
 
 @pytest.fixture
-def get_writable_path():
+def get_writable_path() -> Callable[[Any], Any]:
     """
     Return a helper function that detects writable filesystem path on device.
 
@@ -436,7 +498,7 @@ def get_writable_path():
             pytest.skip("No writable filesystem available")
     """
 
-    async def _get_writable_path(transport):
+    async def _get_writable_path(transport: Any) -> str | None:
         """Detect and return writable path on device, or None if none available."""
         code = """
 import os
@@ -468,7 +530,7 @@ print(writable_path if writable_path else 'NONE')
 
 
 @pytest.fixture(scope="session")
-def micropython_unix_binary():
+def micropython_unix_binary() -> str | None:
     """Find MicroPython unix port binary."""
     possible_paths = [
         Path(__file__).parent.parent.parent.parent
@@ -486,6 +548,41 @@ def micropython_unix_binary():
             return str(path)
 
     return None
+
+
+# ============================================================================
+# CLI Fixtures
+# ============================================================================
+
+
+@pytest.fixture(params=["sync", "async"])
+def cli_mode(request: pytest.FixtureRequest) -> str:
+    """Fixture to run tests in both sync and async modes."""
+    return request.param
+
+
+@pytest.fixture
+def mpremote_cmd(cli_mode: str) -> list[str]:
+    """Get mpremote command with appropriate mode flag."""
+    mpremote = os.environ.get("MPREMOTE", "mpremote")
+    if cli_mode == "async":
+        return [mpremote, "--async"]
+    else:
+        return [mpremote]
+
+
+@pytest.fixture
+def temp_script() -> Generator[str, None, None]:
+    """Create temporary script file."""
+    import tempfile
+
+    fd, path = tempfile.mkstemp(suffix=".py", prefix="mpremote_test_")
+    os.close(fd)
+    yield path
+    try:
+        os.unlink(path)
+    except:
+        pass
 
 
 # ============================================================================

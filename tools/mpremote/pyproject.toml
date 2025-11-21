@@ -69,4 +69,5 @@ markers = [
     "hardware_required: mark test as requiring hardware device",
     "windows_only: mark test as Windows-only",
     "posix_only: mark test as POSIX-only",
+    "cli: mark test as CLI command test",
 ]

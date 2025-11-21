@@ -104,8 +104,8 @@ print(f"Allocated {len(_bufs)} buffers")
         await transport.close_async()
 
 
-def test_esp8266_fragmented_memory(event_loop, hardware_device, require_target_platform):
-    require_target_platform(platform="esp8266")
+def test_esp8266_fragmented_memory(event_loop, hardware_device, require_dut):
+    require_dut(platform="esp8266")
     event_loop.run_until_complete(_run_fragmentation_test(hardware_device))
 
 

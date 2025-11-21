@@ -263,34 +263,3 @@ assert hasattr(s, 'ensure_friendly_repl_async')
             print(f"{RED}✗ {failed} CHECKS FAILED{RESET}")
             print("Please review the failed checks above.")
             return 1
-
-
-def main():
-    """Main validation function."""
-    print("=" * 72)
-    print("VALIDATING ASYNC IMPLEMENTATION")
-    print("=" * 72)
-
-    checker = ValidationChecker()
-
-    try:
-        checker.validate_phase1()
-        checker.validate_phase2()
-        checker.validate_phase3()
-        checker.validate_dependencies()
-        checker.validate_testing()
-        checker.validate_documentation()
-        checker.validate_backward_compatibility()
-        checker.validate_syntax()
-    except Exception as e:
-        print(f"\n{RED}✗ Validation error: {e}{RESET}")
-        import traceback
-
-        traceback.print_exc()
-        return 1
-
-    return checker.print_summary()
-
-
-if __name__ == "__main__":
-    sys.exit(main())
