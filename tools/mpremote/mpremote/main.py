@@ -56,6 +56,7 @@ from .commands_async import (
 )
 from .mip import do_mip
 from .repl import do_repl
+from .repl_async import do_repl_async
 
 _PROG = "mpremote"
 
@@ -74,6 +75,7 @@ _ASYNC_COMMAND_MAP = {
     "umount": do_umount_async,
     "mip": do_mip_async,
     "romfs": do_romfs_async,
+    "repl": do_repl_async,
 }
 
 
@@ -653,6 +655,21 @@ def _determine_async_mode(args, env=None):
     return use_async, filtered_args
 
 
+def _run_repl(state, repl_args):
+    """Run REPL honoring async mode with graceful fallback."""
+
+    if state.use_async:
+        try:
+            return asyncio.run(do_repl_async(state, repl_args))
+        except (AttributeError, TypeError):
+            print(
+                f"{_PROG}: async repl unavailable on current transport; falling back to sync mode",
+                file=sys.stderr,
+            )
+
+    return do_repl(state, repl_args)
+
+
 def main():
     config = load_user_config()
     prepare_command_expansions(config)
@@ -724,7 +741,7 @@ def main():
         # If no commands were "actions" then implicitly finish with the REPL
         # using default args.
         if state.run_repl_on_completion():
-            disconnected = do_repl(state, argparse_repl().parse_args([]))
+            disconnected = _run_repl(state, argparse_repl().parse_args([]))
 
             # Handle disconnection message
             if disconnected:

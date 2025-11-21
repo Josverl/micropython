@@ -29,6 +29,7 @@ This is the single source of truth for the asyncio migration effort. Keep it con
 3. **Adoption Hooks**
    - Confirm CLI plumbing (feature flags/env vars) before defaulting to async.
    - Capture migration friction in `ASYNC_REPORTS_AND_TESTS.md` so future agents know open issues.
+   - Global `--async` flag and `MPREMOTE_ASYNC` env var now flip command dispatch + REPL; when transports lack async primitives we emit a warning and fall back to sync behavior.
 
 ## Phase 5 Preview (Performance & Polish)
 - **Buffered writes on Windows:** defer `drain()` calls, coalesce small chunks (Option 1 + Option 5 from the retired performance doc).
@@ -53,7 +54,10 @@ This is the single source of truth for the asyncio migration effort. Keep it con
    - run ruff format and lint checks: `ruff check tools/mpremote`.
 
 ## Backlog (ordered)
-1. Wire async feature flag/CLI path in `mpremote.main` so users can opt-in without direct Python usage.
+1. **Async CLI adoption path**
+   - ✅ 2025-11-21: CLI flag/env parsing plus REPL dispatch landed; `--async` and `MPREMOTE_ASYNC=1` select async handlers with sync fallback messaging.
+   - ⏭ Detect and instantiate `AsyncSerialTransport` automatically when async mode is requested; ensure legacy-only commands degrade cleanly or error with actionable guidance.
+   - ⏭ Document the flag/env usage workflow inside `ASYNC_USER_GUIDE.md` and `docs/reference/mpremote.rst` so users can opt-in without spelunking the plan docs.
 2. Extend pytest coverage for `console_async.py` (platform mocks) and `commands_async.py` (remaining filesystem verbs).
 3. Promote async documentation into `docs/reference/mpremote.rst` once behaviour stabilizes.
 4. Define sync API deprecation timeline once async becomes default (Phase 6).
