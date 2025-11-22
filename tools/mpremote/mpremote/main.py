@@ -29,6 +29,7 @@ import platformdirs
 
 from .commands import (
     CommandError,
+    CommandFailure,
     do_connect,
     do_disconnect,
     do_edit,
@@ -533,9 +534,8 @@ def prepare_command_expansions(config):
 
 def do_command_expansion(args):
     def usage_error(cmd, exp_args, msg):
-        print(f"Command {cmd} {msg}; signature is:")
-        print("   ", cmd, " ".join("=".join(a) for a in exp_args))
-        sys.exit(1)
+        signature = " ".join("=".join(a) for a in exp_args)
+        raise CommandError(f"Command {cmd} {msg}; signature is:\n    {cmd} {signature}")
 
     last_arg_idx = len(args)
     pre = []
@@ -748,6 +748,9 @@ def main():
                 print("\ndevice disconnected")
 
         return 0
+    except CommandFailure as e:
+        # Command executed but failed (e.g., device code error)
+        return e.exit_code
     except CommandError as e:
         # Make sure existing stdout appears before the error message on stderr.
         sys.stdout.flush()

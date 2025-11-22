@@ -138,8 +138,8 @@ def make_romfs(src_dir, *, mpy_cross):
     try:
         mpy_cross_missed = copy_recursively(vfs, src_dir, "", mpy_cross)
     except OSError as er:
-        print("Error: OSError {}".format(er), file=sys.stderr)
-        sys.exit(1)
+        # Re-raise as RuntimeError so it can be caught by command handlers
+        raise RuntimeError(f"OSError: {er}")
 
     if mpy_cross_missed:
         print("Warning: `mpy_cross` module not found, .py files were not precompiled")

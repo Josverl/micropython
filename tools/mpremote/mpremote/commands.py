@@ -17,6 +17,16 @@ class CommandError(Exception):
     pass
 
 
+class CommandFailure(Exception):
+    """Exception raised when a command executes but fails (e.g., device code error).
+    
+    This is different from CommandError which indicates the command itself is invalid.
+    CommandFailure means the command ran but the device reported an error.
+    """
+    def __init__(self, exit_code=1):
+        self.exit_code = exit_code
+        super().__init__()
+
 def do_connect(state, args=None):
     dev = args.device[0] if args else "auto"
     do_disconnect(state)
@@ -489,11 +499,11 @@ def _do_execbuffer(state, buf, follow):
             ret, ret_err = state.transport.follow(timeout=None, data_consumer=stdout_write_bytes)
             if ret_err:
                 stdout_write_bytes(ret_err)
-                sys.exit(1)
+                raise CommandFailure(1)
     except TransportError as er:
         raise CommandError(er.args[0])
     except KeyboardInterrupt:
-        sys.exit(1)
+        raise CommandFailure(1)
 
 
 def do_exec(state, args):
@@ -614,7 +624,10 @@ def _do_romfs_build(state, args):
     else:
         output_file = args.output
 
+    try:
     romfs = make_romfs(input_directory, mpy_cross=args.mpy)
+    except RuntimeError as er:
+        raise CommandFailure(1)
 
     print(f"Writing {len(romfs)} bytes to output file {output_file}")
     with open(output_file, "wb") as f:
@@ -637,7 +650,10 @@ def _do_romfs_deploy(state, args):
         with open(romfs_filename, "rb") as f:
             romfs = f.read()
     else:
+        try:
         romfs = make_romfs(romfs_filename, mpy_cross=args.mpy)
+        except RuntimeError as er:
+            raise CommandFailure(1)
     print(f"Image size is {len(romfs)} bytes")
 
     # Detect the ROMFS partition and get its associated device.
@@ -662,12 +678,12 @@ def _do_romfs_deploy(state, args):
     # Check if ROMFS image is valid
     if not romfs.startswith(VfsRomWriter.ROMFS_HEADER):
         print("Invalid ROMFS image")
-        sys.exit(1)
+        raise CommandFailure(1)
 
     # Check if ROMFS filesystem image will fit in the target partition.
     if len(romfs) > rom_size:
         print("ROMFS image is too big for the target partition")
-        sys.exit(1)
+        raise CommandFailure(1)
 
     # Prepare ROMFS partition for writing.
     print(f"Preparing ROMFS{rom_id} partition for writing")
