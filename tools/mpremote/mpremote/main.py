@@ -45,6 +45,7 @@ from .commands import (
     do_umount,
 )
 from .commands_async import (
+    do_connect_async,
     do_edit_async,
     do_eval_async,
     do_exec_async,
@@ -53,6 +54,7 @@ from .commands_async import (
     do_mount_async,
     do_romfs_async,
     do_run_async,
+    do_soft_reset_async,
     do_umount_async,
 )
 from .mip import do_mip
@@ -67,9 +69,11 @@ _ASYNC_TRUE_VALUES = {"1", "true", "yes", "on"}
 
 # Map of commands that have async versions
 _ASYNC_COMMAND_MAP = {
+    "connect": do_connect_async,
     "exec": do_exec_async,
     "eval": do_eval_async,
     "run": do_run_async,
+    "soft-reset": do_soft_reset_async,
     "fs": do_filesystem_async,
     "edit": do_edit_async,
     "mount": do_mount_async,
@@ -581,12 +585,38 @@ class State:
         self._did_action = False
         self._auto_soft_reset = True
         self.use_async = use_async
+        self._async_loop = None
 
     def did_action(self):
         self._did_action = True
 
     def run_repl_on_completion(self):
         return not self._did_action
+
+    def _ensure_async_loop(self):
+        if self._async_loop is None:
+            self._async_loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(self._async_loop)
+            # Apply nest_asyncio to allow nested run_until_complete calls
+            # This enables sync fallback methods to work when called from async context
+            try:
+                import nest_asyncio
+
+                nest_asyncio.apply(self._async_loop)
+            except ImportError:
+                pass  # nest_asyncio not available, nested calls may fail
+        return self._async_loop
+
+    def run_async(self, coro):
+        """Run an async coroutine using the persistent event loop."""
+        loop = self._ensure_async_loop()
+        return loop.run_until_complete(coro)
+
+    def close_async_loop(self):
+        if self._async_loop is not None:
+            self._async_loop.close()
+            asyncio.set_event_loop(None)
+            self._async_loop = None
 
     def ensure_connected(self):
         if self.transport is None:
@@ -608,7 +638,7 @@ class State:
     async def ensure_connected_async(self):
         """Async version of ensure_connected."""
         if self.transport is None:
-            do_connect(self)
+            await do_connect_async(self)
 
     async def ensure_raw_repl_async(self, soft_reset=None):
         """Async version of ensure_raw_repl."""
@@ -660,7 +690,7 @@ def _run_repl(state, repl_args):
 
     if state.use_async:
         try:
-            return asyncio.run(do_repl_async(state, repl_args))
+            return state.run_async(do_repl_async(state, repl_args))
         except (AttributeError, TypeError):
             print(
                 f"{_PROG}: async repl unavailable on current transport; falling back to sync mode",
@@ -730,7 +760,7 @@ def main():
             if state.use_async and cmd in _ASYNC_COMMAND_MAP:
                 # Use async version
                 async_handler = _ASYNC_COMMAND_MAP[cmd]
-                asyncio.run(async_handler(state, args))
+                state.run_async(async_handler(state, args))
             else:
                 # Use sync version
                 handler_func(state, args)
@@ -759,3 +789,4 @@ def main():
         return 1
     finally:
         do_disconnect(state)
+        state.close_async_loop()

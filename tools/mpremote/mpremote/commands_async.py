@@ -37,15 +37,87 @@ import os
 import sys
 import tempfile
 
+import serial.tools.list_ports
+
 from .commands import (
     CommandError,
+    CommandFailure,
     _remote_path_basename,
     _remote_path_dirname,
     _remote_path_join,
+    do_disconnect,
     human_size,
     show_progress_bar,
 )
-from .transport import TransportError, TransportExecError, stdout_write_bytes
+from .transport import (
+    TransportError,
+    TransportExecError,
+    _convert_filesystem_error,
+    stdout_write_bytes,
+)
+from .transport_serial_async import AsyncSerialTransport
+
+
+async def _open_async_serial(device: str):
+    """Instantiate and connect an AsyncSerialTransport for the given device."""
+    transport = AsyncSerialTransport(device, baudrate=115200)
+    await transport.connect()
+    return transport
+
+
+async def do_connect_async(state, args=None):
+    """Async equivalent of do_connect that always provisions an async transport."""
+
+    dev = args.device[0] if args else "auto"
+    if state.transport is not None:
+        # Run the sync disconnect helper in a worker thread so that async transports
+        # using asyncio.run() during teardown do not see the currently running loop.
+        await asyncio.to_thread(do_disconnect, state)
+
+    try:
+        if dev == "list":
+            for p in sorted(serial.tools.list_ports.comports()):
+                print(
+                    "{} {} {:04x}:{:04x} {} {}".format(
+                        p.device,
+                        p.serial_number,
+                        p.vid if isinstance(p.vid, int) else 0,
+                        p.pid if isinstance(p.pid, int) else 0,
+                        p.manufacturer,
+                        p.product,
+                    )
+                )
+            state.did_action()
+            return
+
+        if dev == "auto":
+            for p in sorted(serial.tools.list_ports.comports()):
+                if p.vid is not None and p.pid is not None:
+                    transport = await _open_async_serial(p.device)
+                    state.transport = transport
+                    return
+            raise TransportError("no device found")
+
+        if dev.startswith("id:"):
+            serial_number = dev[len("id:") :]
+            for p in serial.tools.list_ports.comports():
+                if p.serial_number == serial_number:
+                    transport = await _open_async_serial(p.device)
+                    state.transport = transport
+                    return
+            raise TransportError(f"no device with serial number {serial_number}")
+
+        if dev.startswith("port:"):
+            dev = dev[len("port:") :]
+
+        state.transport = await _open_async_serial(dev)
+    except CommandError:
+        raise
+    except TransportError as er:
+        msg = er.args[0] if er.args else str(er)
+        if isinstance(msg, str) and msg.startswith("failed to access"):
+            msg += " (it may be in use by another program)"
+        raise CommandError(msg) from er
 
 
 def _get_follow_flag(args, default=True):
@@ -108,25 +180,14 @@ async def do_exec_async(state, args):
 
     try:
         transport = state.transport
-        if hasattr(transport, "exec_raw_no_follow_async"):
-            await transport.exec_raw_no_follow_async(pyfile)
-            if follow:
-                if hasattr(transport, "follow_async"):
-                    ret, ret_err = await transport.follow_async(
-                        timeout=None, data_consumer=stdout_write_bytes
-                    )
-                else:
-                    ret, ret_err = transport.follow(timeout=None, data_consumer=stdout_write_bytes)
-                if ret_err:
-                    stdout_write_bytes(ret_err)
-                    raise TransportExecError(1, ret_err)
-        else:
-            transport.exec_raw_no_follow(pyfile)
-            if follow:
-                ret, ret_err = transport.follow(timeout=None, data_consumer=stdout_write_bytes)
-                if ret_err:
-                    stdout_write_bytes(ret_err)
-                    raise TransportExecError(1, ret_err)
+        await transport.exec_raw_no_follow_async(pyfile)
+        if follow:
+            ret, ret_err = await transport.follow_async(
+                timeout=None, data_consumer=stdout_write_bytes
+            )
+            if ret_err:
+                stdout_write_bytes(ret_err)
+                raise TransportExecError(1, ret_err)
     except TransportExecError:
         raise
     except TransportError as er:
@@ -146,13 +207,20 @@ async def do_eval_async(state, args):
     state.did_action()
 
     expression = _resolve_eval_expression(args)
+    # Wrap expression in print() like sync version does
+    buf = "print(" + expression + ")"
 
-    if hasattr(state.transport, "eval_async"):
-        result = await state.transport.eval_async(expression)
-    else:
-        result = state.transport.eval(expression)
-
-    print(result)
+    try:
+        transport = state.transport
+        await transport.exec_raw_no_follow_async(buf)
+        ret, ret_err = await transport.follow_async(timeout=None, data_consumer=stdout_write_bytes)
+        if ret_err:
+            stdout_write_bytes(ret_err)
+            raise CommandFailure(1)
+    except TransportError as er:
+        raise CommandError(er.args[0])
+    except KeyboardInterrupt:
+        raise CommandFailure(1)
 
 
 async def do_run_async(state, args):
@@ -174,21 +242,12 @@ async def do_run_async(state, args):
 
     try:
         if follow:
-            if hasattr(transport, "exec_raw_async"):
-                ret, ret_err = await transport.exec_raw_async(
-                    pyfile, data_consumer=stdout_write_bytes
-                )
-            else:
-                ret, ret_err = transport.exec_raw(pyfile, data_consumer=stdout_write_bytes)
-
+            ret, ret_err = await transport.exec_raw_async(pyfile, data_consumer=stdout_write_bytes)
             if ret_err:
                 stdout_write_bytes(ret_err)
                 raise TransportExecError(1, ret_err)
         else:
-            if hasattr(transport, "exec_raw_no_follow_async"):
-                await transport.exec_raw_no_follow_async(pyfile)
-            else:
-                transport.exec_raw_no_follow(pyfile)
+            await transport.exec_raw_no_follow_async(pyfile)
     except TransportExecError:
         raise
     except TransportError as er:
@@ -197,58 +256,90 @@ async def do_run_async(state, args):
         raise
 
 
-async def do_filesystem_cp_async(state, src, dest, check_hash=False):
+async def do_soft_reset_async(state, _args=None):
+    """Async version of soft_reset command.
+
+    Args:
+        state: State object with transport connection
+        _args: Unused arguments
+    """
+    await state.ensure_raw_repl_async(soft_reset=True)
+    state.did_action()
+
+
+async def do_filesystem_cp_async(state, src, dest, multiple, check_hash=False):
     """Async version of filesystem copy.
 
     Args:
         state: State object with transport connection
         src: Source path (prefixed with ':' for remote)
         dest: Destination path (prefixed with ':' for remote)
+        multiple: Whether copying multiple files (dest must be directory)
         check_hash: Whether to check hash before copying
     """
     import hashlib
+    import os
 
     from .commands import CommandError, _remote_path_basename, show_progress_bar
 
     await state.ensure_raw_repl_async()
 
+    # Check destination exists and is a directory if multiple files
+    if dest.startswith(":"):
+        dest_no_slash = dest.rstrip("/" + os.path.sep + (os.path.altsep or ""))
+        dest_exists = await state.transport.fs_exists_async(dest_no_slash[1:])
+        dest_isdir = dest_exists and (await state.transport.fs_isdir_async(dest_no_slash[1:]))
+
+        # A trailing / on dest forces it to be a directory.
+        if dest != dest_no_slash:
+            if not dest_isdir:
+                raise CommandError("cp: destination is not a directory")
+            dest = dest_no_slash
+    else:
+        dest_exists = os.path.exists(dest)
+        dest_isdir = dest_exists and os.path.isdir(dest)
+
+    if multiple:
+        if not dest_exists:
+            raise CommandError("cp: destination does not exist")
+        if not dest_isdir:
+            raise CommandError("cp: destination is not a directory")
+
     # Download the contents of source
     if src.startswith(":"):
-        if hasattr(state.transport, "fs_readfile_async"):
-            data = await state.transport.fs_readfile_async(
-                src[1:], progress_callback=show_progress_bar
-            )
-        else:
-            data = state.transport.fs_readfile(src[1:], progress_callback=show_progress_bar)
+        data = await state.transport.fs_readfile_async(
+            src[1:], progress_callback=show_progress_bar
+        )
         filename = _remote_path_basename(src[1:])
     else:
         with open(src, "rb") as f:
             data = f.read()
-        import os
 
         filename = os.path.basename(src)
 
     # Write to destination
     if dest.startswith(":"):
+        # If the destination path is just the directory, then add the source filename.
+        if dest_isdir:
+            from .commands import _remote_path_join
+
+            dest = ":" + _remote_path_join(dest[1:], filename)
+
         # Check if we should skip based on hash
         if check_hash:
             try:
-                if hasattr(state.transport, "fs_hashfile"):
-                    remote_hash = state.transport.fs_hashfile(dest[1:], "sha256")
-                    source_hash = hashlib.sha256(data).digest()
-                    if remote_hash == source_hash:
-                        print("Up to date:", dest[1:])
-                        return
+                remote_hash = await state.transport.fs_hashfile_async(dest[1:], "sha256")
+                source_hash = hashlib.sha256(data).digest()
+                if remote_hash == source_hash:
+                    print("Up to date:", dest[1:])
+                    return
             except OSError:
                 pass
 
         # Write to remote
-        if hasattr(state.transport, "fs_writefile_async"):
-            await state.transport.fs_writefile_async(
-                dest[1:], data, progress_callback=show_progress_bar
-            )
-        else:
-            state.transport.fs_writefile(dest[1:], data, progress_callback=show_progress_bar)
+        await state.transport.fs_writefile_async(
+            dest[1:], data, progress_callback=show_progress_bar
+        )
     else:
         # Write to local file
         with open(dest, "wb") as f:
@@ -359,9 +450,12 @@ async def do_filesystem_async(state, args):
 
 async def _do_fs_printfile_async(state, src, chunk_size=256):
     """Async helper to print file contents."""
-    await state.transport.exec_async(
-        f"with open({src!r}, 'rb') as f:\n while 1:\n  b=f.read({chunk_size})\n  if not b:break\n  print(b,end='')"
-    )
+    try:
+        await state.transport.exec_async(
+            f"with open({src!r}, 'rb') as f:\n while 1:\n  b=f.read({chunk_size})\n  if not b:break\n  print(b,end='')"
+        )
+    except TransportExecError as e:
+        raise _convert_filesystem_error(e, src) from None
 
 
 async def _do_fs_mkdir_async(state, path):
@@ -393,7 +487,7 @@ async def _do_fs_hashfile_async(state, path, algo, chunk_size=256):
         f"import hashlib\nh=hashlib.{algo}()\nwith open({path!r},'rb') as f:\n "
         f"while 1:\n  b=f.read({chunk_size})\n  if not b:break\n  h.update(b)"
     )
-    result = await state.transport.eval_async("h.digest()", parse=False)
+    result = await state.transport.eval_async("h.digest()")
     return result
 
 

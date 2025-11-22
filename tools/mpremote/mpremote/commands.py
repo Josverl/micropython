@@ -1,3 +1,4 @@
+import asyncio
 import binascii
 import errno
 import hashlib
@@ -8,9 +9,9 @@ import zlib
 
 import serial.tools.list_ports
 
+from .romfs import VfsRomWriter, make_romfs
 from .transport import TransportError, TransportExecError, stdout_write_bytes
 from .transport_serial import SerialTransport
-from .romfs import make_romfs, VfsRomWriter
 
 
 class CommandError(Exception):
@@ -26,6 +27,25 @@ class CommandFailure(Exception):
     def __init__(self, exit_code=1):
         self.exit_code = exit_code
         super().__init__()
+
+
+def _call_transport_method(state, transport, name, *args, **kwargs):
+    """Invoke sync method if available, otherwise run async variant via state's runner."""
+
+    async_name = f"{name}_async"
+    method = getattr(transport, async_name, None)
+    if method:
+        runner = getattr(state, "run_async", None)
+        if callable(runner):
+            return runner(method(*args, **kwargs))
+        return asyncio.run(method(*args, **kwargs))
+
+    method = getattr(transport, name, None)
+    if method:
+        return method(*args, **kwargs)
+
+    return None
+
 
 def do_connect(state, args=None):
     dev = args.device[0] if args else "auto"
@@ -87,16 +107,16 @@ def do_disconnect(state, _args=None):
     try:
         if state.transport.mounted:
             if not state.transport.in_raw_repl:
-                state.transport.enter_raw_repl(soft_reset=False)
-            state.transport.umount_local()
+                _call_transport_method(state, state.transport, "enter_raw_repl", soft_reset=False)
+            _call_transport_method(state, state.transport, "umount_local")
         if state.transport.in_raw_repl:
-            state.transport.exit_raw_repl()
+            _call_transport_method(state, state.transport, "exit_raw_repl")
     except OSError:
         # Ignore any OSError exceptions when shutting down, eg:
         # - filesystem_command will close the connection if it had an error
         # - umounting will fail if serial port disappeared
         pass
-    state.transport.close()
+    _call_transport_method(state, state.transport, "close")
     state.transport = None
     state._auto_soft_reset = True
 
@@ -625,7 +645,7 @@ def _do_romfs_build(state, args):
         output_file = args.output
 
     try:
-    romfs = make_romfs(input_directory, mpy_cross=args.mpy)
+        romfs = make_romfs(input_directory, mpy_cross=args.mpy)
     except RuntimeError as er:
         raise CommandFailure(1)
 
@@ -651,7 +671,7 @@ def _do_romfs_deploy(state, args):
             romfs = f.read()
     else:
         try:
-        romfs = make_romfs(romfs_filename, mpy_cross=args.mpy)
+            romfs = make_romfs(romfs_filename, mpy_cross=args.mpy)
         except RuntimeError as er:
             raise CommandFailure(1)
     print(f"Image size is {len(romfs)} bytes")

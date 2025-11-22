@@ -173,6 +173,59 @@ class AsyncSerialTransport(AsyncTransport):
                 # Not in async context, create new loop
                 asyncio.run(self.close_async())
 
+    # Sync fallback methods - these run async methods synchronously
+    # These allow sync code (or async code calling sync methods) to use AsyncSerialTransport.
+    #
+    # These methods use nest_asyncio to allow nested event loop calls, enabling
+    # sync methods to work even when called from within an async context (e.g., when
+    # ensure_raw_repl_async() falls back to calling transport.enter_raw_repl()).
+
+    def enter_raw_repl(self, soft_reset: bool = True, timeout_overall: float = 10.0):
+        """Sync wrapper for enter_raw_repl_async.
+
+        Runs the async method synchronously, even from within async context.
+        Requires nest_asyncio to be applied to the loop (done in main.py _ensure_async_loop).
+        """
+        try:
+            loop = asyncio.get_running_loop()
+            # There's a running loop - nest_asyncio should already be applied by main.py
+            return loop.run_until_complete(self.enter_raw_repl_async(soft_reset, timeout_overall))
+        except RuntimeError:
+            # No running loop - use asyncio.run()
+            return asyncio.run(self.enter_raw_repl_async(soft_reset, timeout_overall))
+
+    def exit_raw_repl(self):
+        """Sync wrapper for exit_raw_repl_async."""
+        try:
+            loop = asyncio.get_running_loop()
+            return loop.run_until_complete(self.exit_raw_repl_async())
+        except RuntimeError:
+            return asyncio.run(self.exit_raw_repl_async())
+
+    def exec_raw_no_follow(self, command: str):
+        """Sync wrapper for exec_raw_no_follow_async."""
+        try:
+            loop = asyncio.get_running_loop()
+            return loop.run_until_complete(self.exec_raw_no_follow_async(command))
+        except RuntimeError:
+            return asyncio.run(self.exec_raw_no_follow_async(command))
+
+    def follow(self, timeout: float, data_consumer=None) -> tuple:
+        """Sync wrapper for follow_async."""
+        try:
+            loop = asyncio.get_running_loop()
+            return loop.run_until_complete(self.follow_async(timeout, data_consumer))
+        except RuntimeError:
+            return asyncio.run(self.follow_async(timeout, data_consumer))
+
+    def exec_raw(self, command: str, timeout: float = 10, data_consumer=None) -> tuple:
+        """Sync wrapper for exec_raw_async."""
+        try:
+            loop = asyncio.get_running_loop()
+            return loop.run_until_complete(self.exec_raw_async(command, timeout, data_consumer))
+        except RuntimeError:
+            return asyncio.run(self.exec_raw_async(command, timeout, data_consumer))
+
     async def read_async(self, size: int = 1) -> bytes:
         """Non-blocking read using asyncio streams.
 

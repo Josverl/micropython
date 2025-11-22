@@ -1,6 +1,8 @@
 # MIT license; Copyright (c) 2022 Damien P. George
 
-import struct, sys, os
+import os
+import struct
+import sys
 
 try:
     from mpy_cross import run as mpy_cross_run
