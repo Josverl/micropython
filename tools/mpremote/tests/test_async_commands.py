@@ -58,6 +58,7 @@ from mpremote.commands_async import (
     do_filesystem_cp_async,
     do_run_async,
     do_run_sync_wrapper,
+    do_soft_reset_async,
 )
 from mpremote.transport import TransportExecError
 
@@ -240,85 +241,20 @@ def test_exec_async_with_follow_error(mock_state, test_exec_file, mock_args, eve
     event_loop.run_until_complete(_test())
 
 
-def test_exec_async_fallback_sync(mock_state, test_exec_file, mock_args, event_loop):
-    """Test exec command falls back to sync version when async not available."""
-
-    async def _test():
-        mock_args.command = str(test_exec_file)
-        mock_args.follow = False
-
-        # Remove async method to trigger fallback
-        if hasattr(mock_state.transport, "exec_raw_no_follow_async"):
-            delattr(mock_state.transport, "exec_raw_no_follow_async")
-        mock_state.transport.exec_raw_no_follow = Mock()
-
-        await do_exec_async(mock_state, mock_args)
-
-        # Verify sync method was called
-        mock_state.transport.exec_raw_no_follow.assert_called_once()
-
-    event_loop.run_until_complete(_test())
-
-
-def test_exec_async_fallback_sync_with_follow(mock_state, test_exec_file, mock_args, event_loop):
-    """Test exec command falls back to sync version with follow option."""
-
-    async def _test():
-        mock_args.command = str(test_exec_file)
-        mock_args.follow = True
-
-        # Remove async method to trigger fallback
-        if hasattr(mock_state.transport, "exec_raw_no_follow_async"):
-            delattr(mock_state.transport, "exec_raw_no_follow_async")
-        mock_state.transport.exec_raw_no_follow = Mock()
-        mock_state.transport.follow = Mock(return_value=(b"output", None))
-
-        await do_exec_async(mock_state, mock_args)
-
-        # Verify sync methods were called
-        mock_state.transport.exec_raw_no_follow.assert_called_once()
-        mock_state.transport.follow.assert_called_once()
-
-    event_loop.run_until_complete(_test())
-
-
-def test_exec_async_fallback_sync_with_follow_error(
-    mock_state, test_exec_file, mock_args, event_loop
-):
-    """Test exec command fallback with follow and error."""
-
-    async def _test():
-        mock_args.command = str(test_exec_file)
-        mock_args.follow = True
-
-        # Remove async method to trigger fallback
-        if hasattr(mock_state.transport, "exec_raw_no_follow_async"):
-            delattr(mock_state.transport, "exec_raw_no_follow_async")
-        mock_state.transport.exec_raw_no_follow = Mock()
-        mock_state.transport.follow = Mock(return_value=(b"output", b"Error in sync"))
-
-        with pytest.raises(TransportExecError):
-            await do_exec_async(mock_state, mock_args)
-
-        # Verify sync methods were called
-        mock_state.transport.exec_raw_no_follow.assert_called_once()
-        mock_state.transport.follow.assert_called_once()
-
-    event_loop.run_until_complete(_test())
-
-
 # ============================================================================
 # Tests for do_eval_async
 # ============================================================================
 
 
-def test_eval_async_simple_expression(mock_state, mock_args, capsys, event_loop):
+def test_eval_async_simple_expression(mock_state, mock_args, event_loop):
     """Test eval command with simple expression (inspired by test_eval_exec_run.sh)."""
 
     async def _test():
         mock_args.expression = "1+2"
 
-        mock_state.transport.eval_async = AsyncMock(return_value=3)
+        # Mock exec_raw_no_follow_async and follow_async (eval now uses exec path)
+        mock_state.transport.exec_raw_no_follow_async = AsyncMock()
+        mock_state.transport.follow_async = AsyncMock(return_value=(b"3\n", None))
 
         await do_eval_async(mock_state, mock_args)
 
@@ -326,53 +262,34 @@ def test_eval_async_simple_expression(mock_state, mock_args, capsys, event_loop)
         mock_state.ensure_raw_repl_async.assert_called_once()
         mock_state.did_action.assert_called_once()
 
-        # Verify eval was called with expression
-        mock_state.transport.eval_async.assert_called_once_with("1+2")
+        # Verify exec was called with print(expression)
+        mock_state.transport.exec_raw_no_follow_async.assert_called_once_with("print(1+2)")
 
-        # Verify output
-        captured = capsys.readouterr()
-        assert "3" in captured.out
+        # Verify follow was called
+        mock_state.transport.follow_async.assert_called_once()
 
     event_loop.run_until_complete(_test())
 
 
-def test_eval_async_complex_expression(mock_state, mock_args, capsys, event_loop):
+def test_eval_async_complex_expression(mock_state, mock_args, event_loop):
     """Test eval command with complex expression (inspired by test_eval_exec_run.sh)."""
 
     async def _test():
         mock_args.expression = "[{'a': 'b'}, (1,2,3,), True]"
-        expected_result = [{"a": "b"}, (1, 2, 3), True]
 
-        mock_state.transport.eval_async = AsyncMock(return_value=expected_result)
-
-        await do_eval_async(mock_state, mock_args)
-
-        # Verify output contains the result
-        captured = capsys.readouterr()
-        assert "a" in captured.out or "b" in captured.out
-
-    event_loop.run_until_complete(_test())
-
-
-def test_eval_async_fallback_sync(mock_state, mock_args, capsys, event_loop):
-    """Test eval command falls back to sync version when async not available."""
-
-    async def _test():
-        mock_args.expression = "42"
-
-        # Remove async method to trigger fallback
-        if hasattr(mock_state.transport, "eval_async"):
-            delattr(mock_state.transport, "eval_async")
-        mock_state.transport.eval = Mock(return_value=42)
+        mock_state.transport.exec_raw_no_follow_async = AsyncMock()
+        mock_state.transport.follow_async = AsyncMock(
+            return_value=(b"[{'a': 'b'}, (1, 2, 3), True]\n", None)
+        )
 
         await do_eval_async(mock_state, mock_args)
 
-        # Verify sync method was called
-        mock_state.transport.eval.assert_called_once_with("42")
+        # Verify exec was called with print(expression)
+        expected_cmd = "print([{'a': 'b'}, (1,2,3,), True])"
+        mock_state.transport.exec_raw_no_follow_async.assert_called_once_with(expected_cmd)
 
-        # Verify output
-        captured = capsys.readouterr()
-        assert "42" in captured.out
+        # Verify follow was called
+        mock_state.transport.follow_async.assert_called_once()
 
     event_loop.run_until_complete(_test())
 
@@ -424,25 +341,6 @@ def test_run_async_with_error(mock_state, test_script, mock_args, event_loop):
     event_loop.run_until_complete(_test())
 
 
-def test_run_async_fallback_sync(mock_state, test_script, mock_args, event_loop):
-    """Test run command falls back to sync version when async not available."""
-
-    async def _test():
-        mock_args.script = str(test_script)
-
-        # Remove async method to trigger fallback
-        if hasattr(mock_state.transport, "exec_raw_async"):
-            delattr(mock_state.transport, "exec_raw_async")
-        mock_state.transport.exec_raw = Mock(return_value=(b"output", None))
-
-        await do_run_async(mock_state, mock_args)
-
-        # Verify sync method was called
-        mock_state.transport.exec_raw.assert_called_once()
-
-    event_loop.run_until_complete(_test())
-
-
 # ============================================================================
 # Tests for do_filesystem_cp_async - Local to Remote
 # ============================================================================
@@ -455,9 +353,11 @@ def test_filesystem_cp_local_to_remote(mock_state, test_data_file, event_loop):
         src = str(test_data_file)
         dest = ":remote_file.py"
 
+        mock_state.transport.fs_exists_async = AsyncMock(return_value=False)
+        mock_state.transport.fs_isdir_async = AsyncMock(return_value=False)
         mock_state.transport.fs_writefile_async = AsyncMock()
 
-        await do_filesystem_cp_async(mock_state, src, dest)
+        await do_filesystem_cp_async(mock_state, src, dest, False)
 
         # Verify state methods called
         mock_state.ensure_raw_repl_async.assert_called_once()
@@ -485,10 +385,12 @@ def test_filesystem_cp_local_to_remote_with_hash(mock_state, test_data_file, eve
         source_hash = hashlib.sha256(data).digest()
 
         # Mock same hash on remote (file is up to date)
-        mock_state.transport.fs_hashfile = Mock(return_value=source_hash)
+        mock_state.transport.fs_exists_async = AsyncMock(return_value=False)
+        mock_state.transport.fs_isdir_async = AsyncMock(return_value=False)
+        mock_state.transport.fs_hashfile_async = AsyncMock(return_value=source_hash)
         mock_state.transport.fs_writefile_async = AsyncMock()
 
-        await do_filesystem_cp_async(mock_state, src, dest, check_hash=True)
+        await do_filesystem_cp_async(mock_state, src, dest, False, check_hash=True)
 
         # Verify writefile was NOT called because hash matched
         mock_state.transport.fs_writefile_async.assert_not_called()
@@ -504,10 +406,12 @@ def test_filesystem_cp_local_to_remote_hash_mismatch(mock_state, test_data_file,
         dest = ":remote_file.py"
 
         # Mock different hash on remote (file needs update)
-        mock_state.transport.fs_hashfile = Mock(return_value=b"different_hash")
+        mock_state.transport.fs_exists_async = AsyncMock(return_value=False)
+        mock_state.transport.fs_isdir_async = AsyncMock(return_value=False)
+        mock_state.transport.fs_hashfile_async = AsyncMock(return_value=b"different_hash")
         mock_state.transport.fs_writefile_async = AsyncMock()
 
-        await do_filesystem_cp_async(mock_state, src, dest, check_hash=True)
+        await do_filesystem_cp_async(mock_state, src, dest, False, check_hash=True)
 
         # Verify writefile WAS called because hash didn't match
         mock_state.transport.fs_writefile_async.assert_called_once()
@@ -523,33 +427,15 @@ def test_filesystem_cp_local_to_remote_hash_not_exists(mock_state, test_data_fil
         dest = ":remote_file.py"
 
         # Mock fs_hashfile raising OSError (file doesn't exist)
-        mock_state.transport.fs_hashfile = Mock(side_effect=OSError("File not found"))
+        mock_state.transport.fs_exists_async = AsyncMock(return_value=False)
+        mock_state.transport.fs_isdir_async = AsyncMock(return_value=False)
+        mock_state.transport.fs_hashfile_async = AsyncMock(side_effect=OSError("File not found"))
         mock_state.transport.fs_writefile_async = AsyncMock()
 
-        await do_filesystem_cp_async(mock_state, src, dest, check_hash=True)
+        await do_filesystem_cp_async(mock_state, src, dest, False, check_hash=True)
 
         # Verify writefile WAS called because file doesn't exist
         mock_state.transport.fs_writefile_async.assert_called_once()
-
-    event_loop.run_until_complete(_test())
-
-
-def test_filesystem_cp_local_to_remote_fallback_sync(mock_state, test_data_file, event_loop):
-    """Test copying falls back to sync version when async not available."""
-
-    async def _test():
-        src = str(test_data_file)
-        dest = ":remote_file.py"
-
-        # Remove async method to trigger fallback
-        if hasattr(mock_state.transport, "fs_writefile_async"):
-            delattr(mock_state.transport, "fs_writefile_async")
-        mock_state.transport.fs_writefile = Mock()
-
-        await do_filesystem_cp_async(mock_state, src, dest)
-
-        # Verify sync method was called
-        mock_state.transport.fs_writefile.assert_called_once()
 
     event_loop.run_until_complete(_test())
 
@@ -569,40 +455,13 @@ def test_filesystem_cp_remote_to_local(mock_state, temp_dir, event_loop):
         remote_data = b"print('Remote data')\n"
         mock_state.transport.fs_readfile_async = AsyncMock(return_value=remote_data)
 
-        await do_filesystem_cp_async(mock_state, src, dest)
+        await do_filesystem_cp_async(mock_state, src, dest, False)
 
         # Verify state methods called
         mock_state.ensure_raw_repl_async.assert_called_once()
 
         # Verify readfile was called
         mock_state.transport.fs_readfile_async.assert_called_once()
-
-        # Verify local file was written
-        local_file = Path(dest)
-        assert local_file.exists()
-        assert local_file.read_bytes() == remote_data
-
-    event_loop.run_until_complete(_test())
-
-
-def test_filesystem_cp_remote_to_local_fallback_sync(mock_state, temp_dir, event_loop):
-    """Test copying remote to local falls back to sync version."""
-
-    async def _test():
-        src = ":remote_file.py"
-        dest = str(temp_dir / "local_copy.py")
-
-        remote_data = b"print('Remote data')\n"
-
-        # Remove async method to trigger fallback
-        if hasattr(mock_state.transport, "fs_readfile_async"):
-            delattr(mock_state.transport, "fs_readfile_async")
-        mock_state.transport.fs_readfile = Mock(return_value=remote_data)
-
-        await do_filesystem_cp_async(mock_state, src, dest)
-
-        # Verify sync method was called
-        mock_state.transport.fs_readfile.assert_called_once()
 
         # Verify local file was written
         local_file = Path(dest)
@@ -625,10 +484,12 @@ def test_filesystem_cp_remote_to_remote(mock_state, event_loop):
         dest = ":destination.py"
 
         remote_data = b"print('Copy on device')\n"
+        mock_state.transport.fs_exists_async = AsyncMock(return_value=False)
+        mock_state.transport.fs_isdir_async = AsyncMock(return_value=False)
         mock_state.transport.fs_readfile_async = AsyncMock(return_value=remote_data)
         mock_state.transport.fs_writefile_async = AsyncMock()
 
-        await do_filesystem_cp_async(mock_state, src, dest)
+        await do_filesystem_cp_async(mock_state, src, dest, False)
 
         # Verify read from source (check just the path, not the callback)
         assert mock_state.transport.fs_readfile_async.called
@@ -656,7 +517,7 @@ def test_filesystem_cp_local_to_local(mock_state, test_data_file, temp_dir, even
         src = str(test_data_file)
         dest = str(temp_dir / "local_copy.py")
 
-        await do_filesystem_cp_async(mock_state, src, dest)
+        await do_filesystem_cp_async(mock_state, src, dest, False)
 
         # Verify state methods called
         mock_state.ensure_raw_repl_async.assert_called_once()
@@ -692,13 +553,16 @@ def test_eval_sync_wrapper(mock_state, mock_args):
     """Test sync wrapper for eval command."""
     mock_args.expression = "1+2"
 
-    mock_state.transport.eval_async = AsyncMock(return_value=3)
+    # Mock the exec methods used by do_eval_async
+    mock_state.transport.exec_raw_no_follow_async = AsyncMock()
+    mock_state.transport.follow_async = AsyncMock(return_value=(b"3\n", None))
 
     # Call sync wrapper
     do_eval_sync_wrapper(mock_state, mock_args)
 
     # Verify it was executed
     mock_state.ensure_raw_repl_async.assert_called_once()
+    mock_state.transport.exec_raw_no_follow_async.assert_called_once_with("print(1+2)")
 
 
 def test_run_sync_wrapper(mock_state, test_script, mock_args):
@@ -712,6 +576,16 @@ def test_run_sync_wrapper(mock_state, test_script, mock_args):
 
     # Verify it was executed
     mock_state.ensure_raw_repl_async.assert_called_once()
+
+
+def test_soft_reset_async(mock_state, event_loop):
+    """Test async soft_reset command."""
+    # Call async function
+    event_loop.run_until_complete(do_soft_reset_async(mock_state))
+
+    # Verify ensure_raw_repl_async was called with soft_reset=True
+    mock_state.ensure_raw_repl_async.assert_called_once_with(soft_reset=True)
+    mock_state.did_action.assert_called_once()
 
 
 # ============================================================================
@@ -751,8 +625,11 @@ def test_filesystem_cp_local_file_not_found(mock_state, event_loop):
         src = "/nonexistent/file.py"
         dest = ":remote.py"
 
+        mock_state.transport.fs_exists_async = AsyncMock(return_value=False)
+        mock_state.transport.fs_isdir_async = AsyncMock(return_value=False)
+
         with pytest.raises(FileNotFoundError):
-            await do_filesystem_cp_async(mock_state, src, dest)
+            await do_filesystem_cp_async(mock_state, src, dest, False)
 
     event_loop.run_until_complete(_test())
 
@@ -767,9 +644,11 @@ def test_filesystem_cp_empty_file(mock_state, temp_dir, event_loop):
         src = str(empty_file)
         dest = ":remote_empty.py"
 
+        mock_state.transport.fs_exists_async = AsyncMock(return_value=False)
+        mock_state.transport.fs_isdir_async = AsyncMock(return_value=False)
         mock_state.transport.fs_writefile_async = AsyncMock()
 
-        await do_filesystem_cp_async(mock_state, src, dest)
+        await do_filesystem_cp_async(mock_state, src, dest, False)
 
         # Verify empty file was handled
         call_args = mock_state.transport.fs_writefile_async.call_args[0]

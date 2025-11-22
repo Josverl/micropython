@@ -593,8 +593,8 @@ _ASYNC_TEST_FLAG = os.environ.get("MPREMOTE_TEST_ENABLE_ASYNC", "").lower() in {
 def cli_mode(request: pytest.FixtureRequest) -> str:
     """Yield desired CLI mode, skipping async unless explicitly enabled."""
     mode = request.param
-    if mode == "async" and not _ASYNC_TEST_FLAG:
-        pytest.skip("async CLI temporarily disabled (set MPREMOTE_TEST_ENABLE_ASYNC=1 to enable)")
+    # if mode == "async" and not _ASYNC_TEST_FLAG:
+    #     pytest.skip("async CLI temporarily disabled (set MPREMOTE_TEST_ENABLE_ASYNC=1 to enable)")
     return mode
 
 

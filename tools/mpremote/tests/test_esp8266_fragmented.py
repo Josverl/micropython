@@ -106,15 +106,3 @@ def test_esp8266_fragmented_memory(event_loop, hardware_device, require_dut):
     event_loop.run_until_complete(_run_fragmentation_test(hardware_device))
 
 
-if __name__ == "__main__":
-    device = (
-        os.environ.get("ESP8266_DEVICE")
-        or os.environ.get("MICROPYTHON_DEVICE")
-        or (sys.argv[1] if len(sys.argv) > 1 else None)
-    )
-
-    if not device:
-        print("Set ESP8266_DEVICE/MICROPYTHON_DEVICE or pass serial port as argument.")
-        sys.exit(1)
-
-    asyncio.run(_run_fragmentation_test(device))
