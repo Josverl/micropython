@@ -42,19 +42,19 @@ rm -rf $TMP/b{1,2,3,4} $TMP/c{1,2,3,4}
 # Recursive copy to a directory that doesn't exist. The source directory will
 # be copied to the destination (i.e. bX will the same as a).
 echo -----
-$MPREMOTE cp --no-verbose -r $TMP/a $TMP/b1
-$MPREMOTE cp --no-verbose -r $TMP/a/ $TMP/b2
-$MPREMOTE cp --no-verbose -r $TMP/a $TMP/b3/
-$MPREMOTE cp --no-verbose -r $TMP/a/ $TMP/b4/
+$MPREMOTE $MPREMOTE_FLAGS cp --no-verbose -r $TMP/a $TMP/b1
+$MPREMOTE $MPREMOTE_FLAGS cp --no-verbose -r $TMP/a/ $TMP/b2
+$MPREMOTE $MPREMOTE_FLAGS cp --no-verbose -r $TMP/a $TMP/b3/
+$MPREMOTE $MPREMOTE_FLAGS cp --no-verbose -r $TMP/a/ $TMP/b4/
 
 # Recursive copy to a directory that does exist. The source directory will be
 # copied into the destination (i.e. bX will contain a copy of a).
 echo -----
 mkdir $TMP/c{1,2,3,4}
-$MPREMOTE cp --no-verbose -r $TMP/a $TMP/c1
-$MPREMOTE cp --no-verbose -r $TMP/a/ $TMP/c2
-$MPREMOTE cp --no-verbose -r $TMP/a $TMP/c3/
-$MPREMOTE cp --no-verbose -r $TMP/a/ $TMP/c4/
+$MPREMOTE $MPREMOTE_FLAGS cp --no-verbose -r $TMP/a $TMP/c1
+$MPREMOTE $MPREMOTE_FLAGS cp --no-verbose -r $TMP/a/ $TMP/c2
+$MPREMOTE $MPREMOTE_FLAGS cp --no-verbose -r $TMP/a $TMP/c3/
+$MPREMOTE $MPREMOTE_FLAGS cp --no-verbose -r $TMP/a/ $TMP/c4/
 
 echo -----
 find $TMP | sort

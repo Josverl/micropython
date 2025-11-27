@@ -40,6 +40,12 @@ try:
 except ImportError:
     serial_asyncio = None
 
+try:
+    import nest_asyncio
+    nest_asyncio.apply()
+except ImportError:
+    nest_asyncio = None
+
 from .async_compat import get_timeout
 from .protocol import RawREPLProtocol
 from .transport import TransportError, TransportExecError
@@ -225,6 +231,66 @@ class AsyncSerialTransport(AsyncTransport):
             return loop.run_until_complete(self.exec_raw_async(command, timeout, data_consumer))
         except RuntimeError:
             return asyncio.run(self.exec_raw_async(command, timeout, data_consumer))
+
+    def exec(self, command: str, data_consumer=None) -> bytes:
+        """Sync wrapper for exec_raw_async that returns only stdout.
+        
+        This matches the sync transport API where exec() returns just the output bytes.
+        Requires nest_asyncio when called from within an async context.
+        """
+        try:
+            loop = asyncio.get_running_loop()
+            # We're in an async context - nest_asyncio allows nested event loops
+            if nest_asyncio is None:
+                raise RuntimeError("nest_asyncio is required to call sync methods from async context")
+            ret, ret_err = asyncio.run(self.exec_raw_async(command, data_consumer=data_consumer))
+        except RuntimeError:
+            # No running loop - we can safely use asyncio.run()
+            ret, ret_err = asyncio.run(self.exec_raw_async(command, data_consumer=data_consumer))
+        
+        if ret_err:
+            raise TransportExecError(ret, ret_err.decode('utf-8', errors='replace'))
+        return ret
+
+    def eval(self, expression: str):
+        """Sync wrapper for eval_async.
+        
+        Requires nest_asyncio when called from within an async context.
+        """
+        try:
+            loop = asyncio.get_running_loop()
+            if nest_asyncio is None:
+                raise RuntimeError("nest_asyncio is required to call sync methods from async context")
+            return asyncio.run(self.eval_async(expression))
+        except RuntimeError:
+            return asyncio.run(self.eval_async(expression))
+
+    def fs_stat(self, src: str):
+        """Sync wrapper for fs_stat_async.
+        
+        Requires nest_asyncio when called from within an async context.
+        """
+        import os
+        from .transport import TransportExecError, _convert_filesystem_error
+        try:
+            try:
+                loop = asyncio.get_running_loop()
+                if nest_asyncio is None:
+                    raise RuntimeError("nest_asyncio is required to call sync methods from async context")
+                stat_tuple = asyncio.run(self.fs_stat_async(src))
+            except RuntimeError:
+                stat_tuple = asyncio.run(self.fs_stat_async(src))
+            return os.stat_result(stat_tuple)
+        except TransportExecError as e:
+            raise _convert_filesystem_error(e, src) from None
+
+    def fs_isdir(self, src: str) -> bool:
+        """Sync wrapper to check if path is a directory."""
+        try:
+            stat = self.fs_stat(src)
+            return (stat.st_mode & 0x4000) != 0
+        except OSError:
+            return False
 
     async def read_async(self, size: int = 1) -> bytes:
         """Non-blocking read using asyncio streams.

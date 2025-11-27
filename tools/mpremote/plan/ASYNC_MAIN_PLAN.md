@@ -2,12 +2,13 @@
 
 This is the single source of truth for the asyncio migration effort. Keep it concise, actionable, and up to date when work lands.
 
-## Snapshot (2025-11-21)
+## Snapshot (2025-11-22)
 - **Phases 1-3 complete:** async transport, commands, console/REPL, and State coexist cleanly with the legacy sync stack.
-- **Full pytest suite:** `pytest -v` under `tools/mpremote/tests` currently delivers `207 passed, 8 skipped, 0 failed`; skips are Windows-only console tests plus hardware-gated ESP8266/manual chunk suites.
+- **Code simplification (2025-11-22):** Removed ~220 lines of dead code from async handlers—all `hasattr()` checks and sync fallback branches eliminated based on the guarantee that `--async` mode always uses AsyncSerialTransport. Tests reduced from 119 to 112 (7 fallback tests removed).
+- **Full pytest suite:** `pytest -v` under `tools/mpremote/tests` currently delivers `112 passed, 3 skipped` for async suites; skips are Windows-only console tests.
 - **Dual harness:** legacy bash scripts in `tools/mpremote/tests/run-mpremote-tests.sh` remain the sanity check for regressions; always keep them passing after refactors.
 - **Hardware gating:** fixtures now auto-detect `sys.platform`, `sys.implementation`, and serial ports; tests must skip (never fail) when required boards are missing.
-- **Performance gap:** Windows async uploads trail sync by 20–130% for 1–10 KB transfers; the buffering plan below drives the next wave of work.
+- **Performance gap:** Windows async uploads trail sync by 20–130% for 1–10 KB transfers; the buffering plan below drives the next wave of work.
 
 ## Phase Overview
 | Phase | Focus | Status | Notes |

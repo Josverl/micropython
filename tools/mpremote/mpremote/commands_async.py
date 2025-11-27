@@ -267,85 +267,6 @@ async def do_soft_reset_async(state, _args=None):
     state.did_action()
 
 
-async def do_filesystem_cp_async(state, src, dest, multiple, check_hash=False):
-    """Async version of filesystem copy.
-
-    Args:
-        state: State object with transport connection
-        src: Source path (prefixed with ':' for remote)
-        dest: Destination path (prefixed with ':' for remote)
-        multiple: Whether copying multiple files (dest must be directory)
-        check_hash: Whether to check hash before copying
-    """
-    import hashlib
-    import os
-
-    from .commands import CommandError, _remote_path_basename, show_progress_bar
-
-    await state.ensure_raw_repl_async()
-
-    # Check destination exists and is a directory if multiple files
-    if dest.startswith(":"):
-        dest_no_slash = dest.rstrip("/" + os.path.sep + (os.path.altsep or ""))
-        dest_exists = await state.transport.fs_exists_async(dest_no_slash[1:])
-        dest_isdir = dest_exists and (await state.transport.fs_isdir_async(dest_no_slash[1:]))
-
-        # A trailing / on dest forces it to be a directory.
-        if dest != dest_no_slash:
-            if not dest_isdir:
-                raise CommandError("cp: destination is not a directory")
-            dest = dest_no_slash
-    else:
-        dest_exists = os.path.exists(dest)
-        dest_isdir = dest_exists and os.path.isdir(dest)
-
-    if multiple:
-        if not dest_exists:
-            raise CommandError("cp: destination does not exist")
-        if not dest_isdir:
-            raise CommandError("cp: destination is not a directory")
-
-    # Download the contents of source
-    if src.startswith(":"):
-        data = await state.transport.fs_readfile_async(
-            src[1:], progress_callback=show_progress_bar
-        )
-        filename = _remote_path_basename(src[1:])
-    else:
-        with open(src, "rb") as f:
-            data = f.read()
-
-        filename = os.path.basename(src)
-
-    # Write to destination
-    if dest.startswith(":"):
-        # If the destination path is just the directory, then add the source filename.
-        if dest_isdir:
-            from .commands import _remote_path_join
-
-            dest = ":" + _remote_path_join(dest[1:], filename)
-
-        # Check if we should skip based on hash
-        if check_hash:
-            try:
-                remote_hash = await state.transport.fs_hashfile_async(dest[1:], "sha256")
-                source_hash = hashlib.sha256(data).digest()
-                if remote_hash == source_hash:
-                    print("Up to date:", dest[1:])
-                    return
-            except OSError:
-                pass
-
-        # Write to remote
-        await state.transport.fs_writefile_async(
-            dest[1:], data, progress_callback=show_progress_bar
-        )
-    else:
-        # Write to local file
-        with open(dest, "wb") as f:
-            f.write(data)
-
-
 # Sync wrappers for backward compatibility
 def do_exec_sync_wrapper(state, args):
     """Sync wrapper for async exec command."""
@@ -432,16 +353,20 @@ async def do_filesystem_async(state, args):
                 digest = await _do_fs_hashfile_async(state, path, command[:-3])
                 print(digest.hex())
             elif command == "cp":
+                # Use sync version - it handles remote-to-remote and transport has sync wrappers
+                from .commands import do_filesystem_cp, do_filesystem_recursive_cp
                 if args.recursive:
-                    await do_filesystem_recursive_cp_async(
+                    do_filesystem_recursive_cp(
                         state, path, cp_dest, len(paths) > 1, not args.force
                     )
                 else:
-                    await do_filesystem_cp_async(
+                    do_filesystem_cp(
                         state, path, cp_dest, len(paths) > 1, not args.force
                     )
             elif command == "tree":
-                await do_filesystem_tree_async(state, path, args)
+                # Use sync version - it's well-tested and transport has sync wrappers
+                from .commands import do_filesystem_tree
+                do_filesystem_tree(state, path, args)
     except OSError as er:
         raise CommandError("{}: {}: {}.".format(command, er.strerror, os.strerror(er.errno)))
     except TransportError as er:
@@ -524,171 +449,6 @@ async def do_filesystem_recursive_rm_async(state, path, args):
         if args.verbose:
             print("rm :{}".format(path))
         await _do_fs_rmfile_async(state, path)
-
-
-async def do_filesystem_recursive_cp_async(state, src, dest, multiple, check_hash):
-    """Async recursive directory copy."""
-    # Ignore trailing / on both src and dest
-    src = src.rstrip("/" + os.path.sep + (os.path.altsep if os.path.altsep else ""))
-    dest = dest.rstrip("/" + os.path.sep + (os.path.altsep if os.path.altsep else ""))
-
-    # Check if destination exists
-    if dest.startswith(":"):
-        try:
-            await state.transport.fs_stat_async(dest[1:])
-            dest_exists = True
-        except OSError:
-            dest_exists = False
-    else:
-        dest_exists = os.path.exists(dest)
-
-    # Recursively find all files to copy
-    dirs = []
-    files = []
-
-    async def _list_recursive_async(
-        base, src_path, dest_path, src_join_fun, src_isdir_fun, src_listdir_fun
-    ):
-        src_path_joined = src_join_fun(base, *src_path)
-        is_dir = await src_isdir_fun(src_path_joined)
-        if is_dir:
-            if dest_path:
-                dirs.append(dest_path)
-            entries = await src_listdir_fun(src_path_joined)
-            for entry in entries:
-                await _list_recursive_async(
-                    base,
-                    src_path + [entry],
-                    dest_path + [entry],
-                    src_join_fun,
-                    src_isdir_fun,
-                    src_listdir_fun,
-                )
-        else:
-            files.append((dest_path, src_path_joined))
-
-    if src.startswith(":"):
-        src_dirname = [_remote_path_basename(src[1:])]
-        dest_dirname = src_dirname if dest_exists else []
-
-        async def remote_isdir(p):
-            try:
-                stat = await state.transport.fs_stat_async(p)
-                return stat[0] & 0x4000
-            except OSError:
-                return False
-
-        async def remote_listdir(p):
-            entries = await state.transport.fs_listdir_async(p)
-            return [x.name for x in entries]
-
-        await _list_recursive_async(
-            _remote_path_dirname(src[1:]),
-            src_dirname,
-            dest_dirname,
-            src_join_fun=_remote_path_join,
-            src_isdir_fun=remote_isdir,
-            src_listdir_fun=remote_listdir,
-        )
-    else:
-        src_dirname = [os.path.basename(src)]
-        dest_dirname = src_dirname if dest_exists else []
-
-        async def local_isdir(p):
-            return os.path.isdir(p)
-
-        async def local_listdir(p):
-            return os.listdir(p)
-
-        await _list_recursive_async(
-            os.path.dirname(src),
-            src_dirname,
-            dest_dirname,
-            src_join_fun=os.path.join,
-            src_isdir_fun=local_isdir,
-            src_listdir_fun=local_listdir,
-        )
-
-    # If no directories, just copy as single file
-    if not dirs:
-        return await do_filesystem_cp_async(state, src, dest, multiple, check_hash)
-
-    async def _mkdir(a, *b):
-        try:
-            if a.startswith(":"):
-                await _do_fs_mkdir_async(state, _remote_path_join(a[1:], *b))
-            else:
-                os.mkdir(os.path.join(a, *b))
-        except FileExistsError:
-            pass
-
-    # Create destination if needed
-    if not dest_exists:
-        await _mkdir(dest)
-
-    # Create all subdirectories
-    for d in dirs:
-        await _mkdir(dest, *d)
-
-    # Copy all files
-    files.sort()
-    for dest_path_split, src_path_joined in files:
-        if src.startswith(":"):
-            src_path_joined = ":" + src_path_joined
-        if dest.startswith(":"):
-            dest_path_joined = ":" + _remote_path_join(dest[1:], *dest_path_split)
-        else:
-            dest_path_joined = os.path.join(dest, *dest_path_split)
-
-        await do_filesystem_cp_async(state, src_path_joined, dest_path_joined, False, check_hash)
-
-
-async def do_filesystem_tree_async(state, path, args):
-    """Async filesystem tree display."""
-    connectors = ("├── ", "└── ")
-
-    async def _tree_recursive(path, prefix=""):
-        try:
-            entries = await state.transport.fs_listdir_async(path)
-        except OSError as e:
-            print(f"{prefix}[Error reading directory: {e}]")
-            return
-
-        entries = sorted(entries, key=lambda x: (not (x.st_mode & 0x4000), x.name))
-
-        for i, entry in enumerate(entries):
-            is_last = i == len(entries) - 1
-            connector = connectors[1] if is_last else connectors[0]
-            is_dir = entry.st_mode & 0x4000
-
-            if args.verbose:
-                size_str = "" if is_dir else f" ({human_size(entry.st_size)})"
-                print(f"{prefix}{connector}{entry.name}{'/' if is_dir else ''}{size_str}")
-            else:
-                print(f"{prefix}{connector}{entry.name}{'/' if is_dir else ''}")
-
-            if is_dir:
-                extension = "    " if is_last else "│   "
-                entry_path = _remote_path_join(path, entry.name)
-                await _tree_recursive(entry_path, prefix + extension)
-
-    if not path or path == ".":
-        path = "/"
-
-    # Check if path is a directory
-    try:
-        stat = await state.transport.fs_stat_async(path)
-        if not (stat[0] & 0x4000):
-            raise CommandError(f"tree: {path} is not a directory")
-    except OSError as e:
-        raise CommandError(f"tree: {path}: {e}")
-
-    if args.verbose:
-        print(path + "/")
-    else:
-        print(path + "/")
-
-    await _tree_recursive(path)
 
 
 async def do_edit_async(state, args):

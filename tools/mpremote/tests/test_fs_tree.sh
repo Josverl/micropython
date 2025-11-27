@@ -33,65 +33,65 @@ EOF
 
 # setup 
 echo -----
-$MPREMOTE run "${TMP}/ramdisk.py"
-$MPREMOTE resume ls
+$MPREMOTE $MPREMOTE_FLAGS run "${TMP}/ramdisk.py"
+$MPREMOTE $MPREMOTE_FLAGS resume ls
 
 echo -----
 echo "empty tree"
-$MPREMOTE resume tree :
+$MPREMOTE $MPREMOTE_FLAGS resume tree :
 
 echo -----
-$MPREMOTE resume touch :a.py + touch :b.py  
-$MPREMOTE resume mkdir :foo + touch :foo/aa.py + touch :foo/ba.py
+$MPREMOTE $MPREMOTE_FLAGS resume touch :a.py + touch :b.py  
+$MPREMOTE $MPREMOTE_FLAGS resume mkdir :foo + touch :foo/aa.py + touch :foo/ba.py
 
 echo "small tree - :" 
-$MPREMOTE resume tree :
+$MPREMOTE $MPREMOTE_FLAGS resume tree :
 
 echo -----
 echo "no path" 
-$MPREMOTE resume tree 
+$MPREMOTE $MPREMOTE_FLAGS resume tree 
 
 echo -----
 echo "path = '.'" 
-$MPREMOTE resume tree .
+$MPREMOTE $MPREMOTE_FLAGS resume tree .
 
 echo -----
 echo "path = ':.'" 
-$MPREMOTE resume tree :.
+$MPREMOTE $MPREMOTE_FLAGS resume tree :.
 
 
 echo -----
 echo "multiple trees" 
-$MPREMOTE resume mkdir :bar + touch :bar/aaa.py + touch :bar/bbbb.py
-$MPREMOTE resume mkdir :bar/baz + touch :bar/baz/aaa.py + touch :bar/baz/bbbb.py
-$MPREMOTE resume mkdir :bar/baz/quux + touch :bar/baz/quux/aaa.py + touch :bar/baz/quux/bbbb.py
-$MPREMOTE resume mkdir :bar/baz/quux/xen + touch :bar/baz/quux/xen/aaa.py
+$MPREMOTE $MPREMOTE_FLAGS resume mkdir :bar + touch :bar/aaa.py + touch :bar/bbbb.py
+$MPREMOTE $MPREMOTE_FLAGS resume mkdir :bar/baz + touch :bar/baz/aaa.py + touch :bar/baz/bbbb.py
+$MPREMOTE $MPREMOTE_FLAGS resume mkdir :bar/baz/quux + touch :bar/baz/quux/aaa.py + touch :bar/baz/quux/bbbb.py
+$MPREMOTE $MPREMOTE_FLAGS resume mkdir :bar/baz/quux/xen + touch :bar/baz/quux/xen/aaa.py
 
-$MPREMOTE resume tree
+$MPREMOTE $MPREMOTE_FLAGS resume tree
 
 echo -----
 echo single path
-$MPREMOTE resume tree :foo
+$MPREMOTE $MPREMOTE_FLAGS resume tree :foo
 
 echo -----
 echo "multiple paths" 
-$MPREMOTE resume tree :foo :bar
+$MPREMOTE $MPREMOTE_FLAGS resume tree :foo :bar
 
 echo -----
 echo "subtree" 
-$MPREMOTE resume tree bar/baz
+$MPREMOTE $MPREMOTE_FLAGS resume tree bar/baz
 
 echo -----
 echo mountpoint
-$MPREMOTE resume tree :/ramdisk
+$MPREMOTE $MPREMOTE_FLAGS resume tree :/ramdisk
 
 echo -----
 echo non-existent folder : error
-$MPREMOTE resume tree :not_there || echo "expect error: $?"
+$MPREMOTE $MPREMOTE_FLAGS resume tree :not_there || echo "expect error: $?"
 
 echo -----
 echo file : error 
-$MPREMOTE resume tree :a.py || echo "expect error: $?"
+$MPREMOTE $MPREMOTE_FLAGS resume tree :a.py || echo "expect error: $?"
 
 echo -----
 echo "tree -s :"
@@ -101,14 +101,14 @@ dd if=/dev/zero of="${TMP}/data/file2.txt" bs=1 count=204 > /dev/null 2>&1
 dd if=/dev/zero of="${TMP}/data/file3.txt" bs=1 count=1096 > /dev/null 2>&1
 dd if=/dev/zero of="${TMP}/data/file4.txt" bs=1 count=2192 > /dev/null 2>&1
 
-$MPREMOTE resume cp -r "${TMP}/data" :
-$MPREMOTE resume tree -s :
+$MPREMOTE $MPREMOTE_FLAGS resume cp -r "${TMP}/data" :
+$MPREMOTE $MPREMOTE_FLAGS resume tree -s :
 echo -----
 echo "tree -s"
-$MPREMOTE resume tree -s
+$MPREMOTE $MPREMOTE_FLAGS resume tree -s
 echo -----
-$MPREMOTE resume tree --human :
+$MPREMOTE $MPREMOTE_FLAGS resume tree --human :
 echo -----
-$MPREMOTE resume tree -s --human : || echo "expect error: $?"
+$MPREMOTE $MPREMOTE_FLAGS resume tree -s --human : || echo "expect error: $?"
 echo -----
 

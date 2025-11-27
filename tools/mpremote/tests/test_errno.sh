@@ -20,19 +20,19 @@ vfs.mount(fs, '/fs')
 os.chdir('/fs')
 EOF
 
-$MPREMOTE run "${TMP}/fs.py"
+$MPREMOTE $MPREMOTE_FLAGS run "${TMP}/fs.py"
 
 echo -----
-$MPREMOTE resume exec "fs.error = Exception()"
+$MPREMOTE $MPREMOTE_FLAGS resume exec "fs.error = Exception()"
 (
-  $MPREMOTE resume cat :Exception.py || echo "expect error"
+  $MPREMOTE $MPREMOTE_FLAGS resume cat :Exception.py || echo "expect error"
 ) 2> >(head -n1 >&2) # discard traceback specifics but keep main error message
 
 for errno in ENOENT EISDIR EEXIST ENODEV EINVAL EPERM EOPNOTSUPP ; do
 echo -----
-$MPREMOTE resume exec "fs.error = OSError(errno.$errno, '')"
-$MPREMOTE resume cat :$errno.py || echo "expect error"
+$MPREMOTE $MPREMOTE_FLAGS resume exec "fs.error = OSError(errno.$errno, '')"
+$MPREMOTE $MPREMOTE_FLAGS resume cat :$errno.py || echo "expect error"
 done
 
 echo -----
-$MPREMOTE resume exec "vfs.umount('/fs')"
+$MPREMOTE $MPREMOTE_FLAGS resume exec "vfs.umount('/fs')"

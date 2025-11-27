@@ -4,7 +4,7 @@ A concise how-to for working with the asyncio-enabled mpremote stack.
 
 ## 1. Prerequisites
 - **Python environment:** Activate the project venv before doing anything: `source ~/micropython/.venv/bin/activate`.
-- **Dependencies:** The venv already carries `pyserial` ≥ 3.3 and `pyserial-asyncio` ≥ 0.6. If you need to refresh, run `pip install -r tools/mpremote/tests/requirements.txt` inside the venv.
+- **Dependencies:** The venv requires `pyserial` ≥ 3.3, `pyserial-asyncio` ≥ 0.6, and `nest_asyncio` (third-party package for nested event loop support). If you need to refresh, run `pip install -r tools/mpremote/tests/requirements.txt` inside the venv.
 - **Hardware access:** Plug in your MicroPython board and note its serial port (`mpflash list --json`). You can pass the port explicitly with `--device=/dev/ttyACM0` or set `MICROPYTHON_DEVICE` / `MANUAL_CHUNK_DEVICE` / `ESP8266_DEVICE` env vars.
 
 ## 2. Quick Start (Python API)
@@ -49,6 +49,7 @@ async def run_script(port: str):
 
 asyncio.run(run_script("/dev/ttyUSB0"))
 ```
+- **Async-only design (2025-11-22):** All async command handlers now directly call async transport methods without `hasattr()` checks or sync fallbacks. This simplifies the code by ~220 lines and ensures async commands only run on AsyncSerialTransport.
 - All async helpers end with `_async`; sync wrappers (e.g. `do_exec_sync_wrapper`) remain available for legacy code but simply call the async version via `asyncio.run()`.
 
 ## 4. CLI Usage
@@ -84,9 +85,10 @@ Always request these fixtures instead of re-implementing device detection.
 ## 7. Troubleshooting
 | Symptom | Resolution |
 | --- | --- |
-| `ImportError: pyserial-asyncio` | Activate the venv, then `pip install pyserial-asyncio`. |
+| `ImportError: pyserial-asyncio` or `nest_asyncio` | Activate the venv, then `pip install -r tools/mpremote/tests/requirements.txt`. |
 | Tests hang waiting for hardware | Pass `--device` or set `MICROPYTHON_DEVICE`; unsupported boards will skip via `require_target_platform`. |
 | Windows uploads slower than sync | Known issue; see the performance section in `ASYNC_REPORTS_AND_TESTS.md` for mitigation progress. |
 | `TransportError: Not connected` | Ensure you call `await transport.connect()` before REPL or filesystem APIs. |
+| `AttributeError: exec_raw_no_follow_async` | Async commands require AsyncSerialTransport; sync transports are no longer supported as fallback. |
 
 Keep this guide short—link to the main plan and reports for details.

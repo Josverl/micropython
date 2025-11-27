@@ -12,14 +12,14 @@ Centralized notes on refactoring work, coverage, performance findings, and how w
 | Suite | File(s) | Purpose | Hardware |
 | --- | --- | --- | --- |
 | Core unit tests | `test_async_modules.py`, `test_async_transport.py`, `test_async_comprehensive.py`, `test_async_coverage.py` | Structure, API contracts, encoding/decoding | No |
-| Command + filesystem | `test_async_commands.py`, `test_upload_optimization.py` | Exec/eval/run, cp/mkdir/rm/tree, chunk heuristics | Optional |
+| Command + filesystem | `test_async_commands.py` (28 tests, down from 35) | Exec/eval/run, cp/mkdir/rm/tree—no sync fallback tests | Optional |
 | REPL/Console | `test_repl_async*.py`, `test_main_async_mode.py` | Interactive flows, mounting, Unix backend | No |
 | Integration | `test_integration.py`, `test_integration.py` (async workflow) | end-to-end w/out hardware | No |
 | Hardware | `test_async_hardware.py`, ESP8266 suites, manual chunk comparison | Real board behavior, chunk detection, fragmentation | Yes |
 | Benchmarks | `test_benchmark_async.py` | Upload/download throughput | Yes |
 
 ## 3. Dual Test Harness
-- **Pytest (primary):** `pytest -v` from `tools/mpremote/tests` is the gate. Latest run: `207 passed, 8 skipped (Windows console + hardware) in 37.7 s`. All PytestReturnNotNone warnings were fixed (see `test_integration.py`).
+- **Pytest (primary):** `pytest -v` from `tools/mpremote/tests` is the gate. Latest run (2025-11-22): `112 passed, 3 skipped` for async suites after code simplification. All PytestReturnNotNone warnings were fixed (see `test_integration.py`).
 - **Bash scripts (legacy confidence):** `./run-mpremote-tests.sh` executes the historical shell tests (`test_errno.sh`, `test_filesystem.sh`, etc.). Run them whenever you touch filesystem, mip, or mounting behavior; they remain the quickest regression detector for CLI users.
 
 ## 4. Coverage Snapshot
@@ -48,6 +48,8 @@ Benchmark data shows async uploads lagging behind sync on Windows by up to 130�
 Progress on these experiments should be logged here with benchmark output from `pytest test_benchmark_async.py -v -s`.
 
 ## 6. Recent Fixes & Findings
+- **Code simplification (2025-11-22):** Removed all `hasattr()` checks and sync fallback branches from async command handlers (`commands_async.py`). Core assumptions: asyncio/pyserial-asyncio always available in async mode, and async commands only run over AsyncSerialTransport. Eliminated ~220 lines of dead code and 7 fallback tests.
+- **Exception handling cleanup (2025-11-22):** Replaced all `sys.exit()` calls in command handlers with `CommandFailure` exception. This eliminates "Task exception was never retrieved" asyncio warnings and provides clean error handling without exposing library internals.
 - **Integration warnings resolved:** `test_integration.py` now asserts instead of returning booleans, eliminating PytestReturnNotNone warnings.
 - **Hardware metadata fixture:** `hardware_target_info` probes `sys.platform`, `sys.implementation`, and `_machine` once per session; tests consume `require_target_platform()` to skip mismatched hardware (e.g. ESP8266 suites on RP2040 hardware now skip cleanly).
 - **Manual chunk test gating:** `test_manual_chunk_comparison.py` pulls its device from CLI/env and is marked as `hardware_required + serial_required`.

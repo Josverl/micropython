@@ -56,12 +56,12 @@ cat > ${PACKAGE_DIR}/package.json <<EOF
 }
 EOF
 
-$MPREMOTE run "${TMP}/ramdisk.py"
-$MPREMOTE resume mkdir ${target}/lib
+$MPREMOTE $MPREMOTE_FLAGS run "${TMP}/ramdisk.py"
+$MPREMOTE $MPREMOTE_FLAGS resume mkdir ${target}/lib
 echo
 echo ---- Install package
-$MPREMOTE resume mip install --target=${target}/lib ${PACKAGE_DIR}/package.json
+$MPREMOTE $MPREMOTE_FLAGS resume mip install --target=${target}/lib ${PACKAGE_DIR}/package.json
 echo
 echo ---- Test package
-$MPREMOTE resume exec "import sys; sys.path.append(\"${target}/lib\")"
-$MPREMOTE resume exec "import ${PACKAGE}; ${PACKAGE}.hello()"
+$MPREMOTE $MPREMOTE_FLAGS resume exec "import sys; sys.path.append(\"${target}/lib\")"
+$MPREMOTE $MPREMOTE_FLAGS resume exec "import ${PACKAGE}; ${PACKAGE}.hello()"
