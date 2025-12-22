@@ -14,9 +14,9 @@ def module_hint(relpath: str) -> str:
     return parts[0]
 
 
-def macro_category(name: str) -> str:
+def macro_category(name: str, prefix: str = "MICROPY_") -> str:
     """Extract the category token from a macro name (e.g., 'MICROPY_PY_FOO' -> 'PY')."""
-    rest = name.removeprefix("MICROPY_")
+    rest = name.removeprefix(prefix)
     token = rest.split("_", 1)[0]
     return token or "MISC"
 
@@ -65,7 +65,7 @@ def strip_trailing_digits(name: str) -> str:
     return re.sub(r"\d+$", "", name)
 
 
-def extract_second_level(name: str, category: str) -> str:
+def extract_second_level(name: str, category: str, prefix: str = "MICROPY_") -> str:
     """
     Extract a second-level grouping from macro names like MICROPY_HW_USB_* -> USB.
 
@@ -76,10 +76,10 @@ def extract_second_level(name: str, category: str) -> str:
         MICROPY_HW_LED -> LED
         MICROPY_HW_LED1 -> LED
     """
-    prefix = f"MICROPY_{category}_"
-    if not name.startswith(prefix):
+    full_prefix = f"{prefix}{category}_"
+    if not name.startswith(full_prefix):
         return ""
-    rest = name[len(prefix) :]
+    rest = name[len(full_prefix) :]
     parts = rest.split("_")
     if len(parts) >= 1 and parts[0]:
         return strip_trailing_digits(parts[0])

@@ -16,6 +16,7 @@ class MarkdownRenderer:
         min_group_size: int = 10,
         min_summary_items: int = 2,
         subgrouped_categories: Optional[set] = None,
+        prefix: str = "MICROPY_",
     ):
         """
         Initialize the renderer.
@@ -25,11 +26,15 @@ class MarkdownRenderer:
             min_group_size: Minimum items for a category to get its own section
             min_summary_items: Minimum items for a group to get an AI summary
             subgrouped_categories: Categories that should have 2nd-level subgrouping
+            prefix: Macro prefix (e.g., 'MICROPY_' or 'MP_')
         """
         self.output_path = output_path
         self.min_group_size = min_group_size
         self.min_summary_items = min_summary_items
         self.subgrouped_categories = subgrouped_categories or {"HW", "PY"}
+        self.prefix = prefix
+        # Prefix without trailing underscore for section headers
+        self._prefix_name = prefix.rstrip("_")
 
     def _get_table_header(self) -> str:
         """Get the markdown table header."""
@@ -93,7 +98,7 @@ class MarkdownRenderer:
                 continue
 
             items = filtered[category]
-            category_prefix = f"MICROPY_{category}"
+            category_prefix = f"{self._prefix_name}_{category}"
 
             if category in self.subgrouped_categories:
                 sections.append(
@@ -123,7 +128,7 @@ class MarkdownRenderer:
         # Group by second level
         subgroups = defaultdict(list)
         for item in items:
-            second_level = extract_second_level(item["name"], category)
+            second_level = extract_second_level(item["name"], category, self.prefix)
             subgroups[second_level].append(item)
 
         # Separate named subgroups from general bucket
@@ -212,7 +217,7 @@ class MarkdownRenderer:
                 continue
 
             items = filtered[category]
-            category_prefix = f"MICROPY_{category}"
+            category_prefix = f"{self._prefix_name}_{category}"
 
             if category in self.subgrouped_categories:
                 all_groups[category_prefix] = items
@@ -220,7 +225,7 @@ class MarkdownRenderer:
                 # Add L2 subgroups
                 subgroups = defaultdict(list)
                 for item in items:
-                    second_level = extract_second_level(item["name"], category)
+                    second_level = extract_second_level(item["name"], category, self.prefix)
                     if second_level:
                         subgroups[second_level].append(item)
 

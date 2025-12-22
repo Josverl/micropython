@@ -1,16 +1,16 @@
-"""Scanner for MICROPY_* macros in the MicroPython codebase."""
+"""Scanner for MICROPY_* and MP_* macros in the MicroPython codebase."""
 
 import re
 import sqlite3
 from collections import Counter, defaultdict
 from pathlib import Path
-from typing import List, Optional, Set
+from typing import List, Optional, Set, Pattern
 
 from .utils import choose_best_description, macro_category, module_hint
 
 
 class MacroScanner:
-    """Scans codebase for MICROPY_* macros and stores results in SQLite."""
+    """Scans codebase for macros with configurable prefix and stores results in SQLite."""
 
     IGNORE_PARTS: Set[str] = {
         "emsdk",
@@ -48,31 +48,65 @@ class MacroScanner:
         ".txt",
     }
 
-    DEFINE_RE = re.compile(r"^\s*#\s*define\s+(MICROPY_[A-Z0-9_]+)(?:\s+(.*))?$")
-    MACRO_USE_RE = re.compile(r"MICROPY_[A-Z0-9_]+")
+    # Filename patterns to exclude (generated output files)
+    IGNORE_PATTERNS: Set[str] = {
+        "macros_",  # Excludes macros_*.md and macros_*.rst
+    }
 
     # Default location for database (module's parent folder)
     DEFAULT_DB_DIR = Path(__file__).parent.parent
     DEFAULT_DB_NAME = "macros.db"
+    
+    # Preset configurations for different macro prefixes
+    PRESETS = {
+        "MICROPY": {
+            "prefix": "MICROPY_",
+            "db_name": "macros.db",
+            "output_name": "macros.md",
+        },
+        "MP": {
+            "prefix": "MP_",
+            "db_name": "mp_macros.db",
+            "output_name": "mp_macros.md",
+        },
+    }
 
-    def __init__(self, root: Path, db_path: Optional[Path] = None):
+    def __init__(
+        self,
+        root: Path,
+        db_path: Optional[Path] = None,
+        prefix: str = "MICROPY_",
+    ):
         """
         Initialize the scanner.
 
         Args:
             root: Root directory of the MicroPython repository
             db_path: Path to SQLite database (defaults to tools/document_gen/macros.db)
+            prefix: Macro prefix to scan for (e.g., 'MICROPY_' or 'MP_')
         """
         self.root = root.resolve()
+        self.prefix = prefix
         self.db_path = db_path or (self.DEFAULT_DB_DIR / self.DEFAULT_DB_NAME)
         self.conn: Optional[sqlite3.Connection] = None
         self.cur: Optional[sqlite3.Cursor] = None
+        
+        # Build regex patterns based on prefix
+        self._define_re: Pattern[str] = re.compile(
+            rf"^\s*#\s*define\s+({re.escape(prefix)}[A-Z0-9_]+)(?:\s+(.*))?$"
+        )
+        self._macro_use_re: Pattern[str] = re.compile(
+            rf"{re.escape(prefix)}[A-Z0-9_]+"
+        )
 
     def _is_code_file(self, path: Path) -> bool:
         """Check if a path should be scanned."""
         if path.is_dir():
             return False
         if any(part in self.IGNORE_PARTS for part in path.parts):
+            return False
+        # Exclude generated output files (macros_*.md, macros_*.rst)
+        if any(path.name.startswith(pattern) for pattern in self.IGNORE_PATTERNS):
             return False
         if path.name in self.ALLOWED_NAMES:
             return True
@@ -83,14 +117,12 @@ class MacroScanner:
         return [p for p in self.root.rglob("*") if self._is_code_file(p)]
 
     def _init_db(self) -> None:
-        """Initialize the database schema."""
+        """Initialize the database connection and ensure schema exists."""
         self.conn = sqlite3.connect(self.db_path)
         self.cur = self.conn.cursor()
+        # Create tables if they don't exist (preserves existing data)
         self.cur.executescript("""
-            DROP TABLE IF EXISTS macros;
-            DROP TABLE IF EXISTS occurrences;
-
-            CREATE TABLE macros (
+            CREATE TABLE IF NOT EXISTS macros (
                 name TEXT PRIMARY KEY,
                 file TEXT,
                 line INTEGER,
@@ -101,13 +133,24 @@ class MacroScanner:
                 description_ai TEXT
             );
 
-            CREATE TABLE occurrences (
+            CREATE TABLE IF NOT EXISTS occurrences (
                 name TEXT,
                 file TEXT,
                 line INTEGER,
                 snippet TEXT
             );
+            
+            CREATE INDEX IF NOT EXISTS idx_occurrences_name ON occurrences(name);
         """)
+        self.conn.commit()
+
+    def _clear_prefix_data(self) -> None:
+        """Remove all data for the current prefix before re-scanning."""
+        assert self.cur is not None and self.conn is not None
+        # Delete macros matching this prefix
+        self.cur.execute("DELETE FROM macros WHERE name LIKE ?", (f"{self.prefix}%",))
+        # Delete occurrences matching this prefix
+        self.cur.execute("DELETE FROM occurrences WHERE name LIKE ?", (f"{self.prefix}%",))
         self.conn.commit()
 
     def _extract_leading_comment(self, lines: List[str], idx: int) -> str:
@@ -147,7 +190,7 @@ class MacroScanner:
 
             lines = text.splitlines()
             for idx, line in enumerate(lines, start=1):
-                m = self.DEFINE_RE.match(line)
+                m = self._define_re.match(line)
                 if not m:
                     continue
 
@@ -204,7 +247,7 @@ class MacroScanner:
 
             lines = text.splitlines()
             for idx, line in enumerate(lines, start=1):
-                matches = self.MACRO_USE_RE.findall(line)
+                matches = self._macro_use_re.findall(line)
                 if not matches:
                     continue
                 snippet = line.strip()[:240]
@@ -229,13 +272,14 @@ class MacroScanner:
             Tuple of (definitions_count, occurrences_count)
         """
         if verbose:
-            print(f"Scanning {self.root}...")
+            print(f"Scanning {self.root} for {self.prefix}* macros...")
 
         code_files = self._get_code_files()
         if verbose:
             print(f"Found {len(code_files)} code files")
 
         self._init_db()
+        self._clear_prefix_data()
 
         def_count = self._collect_definitions(code_files)
         if verbose:
@@ -255,9 +299,13 @@ class MacroScanner:
 
         assert self.cur is not None
         defs = self.cur.execute(
-            "SELECT name, value, comment, description, file, line FROM macros"
+            "SELECT name, value, comment, description, file, line FROM macros WHERE name LIKE ?",
+            (f"{self.prefix}%",),
         ).fetchall()
-        occ = self.cur.execute("SELECT name, file, line FROM occurrences").fetchall()
+        occ = self.cur.execute(
+            "SELECT name, file, line FROM occurrences WHERE name LIKE ?",
+            (f"{self.prefix}%",),
+        ).fetchall()
 
         mod_counts = defaultdict(Counter)
         files_per_macro = defaultdict(set)
@@ -286,7 +334,7 @@ class MacroScanner:
             summary.append(
                 {
                     "name": name,
-                    "category": macro_category(name),
+                    "category": macro_category(name, self.prefix),
                     "description": best_desc.strip(),
                     "value": defs_by_name[name][0].get("value", ""),
                     "modules": modules,
@@ -304,9 +352,13 @@ class MacroScanner:
 
         assert self.cur is not None
         defs = self.cur.execute(
-            "SELECT name, value, comment, description, description_ai, file, line FROM macros"
+            "SELECT name, value, comment, description, description_ai, file, line FROM macros WHERE name LIKE ?",
+            (f"{self.prefix}%",),
         ).fetchall()
-        occ = self.cur.execute("SELECT name, file, line FROM occurrences").fetchall()
+        occ = self.cur.execute(
+            "SELECT name, file, line FROM occurrences WHERE name LIKE ?",
+            (f"{self.prefix}%",),
+        ).fetchall()
 
         mod_counts = defaultdict(Counter)
         files_per_macro = defaultdict(set)
@@ -336,7 +388,7 @@ class MacroScanner:
             summary.append(
                 {
                     "name": name,
-                    "category": macro_category(name),
+                    "category": macro_category(name, self.prefix),
                     "description": (
                         defs_by_name[name][0].get("description")
                         or defs_by_name[name][0].get("description_ai")
