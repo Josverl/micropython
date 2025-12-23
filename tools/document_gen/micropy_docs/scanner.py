@@ -4,7 +4,7 @@ import re
 import sqlite3
 from collections import Counter, defaultdict
 from pathlib import Path
-from typing import List, Optional, Set, Pattern
+from typing import List, Optional, Pattern, Set
 
 from .utils import choose_best_description, macro_category, module_hint
 
