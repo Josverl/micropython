@@ -385,6 +385,61 @@ class Redirector:
         self.log.debug('reader thread started')
         while self.alive:
             try:
+                # Check if process has exited (e.g., from Ctrl-D)
+                if hasattr(self.serial, 'process') and self.serial.process:
+                    if self.serial.process.poll() is not None:
+                        self.log.info('MicroPython process exited - performing auto-restart (soft reboot)')
+                        
+                        # Send "soft reboot" message that mpremote expects
+                        try:
+                            self.write(b'soft reboot\r\n')
+                        except:
+                            pass
+                        
+                        # Restart the process
+                        if hasattr(self.serial, 'restart_callback') and self.serial.restart_callback:
+                            try:
+                                result = self.serial.restart_callback()
+                                if result:
+                                    self.serial.fd, self.serial.process = result
+                                    self.log.info('Process restarted successfully')
+                                    
+                                    # Give process time to start and output banner
+                                    time.sleep(0.3)
+                                    
+                                    # Read and forward the banner
+                                    try:
+                                        import select
+                                        ready, _, _ = select.select([self.serial.fd], [], [], 0.5)
+                                        if ready:
+                                            import os
+                                            banner = os.read(self.serial.fd, 4096)
+                                            # Banner should end with ">>> ", send Ctrl-A to enter raw REPL
+                                            if banner:
+                                                # Don't send banner, just enter raw REPL directly
+                                                os.write(self.serial.fd, b'\x01')
+                                                time.sleep(0.2)
+                                                # Read raw REPL response
+                                                ready, _, _ = select.select([self.serial.fd], [], [], 0.5)
+                                                if ready:
+                                                    raw_repl_msg = os.read(self.serial.fd, 4096)
+                                                    # Send the raw REPL prompt to client
+                                                    self.write(b''.join(self.rfc2217.escape(raw_repl_msg)))
+                                    except Exception as e:
+                                        self.log.error(f'Error re-entering raw REPL: {e}')
+                                        # Send minimal raw REPL prompt
+                                        self.write(b'raw REPL; CTRL-B to exit\r\n')
+                            except Exception as e:
+                                self.log.error(f'Process restart failed: {e}')
+                                self.alive = False
+                                break
+                        else:
+                            self.log.error('No restart callback available')
+                            self.alive = False
+                            break
+                        
+                        continue
+                
                 self.serial.update_in_waiting()
                 data = self.serial.read(self.serial.in_waiting or 1)
                 if data:
@@ -415,32 +470,16 @@ class Redirector:
                 if not data:
                     break
                 
-                # Debug: log raw received data
-                self.log.debug(f'Raw recv data: {repr(data[:50])}')
-                
                 # Filter RFC2217 control sequences
                 filtered_data = b''.join(self.rfc2217.filter(data))
                 
-                # Debug logging
-                if filtered_data:
-                    self.log.debug(f'Filtered data to write: {repr(filtered_data[:50])}')
+                if not filtered_data:
+                    continue  # No data to write after filtering
                 
-                # Check for soft reboot request (Ctrl-D in raw REPL)
-                if (hasattr(self.serial, '_in_raw_repl') and 
-                    self.serial._in_raw_repl and 
-                    filtered_data == b'\x04' and
-                    hasattr(self.serial, 'restart_callback') and
-                    self.serial.restart_callback):
-                    # Intercept Ctrl-D and trigger soft reboot emulation
-                    self.log.info('Intercepted Ctrl-D for soft reboot emulation')
-                    self.serial._perform_soft_reboot()
-                elif filtered_data == b'\x04':
-                    # Debug: Ctrl-D but conditions not met
-                    self.log.debug(f'Ctrl-D detected but not intercepting: in_raw_repl={getattr(self.serial, "_in_raw_repl", None)}, has_restart={hasattr(self.serial, "restart_callback")}')
-                    self.serial.write(filtered_data)
-                else:
-                    # Normal write
-                    self.serial.write(filtered_data)
+                # Write data to serial port (including Ctrl-D)
+                # Ctrl-D will cause unix port to exit, which we handle in reader
+                self.serial.write(filtered_data)
+                
             except socket.error as msg:
                 self.log.error('{}'.format(msg))
                 break
