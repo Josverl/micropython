@@ -63,15 +63,17 @@ class VirtualSerialPort:
     A virtual serial port that wraps a subprocess's stdin/stdout.
     This simulates a serial port interface for the RFC 2217 PortManager.
     Supports lazy initialization to avoid losing the banner during RFC2217 negotiation.
+    Emulates soft reboot behavior for compatibility with mpremote.
     """
 
-    def __init__(self, fd_or_process, timeout=1, lazy_start_callback=None):
+    def __init__(self, fd_or_process, timeout=1, lazy_start_callback=None, restart_callback=None):
         """Initialize with either a process or a file descriptor.
         
         Args:
             fd_or_process: Either an integer file descriptor (PTY) or a process object
             timeout: Read timeout in seconds
             lazy_start_callback: Optional callback to start the process lazily
+            restart_callback: Optional callback to restart the process for soft reboot
         """
         if isinstance(fd_or_process, int):
             # It's a file descriptor (PTY)
@@ -85,7 +87,10 @@ class VirtualSerialPort:
         self.timeout = timeout
         self.in_waiting = 0
         self.lazy_start_callback = lazy_start_callback
+        self.restart_callback = restart_callback
         self._started = False if lazy_start_callback else True
+        self._in_raw_repl = False
+        self._pending_reboot_output = b''
         # Simulate serial port settings
         self.baudrate = 115200
         self.bytesize = 8
@@ -119,6 +124,12 @@ class VirtualSerialPort:
         """Read up to size bytes from the subprocess stdout or PTY."""
         self._ensure_started()
         
+        # If we have pending reboot output, return that first
+        if self._pending_reboot_output:
+            chunk = self._pending_reboot_output[:size]
+            self._pending_reboot_output = self._pending_reboot_output[size:]
+            return chunk
+        
         if self._closed:
             return b''
         
@@ -127,7 +138,14 @@ class VirtualSerialPort:
             try:
                 ready, _, _ = select.select([self.fd], [], [], self.timeout)
                 if ready:
-                    return os.read(self.fd, size)
+                    data = os.read(self.fd, size)
+                    # Detect raw REPL entry
+                    if b'raw REPL; CTRL-B to exit' in data:
+                        self._in_raw_repl = True
+                    # Detect raw REPL exit
+                    elif b'>>>' in data and self._in_raw_repl:
+                        self._in_raw_repl = False
+                    return data
             except (OSError, ValueError):
                 self._closed = True
             return b''
@@ -153,6 +171,17 @@ class VirtualSerialPort:
         if self._closed:
             return 0
         
+        # Detect Ctrl-D (0x04) in raw REPL mode for soft reboot emulation
+        if self._in_raw_repl and b'\x04' in data and self.restart_callback:
+            # mpremote sends a standalone Ctrl-D after entering raw REPL to trigger soft reset
+            # We need to detect this pattern and emulate the soft reboot
+            if data == b'\x04' or data.strip() == b'\x04':
+                logging.getLogger('virtualserial').info('Soft reboot requested via Ctrl-D')
+                # Trigger restart and queue the soft reboot message
+                self._perform_soft_reboot()
+                # Return the length to indicate success
+                return len(data)
+        
         if self.fd is not None:
             # PTY mode
             try:
@@ -171,6 +200,65 @@ class VirtualSerialPort:
                 return len(data)
             except (OSError, BrokenPipeError):
                 return 0
+    
+    def _perform_soft_reboot(self):
+        """Perform a soft reboot by restarting the process and queueing expected output."""
+        if not self.restart_callback:
+            return
+        
+        logging.getLogger('virtualserial').info('Performing soft reboot emulation...')
+        
+        # Close current process
+        if self.fd is not None:
+            try:
+                os.close(self.fd)
+            except:
+                pass
+        
+        if self.process and self.process.poll() is None:
+            try:
+                self.process.terminate()
+                self.process.wait(timeout=1)
+            except:
+                if self.process and self.process.poll() is None:
+                    try:
+                        self.process.kill()
+                        self.process.wait()
+                    except:
+                        pass
+        
+        # Restart process
+        result = self.restart_callback()
+        if result:
+            self.fd, self.process = result
+            # Queue the soft reboot message that mpremote expects
+            self._pending_reboot_output = b'OK'
+            # Give process a moment to start
+            time.sleep(0.1)
+            # Queue additional output mpremote expects
+            self._pending_reboot_output += b'soft reboot\r\n'
+            # Read and queue the actual banner from the new process
+            time.sleep(0.2)
+            try:
+                # Read the real banner from the new process
+                ready, _, _ = select.select([self.fd], [], [], 0.5)
+                if ready:
+                    banner = os.read(self.fd, 4096)
+                    # The banner ends with ">>> ", replace with raw REPL prompt
+                    if b'>>>' in banner:
+                        # Send Ctrl-A to enter raw REPL automatically
+                        os.write(self.fd, b'\x01')
+                        time.sleep(0.1)
+                        # Read the raw REPL response
+                        ready, _, _ = select.select([self.fd], [], [], 0.5)
+                        if ready:
+                            raw_repl_msg = os.read(self.fd, 4096)
+                            self._pending_reboot_output += raw_repl_msg
+                            self._in_raw_repl = True
+            except:
+                # If we can't read the banner, queue a minimal response
+                self._pending_reboot_output += b'raw REPL; CTRL-B to exit\r\n'
+                self._in_raw_repl = True
 
     def update_in_waiting(self):
         """Update the number of bytes waiting to be read."""
@@ -455,40 +543,54 @@ when the connection closes.
                 slave_fd = None
                 process = None
                 
-                # Define lazy start callback to start MicroPython after RFC2217 negotiation
-                def start_micropython():
-                    nonlocal master_fd, slave_fd, process
-                    logging.info(f"Starting MicroPython (lazy): {' '.join(cmd)}")
+                # Define helper to create process
+                def create_micropython_process():
+                    """Create and return a new MicroPython process with PTY."""
+                    nonlocal process
                     
                     # Create a pseudo-terminal for the process
-                    master_fd, slave_fd = pty.openpty()
+                    new_master_fd, new_slave_fd = pty.openpty()
                     
                     # Set the terminal to raw mode to avoid line buffering
                     try:
-                        tty.setraw(master_fd)
+                        tty.setraw(new_master_fd)
                     except:
                         pass  # Ignore errors setting raw mode
                     
                     process = subprocess.Popen(
                         cmd,
-                        stdin=slave_fd,
-                        stdout=slave_fd,
-                        stderr=slave_fd,
+                        stdin=new_slave_fd,
+                        stdout=new_slave_fd,
+                        stderr=new_slave_fd,
                         close_fds=False
                     )
                     
                     # Close the slave fd in the parent process
-                    os.close(slave_fd)
-                    slave_fd = None
+                    os.close(new_slave_fd)
                     
+                    return (new_master_fd, process)
+                
+                # Define lazy start callback to start MicroPython after RFC2217 negotiation
+                def start_micropython():
+                    nonlocal master_fd, slave_fd, process
+                    logging.info(f"Starting MicroPython (lazy): {' '.join(cmd)}")
+                    master_fd, process = create_micropython_process()
+                    return (master_fd, process)
+                
+                # Define restart callback for soft reboot emulation
+                def restart_micropython():
+                    nonlocal master_fd, process
+                    logging.info(f"Restarting MicroPython for soft reboot: {' '.join(cmd)}")
+                    master_fd, process = create_micropython_process()
                     return (master_fd, process)
 
-                # Create virtual serial port with lazy initialization
+                # Create virtual serial port with lazy initialization and restart callback
                 # Pass None as fd initially, it will be set when start_micropython is called
                 virtual_serial = VirtualSerialPort(
                     None,  # Will be set by lazy start
                     timeout=0.1,
-                    lazy_start_callback=start_micropython
+                    lazy_start_callback=start_micropython,
+                    restart_callback=restart_micropython
                 )
                 # Set fd to None to enable PTY mode after lazy start
                 virtual_serial.fd = None
