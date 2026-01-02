@@ -55,6 +55,7 @@ import sys
 import threading
 import time
 import tty
+
 import serial.rfc2217
 
 
@@ -237,6 +238,9 @@ class VirtualSerialPort:
             time.sleep(0.1)
             # Queue additional output mpremote expects
             self._pending_reboot_output += b'soft reboot\r\n'
+            # Reset raw REPL state - the new process starts in normal REPL mode
+            # The client is responsible for entering raw REPL if needed
+            self._in_raw_repl = False
             # Read and queue the actual banner from the new process
             time.sleep(0.2)
             try:
@@ -244,21 +248,13 @@ class VirtualSerialPort:
                 ready, _, _ = select.select([self.fd], [], [], 0.5)
                 if ready:
                     banner = os.read(self.fd, 4096)
-                    # The banner ends with ">>> ", replace with raw REPL prompt
-                    if b'>>>' in banner:
-                        # Send Ctrl-A to enter raw REPL automatically
-                        os.write(self.fd, b'\x01')
-                        time.sleep(0.1)
-                        # Read the raw REPL response
-                        ready, _, _ = select.select([self.fd], [], [], 0.5)
-                        if ready:
-                            raw_repl_msg = os.read(self.fd, 4096)
-                            self._pending_reboot_output += raw_repl_msg
-                            self._in_raw_repl = True
+                    # Pass the banner through to the client as-is
+                    # The client will decide whether to enter raw REPL mode
+                    self._pending_reboot_output += banner
             except:
-                # If we can't read the banner, queue a minimal response
-                self._pending_reboot_output += b'raw REPL; CTRL-B to exit\r\n'
-                self._in_raw_repl = True
+                # If we can't read the banner, just continue - the client will
+                # receive output directly from the process
+                pass
 
     def update_in_waiting(self):
         """Update the number of bytes waiting to be read."""
@@ -402,33 +398,28 @@ class Redirector:
                                 result = self.serial.restart_callback()
                                 if result:
                                     self.serial.fd, self.serial.process = result
+                                    # Reset state for the new process
+                                    self.serial._in_raw_repl = False
+                                    self.serial._closed = False
                                     self.log.info('Process restarted successfully')
                                     
                                     # Give process time to start and output banner
                                     time.sleep(0.3)
-                                    
-                                    # Read and forward the banner
+
+                                    # Read and forward the banner to the client
+                                    # Let the client decide whether to enter raw REPL
                                     try:
                                         import select
                                         ready, _, _ = select.select([self.serial.fd], [], [], 0.5)
                                         if ready:
                                             import os
+
                                             banner = os.read(self.serial.fd, 4096)
-                                            # Banner should end with ">>> ", send Ctrl-A to enter raw REPL
                                             if banner:
-                                                # Don't send banner, just enter raw REPL directly
-                                                os.write(self.serial.fd, b'\x01')
-                                                time.sleep(0.2)
-                                                # Read raw REPL response
-                                                ready, _, _ = select.select([self.serial.fd], [], [], 0.5)
-                                                if ready:
-                                                    raw_repl_msg = os.read(self.serial.fd, 4096)
-                                                    # Send the raw REPL prompt to client
-                                                    self.write(b''.join(self.rfc2217.escape(raw_repl_msg)))
+                                                # Forward the banner to the client as-is
+                                                self.write(b"".join(self.rfc2217.escape(banner)))
                                     except Exception as e:
-                                        self.log.error(f'Error re-entering raw REPL: {e}')
-                                        # Send minimal raw REPL prompt
-                                        self.write(b'raw REPL; CTRL-B to exit\r\n')
+                                        self.log.error(f"Error reading banner: {e}")
                             except Exception as e:
                                 self.log.error(f'Process restart failed: {e}')
                                 self.alive = False
