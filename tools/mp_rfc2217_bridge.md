@@ -78,18 +78,21 @@ pyserial-miniterm rfc2217://localhost:2217 115200
 
 ### Using mpremote
 
-⚠️ **Note**: mpremote has compatibility issues with the unix port of MicroPython because the unix port doesn't output the "soft reboot" message that mpremote expects after a soft reset. This is a limitation of the unix port, not the RFC2217 bridge.
+⚠️ **Note**: The unix port of MicroPython doesn't output the "soft reboot" message that mpremote expects after a soft reset. This is a limitation of the unix port itself.
 
-As a workaround, you can use pyserial directly or use mpremote with embedded MicroPython builds (when exposing actual hardware boards via RFC2217).
-
-For manual testing with the unix port:
+**Solution**: Use the `resume` keyword to skip the soft reset:
 
 ```bash
-# This will fail with "could not enter raw repl" error:
-mpremote connect rfc2217://localhost:2217 eval "print('test')"
+# Use 'resume' to skip soft reset - this works perfectly:
+mpremote connect rfc2217://localhost:2217 resume eval "print('Hello')"
+mpremote connect rfc2217://localhost:2217 resume fs ls
+mpremote connect rfc2217://localhost:2217 resume exec script.py
 
-# Use pyserial-miniterm or Python/pyserial instead
+# Without 'resume' will fail with "could not enter raw repl" error:
+# mpremote connect rfc2217://localhost:2217 eval "print('test')"  # ✗ Fails
 ```
+
+The `resume` keyword tells mpremote to skip the soft reset sequence and reuse the existing REPL session, which works perfectly with the unix port.
 
 ## How It Works
 
@@ -114,7 +117,7 @@ mpremote connect rfc2217://localhost:2217 eval "print('test')"
 - **No Security**: The bridge has no authentication or encryption. Use only on trusted networks or over VPN/SSH tunnels
 - **Single Connection**: Only one client can connect at a time
 - **No Persistence**: Each connection starts a fresh MicroPython instance
-- **mpremote Incompatibility with Unix Port**: mpremote expects a "soft reboot" message that the unix port of MicroPython doesn't produce. This is a unix port limitation, not a bridge issue. Use pyserial or pyserial-miniterm instead, or use this bridge with embedded MicroPython builds that do output the soft reboot message.
+- **mpremote with Unix Port**: The unix port doesn't output "soft reboot" messages. Use `mpremote resume <command>` to skip the soft reset sequence, which works perfectly. When bridging embedded MicroPython builds, standard mpremote commands work normally.
 
 ## Security Considerations
 

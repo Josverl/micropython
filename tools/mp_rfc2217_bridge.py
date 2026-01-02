@@ -414,7 +414,33 @@ class Redirector:
                 data = self.socket.recv(1024)
                 if not data:
                     break
-                self.serial.write(b''.join(self.rfc2217.filter(data)))
+                
+                # Debug: log raw received data
+                self.log.debug(f'Raw recv data: {repr(data[:50])}')
+                
+                # Filter RFC2217 control sequences
+                filtered_data = b''.join(self.rfc2217.filter(data))
+                
+                # Debug logging
+                if filtered_data:
+                    self.log.debug(f'Filtered data to write: {repr(filtered_data[:50])}')
+                
+                # Check for soft reboot request (Ctrl-D in raw REPL)
+                if (hasattr(self.serial, '_in_raw_repl') and 
+                    self.serial._in_raw_repl and 
+                    filtered_data == b'\x04' and
+                    hasattr(self.serial, 'restart_callback') and
+                    self.serial.restart_callback):
+                    # Intercept Ctrl-D and trigger soft reboot emulation
+                    self.log.info('Intercepted Ctrl-D for soft reboot emulation')
+                    self.serial._perform_soft_reboot()
+                elif filtered_data == b'\x04':
+                    # Debug: Ctrl-D but conditions not met
+                    self.log.debug(f'Ctrl-D detected but not intercepting: in_raw_repl={getattr(self.serial, "_in_raw_repl", None)}, has_restart={hasattr(self.serial, "restart_callback")}')
+                    self.serial.write(filtered_data)
+                else:
+                    # Normal write
+                    self.serial.write(filtered_data)
             except socket.error as msg:
                 self.log.error('{}'.format(msg))
                 break
