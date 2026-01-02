@@ -58,16 +58,15 @@ import tty
 
 import serial.rfc2217
 
-
 # Constants for mpremote compatibility
 MPREMOTE_SOFT_REBOOT = b"soft reboot\r\n"
+# Raw REPL soft reboot response that mpremote expects (mimics real MCU behavior)
+MPREMOTE_RAW_REPL_SOFT_REBOOT = b"OK\r\nMPY: soft reboot\r\nraw REPL; CTRL-B to exit\r\n>"
 
 # Bridge timing constants (in seconds)
-MP_BRIDGE_PROCESS_START_DELAY = 0.1  # Delay after starting process
-MP_BRIDGE_BANNER_READ_DELAY = 0.2  # Delay before reading banner
+MP_BRIDGE_RAW_REPL_ENTRY_DELAY = 0.1  # Delay after sending Ctrl-A to enter raw REPL
 MP_BRIDGE_BANNER_READ_TIMEOUT = 0.5  # Timeout for reading banner
 MP_BRIDGE_PROCESS_RESTART_DELAY = 0.3  # Delay after restarting process
-MP_BRIDGE_PROCESS_TERMINATE_TIMEOUT = 1  # Timeout for graceful termination
 MP_BRIDGE_POLL_INTERVAL = 1  # Status line poll interval
 
 
@@ -123,15 +122,17 @@ class VirtualSerialPort:
         self._settings_backup = None
         self.name = "MicroPython REPL (subprocess)"
         self._check_buffer_lock = threading.Lock()
+        self._start_lock = threading.Lock()
         self._closed = False
 
     def _ensure_started(self):
         """Ensure the process has been started (for lazy initialization)."""
-        if not self._started and self.lazy_start_callback:
-            self._started = True
-            result = self.lazy_start_callback()
-            if result:
-                self.fd, self.process = result
+        with self._start_lock:
+            if not self._started and self.lazy_start_callback:
+                self._started = True
+                result = self.lazy_start_callback()
+                if result:
+                    self.fd, self.process = result
 
     def read(self, size=1):
         """Read up to size bytes from the subprocess stdout or PTY."""
@@ -152,7 +153,7 @@ class VirtualSerialPort:
                 ready, _, _ = select.select([self.fd], [], [], self.timeout)
                 if ready:
                     data = os.read(self.fd, size)
-                    # Detect raw REPL entry
+                    # Detect raw REPL entry from response
                     if b"raw REPL; CTRL-B to exit" in data:
                         self._in_raw_repl = True
                     # Detect raw REPL exit
@@ -184,16 +185,18 @@ class VirtualSerialPort:
         if self._closed:
             return 0
 
-        # Detect Ctrl-D (0x04) in raw REPL mode for soft reboot emulation
-        if self._in_raw_repl and b"\x04" in data and self.restart_callback:
-            # mpremote sends a standalone Ctrl-D after entering raw REPL to trigger soft reset
-            # We need to detect this pattern and emulate the soft reboot
-            if data == b"\x04" or data.strip() == b"\x04":
-                logging.getLogger("virtualserial").info("Soft reboot requested via Ctrl-D")
-                # Trigger restart and queue the soft reboot message
-                self._perform_soft_reboot()
-                # Return the length to indicate success
-                return len(data)
+        # Track raw REPL state based on client commands
+        # Ctrl-A (0x01) enters raw REPL, Ctrl-B (0x02) exits raw REPL
+        if b'\x01' in data:
+            self._in_raw_repl = True
+        elif b'\x02' in data:
+            self._in_raw_repl = False
+        
+        logging.getLogger("virtualserial").debug(f"write({len(data)} bytes): {data!r}")
+
+        # Note: Ctrl-D is passed through to the process without interception.
+        # When the process exits (from Ctrl-D or any other reason), the reader
+        # thread detects it and handles the restart automatically.
 
         if self.fd is not None:
             # PTY mode
@@ -214,60 +217,6 @@ class VirtualSerialPort:
             except (OSError, BrokenPipeError):
                 return 0
 
-    def _perform_soft_reboot(self):
-        """Perform a soft reboot by restarting the process and queueing expected output."""
-        if not self.restart_callback:
-            return
-
-        logging.getLogger("virtualserial").info("Performing soft reboot emulation...")
-
-        # Close current process
-        if self.fd is not None:
-            try:
-                os.close(self.fd)
-            except:
-                pass
-
-        if self.process and self.process.poll() is None:
-            try:
-                self.process.terminate()
-                self.process.wait(timeout=MP_BRIDGE_PROCESS_TERMINATE_TIMEOUT)
-            except:
-                if self.process and self.process.poll() is None:
-                    try:
-                        self.process.kill()
-                        self.process.wait()
-                    except:
-                        pass
-
-        # Restart process
-        result = self.restart_callback()
-        if result:
-            self.fd, self.process = result
-            # Queue the soft reboot message that mpremote expects
-            self._pending_reboot_output = b"OK"
-            # Give process a moment to start
-            time.sleep(MP_BRIDGE_PROCESS_START_DELAY)
-            # Queue additional output mpremote expects
-            self._pending_reboot_output += MPREMOTE_SOFT_REBOOT
-            # Reset raw REPL state - the new process starts in normal REPL mode
-            # The client is responsible for entering raw REPL if needed
-            self._in_raw_repl = False
-            # Read and queue the actual banner from the new process
-            time.sleep(MP_BRIDGE_BANNER_READ_DELAY)
-            try:
-                # Read the real banner from the new process
-                ready, _, _ = select.select([self.fd], [], [], MP_BRIDGE_BANNER_READ_TIMEOUT)
-                if ready:
-                    banner = os.read(self.fd, 4096)
-                    # Pass the banner through to the client as-is
-                    # The client will decide whether to enter raw REPL mode
-                    self._pending_reboot_output += banner
-            except:
-                # If we can't read the banner, just continue - the client will
-                # receive output directly from the process
-                pass
-
     def update_in_waiting(self):
         """Update the number of bytes waiting to be read."""
         # Don't start the process just to check if data is waiting
@@ -281,9 +230,9 @@ class VirtualSerialPort:
                 return
 
             if self.fd is not None:
-                # PTY mode
+                # PTY mode - use a small timeout to avoid busy polling
                 try:
-                    ready, _, _ = select.select([self.fd], [], [], 0)
+                    ready, _, _ = select.select([self.fd], [], [], 0.05)
                     self.in_waiting = 1 if ready else 0
                 except (OSError, ValueError):
                     self._closed = True
@@ -398,11 +347,17 @@ class Redirector:
                             "MicroPython process exited - performing auto-restart (soft reboot)"
                         )
 
-                        # Send "soft reboot" message that mpremote expects
-                        try:
-                            self.write(MPREMOTE_SOFT_REBOOT)
-                        except:
-                            pass
+                        # Remember if we were in raw REPL before restart
+                        was_in_raw_repl = getattr(self.serial, '_in_raw_repl', False)
+                        self.log.debug(f"was_in_raw_repl = {was_in_raw_repl}")
+
+                        # Only send early soft reboot message if NOT in raw REPL
+                        # (raw REPL mode sends a complete response after restart)
+                        if not was_in_raw_repl:
+                            try:
+                                self.write(MPREMOTE_SOFT_REBOOT)
+                            except:
+                                pass
 
                         # Restart the process
                         if (
@@ -421,23 +376,47 @@ class Redirector:
                                     # Give process time to start and output banner
                                     time.sleep(MP_BRIDGE_PROCESS_RESTART_DELAY)
 
-                                    # Read and forward the banner to the client
-                                    # Let the client decide whether to enter raw REPL
+                                    # Read the banner from the new process (discard it)
                                     try:
-                                        import select
-
                                         ready, _, _ = select.select(
                                             [self.serial.fd], [], [], MP_BRIDGE_BANNER_READ_TIMEOUT
                                         )
                                         if ready:
-                                            import os
-
                                             banner = os.read(self.serial.fd, 4096)
-                                            if banner:
-                                                # Forward the banner to the client as-is
-                                                self.write(b"".join(self.rfc2217.escape(banner)))
+                                            self.log.debug(f"Read banner: {banner!r}")
                                     except Exception as e:
                                         self.log.error(f"Error reading banner: {e}")
+
+                                    # If we were in raw REPL, re-enter it and send expected response
+                                    if was_in_raw_repl:
+                                        self.log.info("Re-entering raw REPL mode after soft reboot")
+                                        try:
+                                            # Send Ctrl-A to enter raw REPL
+                                            os.write(self.serial.fd, b'\x01')
+                                            time.sleep(MP_BRIDGE_RAW_REPL_ENTRY_DELAY)
+                                            
+                                            # Read and discard the raw REPL response from MicroPython
+                                            ready, _, _ = select.select(
+                                                [self.serial.fd], [], [], MP_BRIDGE_BANNER_READ_TIMEOUT
+                                            )
+                                            if ready:
+                                                raw_response = os.read(self.serial.fd, 4096)
+                                                self.log.debug(f"Raw REPL response: {raw_response!r}")
+                                            
+                                            # Send the expected soft reboot response to the client
+                                            self.write(b"".join(self.rfc2217.escape(MPREMOTE_RAW_REPL_SOFT_REBOOT)))
+                                            self.serial._in_raw_repl = True
+                                        except Exception as e:
+                                            self.log.error(f"Error re-entering raw REPL: {e}")
+                                            # Fallback: just send the soft reboot message
+                                            self.write(b"".join(self.rfc2217.escape(MPREMOTE_SOFT_REBOOT)))
+                                    else:
+                                        # Not in raw REPL, forward the banner to the client
+                                        try:
+                                            if banner:
+                                                self.write(b"".join(self.rfc2217.escape(banner)))
+                                        except:
+                                            pass
                             except Exception as e:
                                 self.log.error(f"Process restart failed: {e}")
                                 self.alive = False
