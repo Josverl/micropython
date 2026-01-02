@@ -49,19 +49,7 @@ python3 tools/mp_rfc2217_bridge.py --micropython-args "-i script.py" ./micropyth
 
 Once the bridge is running, you can connect using any RFC 2217 compatible client:
 
-### Using mpremote
-
-```bash
-mpremote connect rfc2217://localhost:2217
-```
-
-### Using pyserial-miniterm
-
-```bash
-pyserial-miniterm rfc2217://localhost:2217 115200
-```
-
-### Using Python with pyserial
+### Using Python with pyserial (Recommended)
 
 ```python
 import serial
@@ -80,6 +68,27 @@ response = ser.read(1000)
 print(response.decode('utf-8'))
 
 ser.close()
+```
+
+### Using pyserial-miniterm
+
+```bash
+pyserial-miniterm rfc2217://localhost:2217 115200
+```
+
+### Using mpremote
+
+⚠️ **Note**: mpremote has compatibility issues with the unix port of MicroPython because the unix port doesn't output the "soft reboot" message that mpremote expects after a soft reset. This is a limitation of the unix port, not the RFC2217 bridge.
+
+As a workaround, you can use pyserial directly or use mpremote with embedded MicroPython builds (when exposing actual hardware boards via RFC2217).
+
+For manual testing with the unix port:
+
+```bash
+# This will fail with "could not enter raw repl" error:
+mpremote connect rfc2217://localhost:2217 eval "print('test')"
+
+# Use pyserial-miniterm or Python/pyserial instead
 ```
 
 ## How It Works
@@ -105,6 +114,7 @@ ser.close()
 - **No Security**: The bridge has no authentication or encryption. Use only on trusted networks or over VPN/SSH tunnels
 - **Single Connection**: Only one client can connect at a time
 - **No Persistence**: Each connection starts a fresh MicroPython instance
+- **mpremote Incompatibility with Unix Port**: mpremote expects a "soft reboot" message that the unix port of MicroPython doesn't produce. This is a unix port limitation, not a bridge issue. Use pyserial or pyserial-miniterm instead, or use this bridge with embedded MicroPython builds that do output the soft reboot message.
 
 ## Security Considerations
 
