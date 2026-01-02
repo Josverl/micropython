@@ -37,8 +37,30 @@ class ConsolePosix:
         termios.tcsetattr(self.infd, termios.TCSANOW, self.orig_attr)
 
     def waitchar(self, pyb_serial):
-        # TODO pyb_serial might not have fd
-        select.select([self.infd, pyb_serial.fd], [], [])
+        # Get file descriptor for select - handle both real serial ports and RFC2217
+        if hasattr(pyb_serial, "fd"):
+            # Real serial port on POSIX
+            serial_fd = pyb_serial.fd
+        elif hasattr(pyb_serial, "fileno"):
+            # RFC2217 or other serial-like objects with fileno() method
+            try:
+                serial_fd = pyb_serial.fileno()
+            except Exception:
+                serial_fd = None
+        elif hasattr(pyb_serial, "_socket"):
+            # RFC2217 internal socket
+            serial_fd = pyb_serial._socket.fileno()
+        else:
+            serial_fd = None
+
+        if serial_fd is not None:
+            select.select([self.infd, serial_fd], [], [])
+        else:
+            # Fallback: poll with timeout
+            while not pyb_serial.in_waiting:
+                res = select.select([self.infd], [], [], 0.01)
+                if res[0]:
+                    break
 
     def readchar(self):
         res = select.select([self.infd], [], [], 0)
