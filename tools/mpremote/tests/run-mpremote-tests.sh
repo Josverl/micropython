@@ -77,8 +77,11 @@ for t in $TESTS; do
     TMP=$(mktemp -d)
     echo -n "${t}: "
     # Strip CR and replace the random temp dir with a token.
-    if env MPREMOTE="${MPREMOTE}" TMP="${TMP}" "${t}" 2>&1 | tr -d '\r' | sed "s,${TMP},"'${TMP},g' > "${t}.out"; then
-        if diff "${t}.out" "${t}.exp" > /dev/null; then
+    if env MPREMOTE="${MPREMOTE}" TMP="${TMP}" MPREMOTE_DEVICE="${DEVICE}" "${t}" 2>&1 | tr -d '\r' | sed "s,${TMP},"'${TMP},g' > "${t}.out"; then
+        # Check if test was skipped (matches main test runner convention)
+        if grep -q "^SKIP$" "${t}.out"; then
+            echo "skip"
+        elif diff "${t}.out" "${t}.exp" > /dev/null; then
             echo "OK"
         else
             echo "FAIL"
