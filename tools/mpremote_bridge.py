@@ -25,23 +25,29 @@
 # THE SOFTWARE.
 
 """
-MicroPython RFC 2217 Bridge
+mpremote Bridge
 
-This tool exposes a MicroPython unix REPL as an RFC 2217 server, allowing remote
+This tool exposes a MicroPython unix REPL as a network server, allowing remote
 access to the REPL over a network connection by mpremote and other tools.
 
+Two protocols are supported:
+- RFC 2217 (port 2217): Telnet-based serial port emulation, compatible with all pyserial tools
+- Raw socket (port 2218): Direct TCP connection, ~2x faster than RFC 2217
+
+Only one client can connect at a time across both ports (exclusive access).
+
 Usage:
-    mp_rfc2217_bridge.py [options] [MICROPYTHON_PATH]
+    mpremote_bridge.py [options] [MICROPYTHON_PATH]
 
 Example:
-    mp_rfc2217_bridge.py
-    mp_rfc2217_bridge.py ./ports/unix/build-standard/micropython
-    mp_rfc2217_bridge.py -p 2217 -v ./micropython
+    mpremote_bridge.py
+    mpremote_bridge.py ./ports/unix/build-standard/micropython
+    mpremote_bridge.py -p 2217 -s 2218 -v ./micropython
 
 Then connect with:
-    mpremote connect rfc2217://localhost:2217
-    or
-    pyserial-miniterm rfc2217://localhost:2217 115200
+    mpremote connect socket://localhost:2218      # Fast (recommended)
+    mpremote connect rfc2217://localhost:2217     # Compatible
+    pyserial-miniterm socket://localhost:2218
 """
 
 from __future__ import annotations
@@ -553,7 +559,7 @@ def parse_arguments() -> argparse.Namespace:
     )
 
     parser = argparse.ArgumentParser(
-        description="MicroPython Bridge - Expose MicroPython REPL via RFC 2217 and raw socket.",
+        description="mpremote Bridge - Expose MicroPython REPL via RFC 2217 and raw socket.",
         epilog="""\
 NOTE: No security measures are implemented. Anyone can remotely connect
 to this service over the network.
@@ -917,7 +923,7 @@ def main() -> None:
     validate_arguments(args)
     setup_logging(args.verbosity)
 
-    logging.info("MicroPython Bridge - type Ctrl-C to quit")
+    logging.info("mpremote Bridge - type Ctrl-C to quit")
     logging.info(f"MicroPython executable: {args.MICROPYTHON_PATH}")
     if args.cwd:
         logging.info(f"MicroPython working directory: {args.cwd}")
@@ -930,7 +936,7 @@ def main() -> None:
 
     cmd = build_micropython_command(args)
     servers = create_server_sockets(args)
-    logging.info("Persistent mode: MicroPython process persists across connections")
+    logging.info("MicroPython process persists across connections")
 
     process_manager = MicroPythonProcessManager(cmd, args.cwd)
     logging.info(f"Starting MicroPython: {' '.join(cmd)}")

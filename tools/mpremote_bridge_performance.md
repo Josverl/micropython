@@ -1,8 +1,8 @@
-# RFC 2217 Bridge Performance Analysis
+# mpremote Bridge Performance Analysis
 
 ## Problem Statement
 
-The RFC 2217 bridge is noticeably slower than a physical serial connection to an MCU, particularly visible when running filesystem tests like `test_filesystem.sh`.
+The mpremote bridge is noticeably slower than a physical serial connection to an MCU, particularly visible when running filesystem tests like `test_filesystem.sh`.
 
 ## Key Finding: Process Startup is NOT the Bottleneck
 
@@ -495,7 +495,7 @@ time ./run-mpremote-tests.sh -t socket://localhost:2218 test_filesystem.sh
 
 ## Code Changes Summary
 
-### File: `mp_rfc2217_bridge.py`
+### File: `mpremote_bridge.py`
 
 | Line | Current | Proposed | Impact |
 |------|---------|----------|--------|

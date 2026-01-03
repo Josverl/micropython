@@ -1,6 +1,6 @@
-# RFC 2217 Bridge - Windows Support
+# mpremote Bridge - Windows Support
 
-This document describes how to add Windows support to the `mp_rfc2217_bridge.py` tool using `pywinpty`.
+This document describes how to add Windows support to the `mpremote_bridge.py` tool using `pywinpty`.
 
 ## Background
 
@@ -423,7 +423,7 @@ windows = [
 ]
 
 [project.scripts]
-mp-rfc2217-bridge = "tools.mp_rfc2217_bridge:main"
+mpremote-bridge = "tools.mpremote_bridge:main"
 ```
 
 ## Testing on Windows
@@ -441,7 +441,7 @@ mp-rfc2217-bridge = "tools.mp_rfc2217_bridge:main"
 pip install pyserial pywinpty
 
 # Run the bridge
-python tools/mp_rfc2217_bridge.py --port 2217
+python tools/mpremote_bridge.py --port 2217
 
 # In another terminal, connect with mpremote
 mpremote connect rfc2217://localhost:2217 repl
@@ -484,4 +484,4 @@ self._pty = winpty.PTY(cols=120, rows=40)
 
 - [pywinpty documentation](https://github.com/andfoy/pywinpty)
 - [Windows ConPTY API](https://docs.microsoft.com/en-us/windows/console/creating-a-pseudoconsole-session)
-- [MicroPython RFC 2217 Bridge](./mp_rfc2217_bridge.md)
+- [mpremote Bridge](./mpremote_bridge.md)
