@@ -64,10 +64,12 @@ MPREMOTE_SOFT_REBOOT = b"soft reboot\r\n"
 MPREMOTE_RAW_REPL_SOFT_REBOOT = b"OK\r\nMPY: soft reboot\r\nraw REPL; CTRL-B to exit\r\n>"
 
 # Bridge timing constants (in seconds)
-MP_BRIDGE_RAW_REPL_ENTRY_DELAY = 0.1  # Delay after sending Ctrl-A to enter raw REPL
-MP_BRIDGE_BANNER_READ_TIMEOUT = 0.5  # Timeout for reading banner
-MP_BRIDGE_PROCESS_RESTART_DELAY = 0.3  # Delay after restarting process
+MP_BRIDGE_RAW_REPL_ENTRY_DELAY = 0.05  # Delay after sending Ctrl-A to enter raw REPL
+MP_BRIDGE_BANNER_READ_TIMEOUT = 0.2  # Timeout for reading banner
+MP_BRIDGE_PROCESS_RESTART_DELAY = 0.1  # Delay after restarting process
 MP_BRIDGE_POLL_INTERVAL = 1  # Status line poll interval
+MP_BRIDGE_READ_TIMEOUT = 0.01  # Read timeout for PTY (10ms for responsiveness)
+MP_BRIDGE_READ_BUFFER_SIZE = 4096  # Read buffer size for PTY
 
 
 class VirtualSerialPort:
@@ -80,7 +82,7 @@ class VirtualSerialPort:
     def __init__(
         self,
         fd: int,
-        timeout: float = 0.1,
+        timeout: float = MP_BRIDGE_READ_TIMEOUT,
         restart_callback=None,
     ):
         """Initialize with a PTY file descriptor.
@@ -118,7 +120,7 @@ class VirtualSerialPort:
         self._check_buffer_lock = threading.Lock()
         self._closed = False
 
-    def read(self, size=1):
+    def read(self, size=MP_BRIDGE_READ_BUFFER_SIZE):
         """Read up to size bytes from the PTY."""
         # If we have pending reboot output, return that first
         if self._pending_reboot_output:
@@ -132,7 +134,8 @@ class VirtualSerialPort:
         try:
             ready, _, _ = select.select([self.fd], [], [], self.timeout)
             if ready:
-                data = os.read(self.fd, size)
+                # Always read larger chunks for efficiency
+                data = os.read(self.fd, MP_BRIDGE_READ_BUFFER_SIZE)
                 # Detect raw REPL entry from response
                 if b"raw REPL; CTRL-B to exit" in data:
                     self._in_raw_repl = True
@@ -174,9 +177,9 @@ class VirtualSerialPort:
                 self.in_waiting = 0
                 return
 
-            # Use a small timeout to avoid busy polling
+            # Non-blocking check - no timeout wait
             try:
-                ready, _, _ = select.select([self.fd], [], [], 0.05)
+                ready, _, _ = select.select([self.fd], [], [], 0)
                 self.in_waiting = 1 if ready else 0
             except (OSError, ValueError):
                 self._closed = True
@@ -370,8 +373,8 @@ class Redirector:
 
                         continue
 
-                self.serial.update_in_waiting()
-                data = self.serial.read(self.serial.in_waiting or 1)
+                # Read larger chunks for efficiency - let read() handle the wait
+                data = self.serial.read(MP_BRIDGE_READ_BUFFER_SIZE)
                 if data:
                     # Escape outgoing data when needed (Telnet IAC (0xff) character)
                     self.write(b"".join(self.rfc2217.escape(data)))
