@@ -1,9 +1,9 @@
 #!/bin/bash
 set -e
 
-# Skip this test for RFC2217 devices to avoid accidentally deleting the host filesystem
+# Skip this test for RFC2217 and socket devices to avoid accidentally deleting the host filesystem
 # The unix port uses the host filesystem directly, not a VFS
-if [[ "${MPREMOTE_DEVICE}" == rfc2217://* ]]; then
+if [[ "${MPREMOTE_DEVICE}" == rfc2217://* ]] || [[ "${MPREMOTE_DEVICE}" == socket://* ]]; then
     echo "SKIP"
     exit 0
 fi
