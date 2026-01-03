@@ -1,11 +1,14 @@
-import sys, time
+import sys
+import time
 
 try:
-    import select, termios
+    import select
+    import termios
 except ImportError:
     termios = None
     select = None
-    import msvcrt, signal
+    import msvcrt
+    import signal
 
 
 class ConsolePosix:
@@ -37,21 +40,12 @@ class ConsolePosix:
         termios.tcsetattr(self.infd, termios.TCSANOW, self.orig_attr)
 
     def waitchar(self, pyb_serial):
-        # Get file descriptor for select - handle both real serial ports and RFC2217
-        if hasattr(pyb_serial, "fd"):
-            # Real serial port on POSIX
-            serial_fd = pyb_serial.fd
-        elif hasattr(pyb_serial, "fileno"):
-            # RFC2217 or other serial-like objects with fileno() method
-            try:
-                serial_fd = pyb_serial.fileno()
-            except Exception:
-                serial_fd = None
-        elif hasattr(pyb_serial, "_socket"):
-            # RFC2217 internal socket
-            serial_fd = pyb_serial._socket.fileno()
-        else:
-            serial_fd = None
+        # Get file descriptor for select - works for serial ports and socket-based connections
+        try:
+            serial_fd = pyb_serial.fileno()
+        except Exception:
+            # RFC2217 doesn't implement fileno(), use internal socket
+            serial_fd = pyb_serial._socket.fileno() if hasattr(pyb_serial, "_socket") else None
 
         if serial_fd is not None:
             select.select([self.infd, serial_fd], [], [])
@@ -156,7 +150,8 @@ else:
 
     # Windows VT mode ( >= win10 only)
     # https://bugs.python.org/msg291732
-    import ctypes, os
+    import ctypes
+    import os
     from ctypes import wintypes
 
     kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)

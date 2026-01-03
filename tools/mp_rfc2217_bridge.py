@@ -814,13 +814,49 @@ class MicroPythonProcessManager:
                 self.process.wait()
 
 
+def _reject_pending_connections(
+    servers: list[Tuple[socket.socket, str, type]], active_protocol: str
+) -> None:
+    """Reject any pending connections on other server sockets while one is active."""
+    for srv, protocol_name, _ in servers:
+        if protocol_name == active_protocol:
+            continue
+        # Check for pending connections without blocking
+        try:
+            readable, _, _ = select.select([srv], [], [], 0)
+            if readable:
+                # Accept and immediately close with a message
+                try:
+                    pending_socket, addr = srv.accept()
+                    logging.info(
+                        f"Rejected {protocol_name} connection from {addr[0]}:{addr[1]} "
+                        f"- device busy ({active_protocol} client connected)"
+                    )
+                    # Send a brief error message before closing
+                    try:
+                        pending_socket.sendall(
+                            b"\r\nError: Device busy - another client is connected\r\n"
+                        )
+                    except socket.error:
+                        pass
+                    pending_socket.close()
+                except socket.error:
+                    pass
+        except (ValueError, OSError):
+            pass
+
+
 def run_server_loop(
     servers: list[Tuple[socket.socket, str, type]],
     virtual_serial: VirtualSerialPort,
     process_manager: MicroPythonProcessManager,
     debug: bool,
 ) -> None:
-    """Main server loop - accept connections and handle them."""
+    """Main server loop - accept connections and handle them.
+
+    Only one client connection is allowed at a time across all protocols.
+    Connections on other ports are rejected while a client is connected.
+    """
     server_map = {srv: (proto, redir_cls) for srv, proto, redir_cls in servers}
     server_sockets = [srv for srv, _, _ in servers]
 
@@ -847,8 +883,21 @@ def run_server_loop(
 
                 redirector = redirector_class(virtual_serial, client_socket, debug)
                 try:
+                    # Start a background thread to reject connections on other ports
+                    reject_thread_alive = True
+
+                    def reject_loop() -> None:
+                        while reject_thread_alive:
+                            _reject_pending_connections(servers, protocol_name)
+                            time.sleep(0.1)  # Check every 100ms
+
+                    reject_thread = threading.Thread(target=reject_loop, daemon=True)
+                    reject_thread.name = "connection-guard"
+                    reject_thread.start()
+
                     redirector.shortcircuit()
                 finally:
+                    reject_thread_alive = False
                     logging.info("Disconnected")
                     redirector.stop()
                     client_socket.close()
