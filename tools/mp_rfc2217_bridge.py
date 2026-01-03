@@ -488,6 +488,13 @@ class Redirector:
 
 
 def main():
+    # Determine default MicroPython path relative to this script
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    default_micropython = os.path.join(
+        script_dir, "..", "ports", "unix", "build-standard", "micropython"
+    )
+    default_micropython = os.path.normpath(default_micropython)
+
     parser = argparse.ArgumentParser(
         description="MicroPython RFC 2217 Bridge - Expose MicroPython REPL via RFC 2217.",
         epilog="""\
@@ -497,13 +504,25 @@ to this service over the network.
 Only one connection at once is supported. When the connection is terminated,
 it waits for the next connect.
 
-The MicroPython process is started fresh for each connection and terminated
-when the connection closes.
+The MicroPython process persists across connections (like a physical MCU).
+Use 'mpremote resume' to preserve state between connections.
+
+Examples:
+  %(prog)s                           # Use default MicroPython
+  %(prog)s -p 2217                   # Use port 2217 (default)
+  %(prog)s ./my_micropython          # Use custom MicroPython path
+  %(prog)s --cwd /tmp/mp_root        # Use /tmp/mp_root as filesystem root
+  %(prog)s -O -O -X heapsize=4M      # Pass options to MicroPython
 """,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
-    parser.add_argument("MICROPYTHON_PATH", help="Path to the MicroPython executable")
+    parser.add_argument(
+        "MICROPYTHON_PATH",
+        nargs="?",
+        default=default_micropython,
+        help=f"Path to the MicroPython executable (default: %(default)s)",
+    )
 
     parser.add_argument(
         "-p",
@@ -527,15 +546,54 @@ when the connection closes.
         "--verbose",
         dest="verbosity",
         action="count",
-        help="Increase verbosity (can be given multiple times)",
+        help="Increase verbosity of the bridge (can be given multiple times)",
         default=0,
     )
 
-    parser.add_argument(
+    # MicroPython-specific arguments that get passed through
+    mp_group = parser.add_argument_group(
+        "MicroPython options",
+        "These options are passed to the MicroPython executable",
+    )
+
+    mp_group.add_argument(
+        "-O",
+        dest="mp_optimize",
+        action="count",
+        default=0,
+        help="Apply bytecode optimizations (can be given multiple times: -O, -OO, -OOO)",
+    )
+
+    mp_group.add_argument(
+        "-X",
+        dest="mp_impl_opts",
+        action="append",
+        default=[],
+        metavar="OPTION",
+        help="Implementation-specific options (e.g., -X heapsize=4M, -X emit=native)",
+    )
+
+    mp_group.add_argument(
+        "--mp-verbose",
+        dest="mp_verbose",
+        action="count",
+        default=0,
+        help="MicroPython verbose mode (trace operations); can be given multiple times",
+    )
+
+    mp_group.add_argument(
         "--micropython-args",
-        help='Additional arguments to pass to MicroPython (e.g., "-i script.py")',
+        help='Additional arguments to pass to MicroPython (e.g., "-i")',
         default="",
         metavar="ARGS",
+    )
+
+    mp_group.add_argument(
+        "--cwd",
+        dest="cwd",
+        help="Working directory for MicroPython (used as filesystem root for unix port)",
+        default=None,
+        metavar="DIR",
     )
 
     args = parser.parse_args()
@@ -552,6 +610,13 @@ when the connection closes.
         )
         sys.exit(1)
 
+    # Validate and resolve working directory
+    if args.cwd:
+        if not os.path.isdir(args.cwd):
+            print(f"Error: Working directory does not exist: {args.cwd}", file=sys.stderr)
+            sys.exit(1)
+        args.cwd = os.path.abspath(args.cwd)
+
     # Set up logging
     if args.verbosity > 3:
         args.verbosity = 3
@@ -563,6 +628,14 @@ when the connection closes.
 
     logging.info("MicroPython RFC 2217 Bridge - type Ctrl-C to quit")
     logging.info(f"MicroPython executable: {args.MICROPYTHON_PATH}")
+    if args.cwd:
+        logging.info(f"MicroPython working directory: {args.cwd}")
+    if args.mp_verbose:
+        logging.info(f"MicroPython verbosity: -{args.mp_verbose * 'v'}")
+    if args.mp_optimize:
+        logging.info(f"MicroPython optimization: -{args.mp_optimize * 'O'}")
+    if args.mp_impl_opts:
+        logging.info(f"MicroPython options: {', '.join(args.mp_impl_opts)}")
 
     # Create server socket
     srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -578,8 +651,79 @@ when the connection closes.
     logging.info(f"RFC 2217 server listening on {bind_addr}:{args.port}")
     logging.info("Connect with: mpremote connect rfc2217://localhost:{}".format(args.port))
     logging.info("          or: pyserial-miniterm rfc2217://localhost:{} 115200".format(args.port))
+    logging.info("Persistent mode: MicroPython process persists across connections")
 
+    # Prepare command for MicroPython (done once, outside connection loop)
+    cmd = [args.MICROPYTHON_PATH]
+    # Add -v options (can be repeated for more verbosity)
+    for _ in range(args.mp_verbose):
+        cmd.append("-v")
+    # Add -O options (can be repeated for higher optimization)
+    for _ in range(args.mp_optimize):
+        cmd.append("-O")
+    # Add -X options
+    for opt in args.mp_impl_opts:
+        cmd.extend(["-X", opt])
+    # Add any additional micropython args (legacy support)
+    if args.micropython_args:
+        cmd.extend(args.micropython_args.split())
+
+    # Persistent state - lives across connections
+    master_fd = None
     process = None
+
+    def create_micropython_process():
+        """Create and return a new MicroPython process with PTY."""
+        nonlocal master_fd, process
+
+        # Close old master_fd if it exists
+        if master_fd is not None:
+            try:
+                os.close(master_fd)
+            except:
+                pass
+
+        # Create a pseudo-terminal for the process
+        new_master_fd, new_slave_fd = pty.openpty()
+
+        # Set the terminal to raw mode to avoid line buffering
+        try:
+            tty.setraw(new_master_fd)
+        except:
+            pass  # Ignore errors setting raw mode
+
+        process = subprocess.Popen(
+            cmd,
+            stdin=new_slave_fd,
+            stdout=new_slave_fd,
+            stderr=new_slave_fd,
+            cwd=args.cwd,
+            close_fds=False,
+        )
+
+        # Close the slave fd in the parent process
+        os.close(new_slave_fd)
+
+        master_fd = new_master_fd
+        return (new_master_fd, process)
+
+    def restart_micropython():
+        """Restart MicroPython process for soft reboot."""
+        logging.info(f"Restarting MicroPython for soft reboot: {' '.join(cmd)}")
+        return create_micropython_process()
+
+    # Start MicroPython process immediately (persistent mode)
+    logging.info(f"Starting MicroPython: {' '.join(cmd)}")
+    master_fd, process = create_micropython_process()
+
+    # Create persistent virtual serial port
+    virtual_serial = VirtualSerialPort(
+        master_fd,
+        timeout=0.1,
+        lazy_start_callback=None,  # No lazy start in persistent mode
+        restart_callback=restart_micropython,
+    )
+    virtual_serial.process = process
 
     try:
         while True:
@@ -589,69 +733,19 @@ when the connection closes.
                 logging.info(f"Connected by {addr[0]}:{addr[1]}")
                 client_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 
-                # Prepare command for MicroPython
-                cmd = [args.MICROPYTHON_PATH]
-                if args.micropython_args:
-                    cmd.extend(args.micropython_args.split())
-
-                master_fd = None
-                slave_fd = None
-                process = None
-
-                # Define helper to create process
-                def create_micropython_process():
-                    """Create and return a new MicroPython process with PTY."""
-                    nonlocal process
-
-                    # Create a pseudo-terminal for the process
-                    new_master_fd, new_slave_fd = pty.openpty()
-
-                    # Set the terminal to raw mode to avoid line buffering
-                    try:
-                        tty.setraw(new_master_fd)
-                    except:
-                        pass  # Ignore errors setting raw mode
-
-                    process = subprocess.Popen(
-                        cmd,
-                        stdin=new_slave_fd,
-                        stdout=new_slave_fd,
-                        stderr=new_slave_fd,
-                        close_fds=False,
-                    )
-
-                    # Close the slave fd in the parent process
-                    os.close(new_slave_fd)
-
-                    return (new_master_fd, process)
-
-                # Define lazy start callback to start MicroPython after RFC2217 negotiation
-                def start_micropython():
-                    nonlocal master_fd, slave_fd, process
-                    logging.info(f"Starting MicroPython (lazy): {' '.join(cmd)}")
+                # Check if process is still alive, restart if needed
+                if process.poll() is not None:
+                    logging.info("MicroPython process has exited, restarting...")
                     master_fd, process = create_micropython_process()
-                    return (master_fd, process)
+                    virtual_serial.fd = master_fd
+                    virtual_serial.process = process
+                    virtual_serial._closed = False
 
-                # Define restart callback for soft reboot emulation
-                def restart_micropython():
-                    nonlocal master_fd, process
-                    logging.info(f"Restarting MicroPython for soft reboot: {' '.join(cmd)}")
-                    master_fd, process = create_micropython_process()
-                    return (master_fd, process)
+                # Reset virtual serial state for new connection
+                virtual_serial._in_raw_repl = False
+                virtual_serial._pending_reboot_output = b""
 
-                # Create virtual serial port with lazy initialization and restart callback
-                # Pass None as fd initially, it will be set when start_micropython is called
-                virtual_serial = VirtualSerialPort(
-                    None,  # Will be set by lazy start
-                    timeout=0.1,
-                    lazy_start_callback=start_micropython,
-                    restart_callback=restart_micropython,
-                )
-                # Set fd to None to enable PTY mode after lazy start
-                virtual_serial.fd = None
-                settings = virtual_serial.get_settings()
-
-                # Create redirector and start data transfer
+                # Create redirector for this connection
                 r = Redirector(virtual_serial, client_socket, args.verbosity > 0)
 
                 try:
@@ -660,32 +754,8 @@ when the connection closes.
                     logging.info("Disconnected")
                     r.stop()
                     client_socket.close()
-
-                    # Close the master fd if it was created
-                    if master_fd is not None:
-                        try:
-                            os.close(master_fd)
-                        except:
-                            pass
-
-                    # Close slave fd if it wasn't closed yet
-                    if slave_fd is not None:
-                        try:
-                            os.close(slave_fd)
-                        except:
-                            pass
-
-                    # Terminate MicroPython process if it was started
-                    if process and process.poll() is None:
-                        logging.info("Terminating MicroPython process...")
-                        process.terminate()
-                        try:
-                            process.wait(timeout=2)
-                        except subprocess.TimeoutExpired:
-                            logging.warning("MicroPython process did not terminate, killing...")
-                            process.kill()
-                            process.wait()
-                    process = None
+                    # Note: In persistent mode, we do NOT close master_fd or terminate process
+                    # The MicroPython process keeps running for the next connection
 
             except KeyboardInterrupt:
                 sys.stdout.write("\n")
@@ -696,12 +766,20 @@ when the connection closes.
                 logging.error(f"Unexpected error: {e}", exc_info=args.verbosity > 1)
 
     finally:
-        # Clean up
+        # Clean up - only on bridge shutdown
+        logging.info("Shutting down bridge...")
+        if master_fd is not None:
+            try:
+                os.close(master_fd)
+            except:
+                pass
         if process and process.poll() is None:
+            logging.info("Terminating MicroPython process...")
             process.terminate()
             try:
                 process.wait(timeout=2)
             except subprocess.TimeoutExpired:
+                logging.warning("MicroPython process did not terminate, killing...")
                 process.kill()
                 process.wait()
         srv.close()

@@ -14,7 +14,7 @@ RFC 2217 is a protocol that extends Telnet to support serial port control. This 
 ## Requirements
 
 - Python 3.x
-- pyserial package (usually `python3-serial` or `pip install pyserial`)
+- pyserial package (also used by mpremote)
 - MicroPython unix executable (built from `ports/unix/`)
 
 ## Usage
@@ -22,27 +22,62 @@ RFC 2217 is a protocol that extends Telnet to support serial port control. This 
 ### Basic Usage
 
 ```bash
+# From the tools directory - uses default path automatically
+cd tools
+python3 mp_rfc2217_bridge.py
+
+# From the repository root
+python3 tools/mp_rfc2217_bridge.py
+
+# With a custom MicroPython path
 python3 tools/mp_rfc2217_bridge.py /path/to/micropython
 ```
 
-This will start an RFC 2217 server on the default port 2217.
+The script automatically uses `../ports/unix/build-standard/micropython` relative to its location, so you don't need to specify a path when running from the MicroPython repository.
 
-### With Options
+### Bridge Options
 
 ```bash
-python3 tools/mp_rfc2217_bridge.py -p 2217 -v ./ports/unix/build-standard/micropython
+python3 tools/mp_rfc2217_bridge.py -p 2217 -v
 ```
 
 Options:
+- `MICROPYTHON_PATH`: Optional path to the MicroPython executable (default: `../ports/unix/build-standard/micropython` relative to script)
 - `-p PORT, --port PORT`: Local TCP port to listen on (default: 2217)
 - `-H HOST, --host HOST`: Local host/interface to bind to (default: all interfaces)
-- `-v, --verbose`: Increase verbosity (can be repeated: -v, -vv, -vvv)
-- `--micropython-args ARGS`: Additional arguments to pass to MicroPython
+- `-v, --verbose`: Increase bridge verbosity (can be repeated: -v, -vv, -vvv)
 
-### Example with Additional Arguments
+### MicroPython Options
+
+These options are passed through to the MicroPython executable:
+
+- `-O`: Apply bytecode optimizations (can be repeated: `-O`, `-OO`, `-OOO`)
+- `-X OPTION`: Implementation-specific options (e.g., `-X heapsize=4M`, `-X emit=native`)
+- `--cwd DIR`: Working directory for MicroPython (used as filesystem root for unix port)
+- `--mp-verbose`: MicroPython verbose mode (trace operations); can be repeated
+- `--micropython-args ARGS`: Additional raw arguments to pass to MicroPython
+
+### Examples
 
 ```bash
-python3 tools/mp_rfc2217_bridge.py --micropython-args "-i script.py" ./micropython
+# Default MicroPython, default port
+python3 tools/mp_rfc2217_bridge.py
+
+# With bytecode optimization level 2
+python3 tools/mp_rfc2217_bridge.py -O -O
+
+# Use an empty directory as filesystem root
+mkdir -p /tmp/mp_root
+python3 tools/mp_rfc2217_bridge.py --cwd /tmp/mp_root
+
+# With custom heap size and native code emission
+python3 tools/mp_rfc2217_bridge.py -X heapsize=4M -X emit=native
+
+# Custom MicroPython path with options
+python3 tools/mp_rfc2217_bridge.py ./my_micropython -O -O -X heapsize=4M
+
+# Bridge verbose and MicroPython verbose
+python3 tools/mp_rfc2217_bridge.py -vv --mp-verbose
 ```
 
 ## Connecting to the Server
@@ -78,21 +113,21 @@ pyserial-miniterm rfc2217://localhost:2217 115200
 
 ### Using mpremote
 
-⚠️ **Note**: The unix port of MicroPython doesn't output the "soft reboot" message that mpremote expects after a soft reset. This is a limitation of the unix port itself.
-
-**Solution**: Use the `resume` keyword to skip the soft reset:
+The bridge fully supports mpremote commands:
 
 ```bash
-# Use 'resume' to skip soft reset - this works perfectly:
-mpremote connect rfc2217://localhost:2217 resume eval "print('Hello')"
-mpremote connect rfc2217://localhost:2217 resume fs ls
-mpremote connect rfc2217://localhost:2217 resume exec script.py
+# Standard mpremote commands (with soft reset):
+mpremote connect rfc2217://localhost:2217 eval "print('Hello')"
+mpremote connect rfc2217://localhost:2217 exec script.py
 
-# Without 'resume' will fail with "could not enter raw repl" error:
-# mpremote connect rfc2217://localhost:2217 eval "print('test')"  # ✗ Fails
+# Use 'resume' to preserve state across connections:
+mpremote connect rfc2217://localhost:2217 resume exec "x = 42"
+mpremote connect rfc2217://localhost:2217 resume exec "print(x)"  # prints 42
 ```
 
-The `resume` keyword tells mpremote to skip the soft reset sequence and reuse the existing REPL session, which works perfectly with the unix port.
+The bridge behaves like a physical MCU:
+- **Without `resume`**: Each command triggers a soft reset (clears RAM state)
+- **With `resume`**: State persists between connections (process stays running)
 
 ## How It Works
 
@@ -102,7 +137,7 @@ The `resume` keyword tells mpremote to skip the soft reset sequence and reuse th
 4. **Data Bridging**: Data flows bidirectionally:
    - Client → Socket → RFC 2217 filter → PTY master → MicroPython
    - MicroPython → PTY master → RFC 2217 escape → Socket → Client
-5. **Session Management**: Each connection creates a fresh MicroPython process, which is terminated when the connection closes
+5. **Persistent Mode**: The MicroPython process persists across client connections, just like a physical MCU stays powered. State is preserved between connections when using `resume`. Soft resets (Ctrl-D) restart the process, matching real MCU behavior
 
 ## Use Cases
 
@@ -116,8 +151,8 @@ The `resume` keyword tells mpremote to skip the soft reset sequence and reuse th
 
 - **No Security**: The bridge has no authentication or encryption. Use only on trusted networks or over VPN/SSH tunnels
 - **Single Connection**: Only one client can connect at a time
-- **No Persistence**: Each connection starts a fresh MicroPython instance
-- **mpremote with Unix Port**: The unix port doesn't output "soft reboot" messages. Use `mpremote resume <command>` to skip the soft reset sequence, which works perfectly. When bridging embedded MicroPython builds, standard mpremote commands work normally.
+- **Persistent Mode**: The MicroPython process persists across connections (like a physical MCU). Use `mpremote resume` to preserve state between connections. Soft resets restart the process, clearing RAM state.
+- **Filesystem**: The unix port uses the host filesystem with the current working directory as root. Use `--cwd DIR` to specify a dedicated directory. Files persist across soft resets (unlike RAM state).
 
 ## Security Considerations
 
@@ -149,19 +184,20 @@ For secure remote access, consider:
 ## Example Session
 
 ```
-$ python3 tools/mp_rfc2217_bridge.py -v ports/unix/build-standard/micropython
-2026-01-02 20:00:00,000 - root - INFO - MicroPython RFC 2217 Bridge - type Ctrl-C to quit
-2026-01-02 20:00:00,000 - root - INFO - MicroPython executable: ports/unix/build-standard/micropython
-2026-01-02 20:00:00,000 - root - INFO - RFC 2217 server listening on 0.0.0.0:2217
-2026-01-02 20:00:00,000 - root - INFO - Connect with: mpremote connect rfc2217://localhost:2217
-2026-01-02 20:00:00,000 - root - INFO -           or: pyserial-miniterm rfc2217://localhost:2217 115200
-2026-01-02 20:00:00,000 - root - INFO - Waiting for connection...
-2026-01-02 20:00:10,000 - root - INFO - Connected by 127.0.0.1:54321
-2026-01-02 20:00:10,000 - root - INFO - Starting MicroPython: ports/unix/build-standard/micropython
+$ python3 tools/mp_rfc2217_bridge.py -v -O -O
+2026-01-03 12:00:00,000 - root - INFO - MicroPython RFC 2217 Bridge - type Ctrl-C to quit
+2026-01-03 12:00:00,000 - root - INFO - MicroPython executable: /home/user/micropython/ports/unix/build-standard/micropython
+2026-01-03 12:00:00,000 - root - INFO - MicroPython optimization: -OO
+2026-01-03 12:00:00,000 - root - INFO - RFC 2217 server listening on 0.0.0.0:2217
+2026-01-03 12:00:00,000 - root - INFO - Connect with: mpremote connect rfc2217://localhost:2217
+2026-01-03 12:00:00,000 - root - INFO -           or: pyserial-miniterm rfc2217://localhost:2217 115200
+2026-01-03 12:00:00,000 - root - INFO - Waiting for connection...
+2026-01-03 12:00:10,000 - root - INFO - Connected by 127.0.0.1:54321
+2026-01-03 12:00:10,000 - root - INFO - Starting MicroPython (lazy): /home/user/micropython/ports/unix/build-standard/micropython -O -O
 ...
-2026-01-02 20:00:20,000 - root - INFO - Disconnected
-2026-01-02 20:00:20,000 - root - INFO - Terminating MicroPython process...
-2026-01-02 20:00:20,000 - root - INFO - Waiting for connection...
+2026-01-03 12:00:20,000 - root - INFO - Disconnected
+2026-01-03 12:00:20,000 - root - INFO - Terminating MicroPython process...
+2026-01-03 12:00:20,000 - root - INFO - Waiting for connection...
 ```
 
 ## License
