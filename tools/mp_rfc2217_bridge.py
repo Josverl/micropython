@@ -4,8 +4,8 @@
 #
 # The MIT License (MIT)
 #
-# Copyright (c) 2024 MicroPython Developers
-#
+# Copyright (c) 2026 Jos Verlinde
+
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
 # in the Software without restriction, including without limitation the rights
@@ -27,14 +27,14 @@
 """
 MicroPython RFC 2217 Bridge
 
-This tool exposes a MicroPython REPL as an RFC 2217 server, allowing remote
-access to the REPL over a network connection without requiring an intermediate
-serial port.
+This tool exposes a MicroPython unix REPL as an RFC 2217 server, allowing remote
+access to the REPL over a network connection by mpremote and other tools.
 
 Usage:
-    mp_rfc2217_bridge.py [options] MICROPYTHON_PATH
+    mp_rfc2217_bridge.py [options] [MICROPYTHON_PATH]
 
 Example:
+    mp_rfc2217_bridge.py
     mp_rfc2217_bridge.py ./ports/unix/build-standard/micropython
     mp_rfc2217_bridge.py -p 2217 -v ./micropython
 
@@ -72,35 +72,29 @@ MP_BRIDGE_POLL_INTERVAL = 1  # Status line poll interval
 
 class VirtualSerialPort:
     """
-    A virtual serial port that wraps a subprocess's stdin/stdout.
+    A virtual serial port that wraps a PTY file descriptor.
     This simulates a serial port interface for the RFC 2217 PortManager.
-    Supports lazy initialization to avoid losing the banner during RFC2217 negotiation.
     Emulates soft reboot behavior for compatibility with mpremote.
     """
 
-    def __init__(self, fd_or_process, timeout=1, lazy_start_callback=None, restart_callback=None):
-        """Initialize with either a process or a file descriptor.
+    def __init__(
+        self,
+        fd: int,
+        timeout: float = 0.1,
+        restart_callback=None,
+    ):
+        """Initialize with a PTY file descriptor.
 
         Args:
-            fd_or_process: Either an integer file descriptor (PTY) or a process object
+            fd: File descriptor for the PTY master
             timeout: Read timeout in seconds
-            lazy_start_callback: Optional callback to start the process lazily
             restart_callback: Optional callback to restart the process for soft reboot
         """
-        if isinstance(fd_or_process, int):
-            # It's a file descriptor (PTY)
-            self.fd = fd_or_process
-            self.process = None
-        else:
-            # It's a process wrapper
-            self.process = fd_or_process
-            self.fd = None
-
+        self.fd = fd
+        self.process = None  # Set externally after process creation
         self.timeout = timeout
         self.in_waiting = 0
-        self.lazy_start_callback = lazy_start_callback
         self.restart_callback = restart_callback
-        self._started = False if lazy_start_callback else True
         self._in_raw_repl = False
         self._pending_reboot_output = b""
         # Simulate serial port settings
@@ -122,22 +116,10 @@ class VirtualSerialPort:
         self._settings_backup = None
         self.name = "MicroPython REPL (subprocess)"
         self._check_buffer_lock = threading.Lock()
-        self._start_lock = threading.Lock()
         self._closed = False
 
-    def _ensure_started(self):
-        """Ensure the process has been started (for lazy initialization)."""
-        with self._start_lock:
-            if not self._started and self.lazy_start_callback:
-                self._started = True
-                result = self.lazy_start_callback()
-                if result:
-                    self.fd, self.process = result
-
     def read(self, size=1):
-        """Read up to size bytes from the subprocess stdout or PTY."""
-        self._ensure_started()
-
+        """Read up to size bytes from the PTY."""
         # If we have pending reboot output, return that first
         if self._pending_reboot_output:
             chunk = self._pending_reboot_output[:size]
@@ -147,110 +129,58 @@ class VirtualSerialPort:
         if self._closed:
             return b""
 
-        if self.fd is not None:
-            # PTY mode
-            try:
-                ready, _, _ = select.select([self.fd], [], [], self.timeout)
-                if ready:
-                    data = os.read(self.fd, size)
-                    # Detect raw REPL entry from response
-                    if b"raw REPL; CTRL-B to exit" in data:
-                        self._in_raw_repl = True
-                    # Detect raw REPL exit
-                    elif b">>>" in data and self._in_raw_repl:
-                        self._in_raw_repl = False
-                    return data
-            except (OSError, ValueError):
-                self._closed = True
-            return b""
-        else:
-            # Process mode (old code)
-            if not self.process or self.process.poll() is not None:
-                return b""
-
-            # Use select to check if data is available with timeout
-            ready, _, _ = select.select([self.process.stdout], [], [], self.timeout)
+        try:
+            ready, _, _ = select.select([self.fd], [], [], self.timeout)
             if ready:
-                try:
-                    data = os.read(self.process.stdout.fileno(), size)
-                    return data
-                except OSError:
-                    return b""
-            return b""
+                data = os.read(self.fd, size)
+                # Detect raw REPL entry from response
+                if b"raw REPL; CTRL-B to exit" in data:
+                    self._in_raw_repl = True
+                # Detect raw REPL exit
+                elif b">>>" in data and self._in_raw_repl:
+                    self._in_raw_repl = False
+                return data
+        except (OSError, ValueError):
+            self._closed = True
+        return b""
 
     def write(self, data):
-        """Write data to the subprocess stdin or PTY."""
-        self._ensure_started()
-
+        """Write data to the PTY."""
         if self._closed:
             return 0
 
         # Track raw REPL state based on client commands
         # Ctrl-A (0x01) enters raw REPL, Ctrl-B (0x02) exits raw REPL
-        if b'\x01' in data:
+        if b"\x01" in data:
             self._in_raw_repl = True
-        elif b'\x02' in data:
+        elif b"\x02" in data:
             self._in_raw_repl = False
-        
-        logging.getLogger("virtualserial").debug(f"write({len(data)} bytes): {data!r}")
 
-        # Note: Ctrl-D is passed through to the process without interception.
+        logging.getLogger("virtualserial").debug(f"write({len(data)} bytes): {data!r}")
         # When the process exits (from Ctrl-D or any other reason), the reader
         # thread detects it and handles the restart automatically.
 
-        if self.fd is not None:
-            # PTY mode
-            try:
-                return os.write(self.fd, data)
-            except (OSError, ValueError):
-                self._closed = True
-                return 0
-        else:
-            # Process mode (old code)
-            if not self.process or self.process.poll() is not None:
-                return 0
-
-            try:
-                self.process.stdin.write(data)
-                self.process.stdin.flush()
-                return len(data)
-            except (OSError, BrokenPipeError):
-                return 0
+        try:
+            return os.write(self.fd, data)
+        except (OSError, ValueError):
+            self._closed = True
+            return 0
 
     def update_in_waiting(self):
         """Update the number of bytes waiting to be read."""
-        # Don't start the process just to check if data is waiting
-        if not self._started:
-            self.in_waiting = 0
-            return
 
         with self._check_buffer_lock:
             if self._closed:
                 self.in_waiting = 0
                 return
 
-            if self.fd is not None:
-                # PTY mode - use a small timeout to avoid busy polling
-                try:
-                    ready, _, _ = select.select([self.fd], [], [], 0.05)
-                    self.in_waiting = 1 if ready else 0
-                except (OSError, ValueError):
-                    self._closed = True
-                    self.in_waiting = 0
-            else:
-                # Process mode (old code)
-                if not self.process or self.process.poll() is not None:
-                    self.in_waiting = 0
-                    return
-
-                # Check if data is available without blocking
-                ready, _, _ = select.select([self.process.stdout], [], [], 0)
-                if ready:
-                    # There's data available, but we don't know exactly how much
-                    # Set to 1 to indicate data is available
-                    self.in_waiting = 1
-                else:
-                    self.in_waiting = 0
+            # Use a small timeout to avoid busy polling
+            try:
+                ready, _, _ = select.select([self.fd], [], [], 0.05)
+                self.in_waiting = 1 if ready else 0
+            except (OSError, ValueError):
+                self._closed = True
+                self.in_waiting = 0
 
     def get_settings(self):
         """Get current serial port settings."""
@@ -287,15 +217,8 @@ class VirtualSerialPort:
         pass
 
     def flush(self):
-        """Flush output buffer."""
-        if self._closed:
-            return
-
-        if self.fd is None and self.process and self.process.poll() is None:
-            try:
-                self.process.stdin.flush()
-            except (OSError, BrokenPipeError):
-                pass
+        """Flush output buffer (no-op for PTY mode)."""
+        pass
 
 
 class Redirector:
@@ -308,8 +231,11 @@ class Redirector:
         self.serial = virtual_serial
         self.socket = socket_conn
         self._write_lock = threading.Lock()
+        # Note: PortManager expects a connection with write() method - Redirector provides this
         self.rfc2217 = serial.rfc2217.PortManager(
-            self.serial, self, logger=logging.getLogger("rfc2217.server") if debug else None
+            self.serial,
+            self,  # type: ignore[arg-type]
+            logger=logging.getLogger("rfc2217.server") if debug else None,
         )
         self.log = logging.getLogger("redirector")
         self.alive = False
@@ -348,7 +274,7 @@ class Redirector:
                         )
 
                         # Remember if we were in raw REPL before restart
-                        was_in_raw_repl = getattr(self.serial, '_in_raw_repl', False)
+                        was_in_raw_repl = getattr(self.serial, "_in_raw_repl", False)
                         self.log.debug(f"was_in_raw_repl = {was_in_raw_repl}")
 
                         # Only send early soft reboot message if NOT in raw REPL
@@ -377,6 +303,7 @@ class Redirector:
                                     time.sleep(MP_BRIDGE_PROCESS_RESTART_DELAY)
 
                                     # Read the banner from the new process (discard it)
+                                    banner = b""
                                     try:
                                         ready, _, _ = select.select(
                                             [self.serial.fd], [], [], MP_BRIDGE_BANNER_READ_TIMEOUT
@@ -389,27 +316,42 @@ class Redirector:
 
                                     # If we were in raw REPL, re-enter it and send expected response
                                     if was_in_raw_repl:
-                                        self.log.info("Re-entering raw REPL mode after soft reboot")
+                                        self.log.info(
+                                            "Re-entering raw REPL mode after soft reboot"
+                                        )
                                         try:
                                             # Send Ctrl-A to enter raw REPL
-                                            os.write(self.serial.fd, b'\x01')
+                                            os.write(self.serial.fd, b"\x01")
                                             time.sleep(MP_BRIDGE_RAW_REPL_ENTRY_DELAY)
-                                            
+
                                             # Read and discard the raw REPL response from MicroPython
                                             ready, _, _ = select.select(
-                                                [self.serial.fd], [], [], MP_BRIDGE_BANNER_READ_TIMEOUT
+                                                [self.serial.fd],
+                                                [],
+                                                [],
+                                                MP_BRIDGE_BANNER_READ_TIMEOUT,
                                             )
                                             if ready:
                                                 raw_response = os.read(self.serial.fd, 4096)
-                                                self.log.debug(f"Raw REPL response: {raw_response!r}")
-                                            
+                                                self.log.debug(
+                                                    f"Raw REPL response: {raw_response!r}"
+                                                )
+
                                             # Send the expected soft reboot response to the client
-                                            self.write(b"".join(self.rfc2217.escape(MPREMOTE_RAW_REPL_SOFT_REBOOT)))
+                                            self.write(
+                                                b"".join(
+                                                    self.rfc2217.escape(
+                                                        MPREMOTE_RAW_REPL_SOFT_REBOOT
+                                                    )
+                                                )
+                                            )
                                             self.serial._in_raw_repl = True
                                         except Exception as e:
                                             self.log.error(f"Error re-entering raw REPL: {e}")
                                             # Fallback: just send the soft reboot message
-                                            self.write(b"".join(self.rfc2217.escape(MPREMOTE_SOFT_REBOOT)))
+                                            self.write(
+                                                b"".join(self.rfc2217.escape(MPREMOTE_SOFT_REBOOT))
+                                            )
                                     else:
                                         # Not in raw REPL, forward the banner to the client
                                         try:
@@ -521,7 +463,7 @@ Examples:
         "MICROPYTHON_PATH",
         nargs="?",
         default=default_micropython,
-        help=f"Path to the MicroPython executable (default: %(default)s)",
+        help="Path to the MicroPython executable (default: %(default)s)",
     )
 
     parser.add_argument(
@@ -720,7 +662,6 @@ Examples:
     virtual_serial = VirtualSerialPort(
         master_fd,
         timeout=0.1,
-        lazy_start_callback=None,  # No lazy start in persistent mode
         restart_callback=restart_micropython,
     )
     virtual_serial.process = process
