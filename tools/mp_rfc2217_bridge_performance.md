@@ -4,9 +4,60 @@
 
 The RFC 2217 bridge is noticeably slower than a physical serial connection to an MCU, particularly visible when running filesystem tests like `test_filesystem.sh`.
 
-## Root Cause Analysis
+## Key Finding: Process Startup is NOT the Bottleneck
 
-### 1. Double Select Timeout in Read Path (MAJOR)
+Measurements show that MicroPython unix port is extremely fast to start:
+
+| Operation | Time |
+|-----------|------|
+| Process spawn (subprocess.Popen) | **0.7ms** |
+| Banner output | **0.9ms** |
+| Raw REPL entry (Ctrl-A response) | **0.1ms** |
+| **Total** | **1.7ms** |
+
+A process pool would NOT help - the real bottleneck is elsewhere.
+
+## The Actual Bottleneck: RFC 2217 Protocol Negotiation
+
+| Operation | Time |
+|-----------|------|
+| `socket://` connection (raw TCP) | **13ms** |
+| `rfc2217://` connection (with negotiation) | **358ms** |
+| **Difference** | **345ms** |
+
+The pyserial RFC 2217 client has multiple `time.sleep()` calls during option negotiation:
+```python
+# In serial/rfc2217.py:
+time.sleep(0.05)  # Multiple occurrences in option negotiation loops
+time.sleep(0.3)   # After socket close
+time.sleep(0.1)   # In setup
+```
+
+## Solution: Dual-Port Architecture
+
+The bridge now supports two protocols simultaneously:
+- **Port 2217 (RFC 2217):** Compatible with all pyserial tools
+- **Port 2218 (Raw socket):** Faster, no protocol overhead
+
+### Performance Comparison (Optimized Bridge)
+
+| Protocol | Mode | Time | vs Baseline |
+|----------|------|------|-------------|
+| RFC 2217 | soft reset | **0.877s** | baseline |
+| RFC 2217 | resume | **0.951s** | - |
+| Socket | soft reset | **0.636s** | **27% faster** |
+| Socket | resume | **0.426s** | **51% faster** |
+
+### Recommendation
+
+For best performance, use:
+```bash
+mpremote connect socket://localhost:2218 resume eval "1+1"  # 426ms
+```
+
+## Legacy Analysis: Bridge-Side Bottlenecks (Now Fixed)
+
+### 1. Double Select Timeout in Read Path (FIXED)
 
 **Location:** `VirtualSerialPort.update_in_waiting()` and `VirtualSerialPort.read()`
 
@@ -402,20 +453,45 @@ This gives us:
 
 ## Benchmarking
 
-Before and after comparison for `test_filesystem.sh`:
+### Actual Performance Measurements
+
+After implementing the quick fixes (reduced timeouts, larger buffers) and dual-port support:
+
+| Protocol | Mode | Time | Notes |
+|----------|------|------|-------|
+| RFC 2217 | soft reset | **1.018s** | Baseline |
+| RFC 2217 | resume | **0.849s** | 17% faster |
+| Socket | soft reset | **0.735s** | 28% faster than RFC2217 |
+| Socket | resume | **0.439s** | **2.3x faster** than baseline |
+
+**Key findings:**
+- The socket protocol eliminates RFC 2217 option negotiation overhead (~400ms)
+- Using `resume` eliminates soft reboot overhead (~300ms)
+- Combining both: **socket + resume = 0.439s** (2.3x faster than RFC 2217 + soft reset)
+
+### Dual-Port Support
+
+The bridge now supports two protocols simultaneously:
+- **Port 2217 (RFC 2217):** Compatible with all pyserial tools, supports serial port emulation
+- **Port 2218 (Raw socket):** Faster, no protocol overhead, recommended for mpremote
 
 ```bash
-# Baseline measurement
-time ./run-mpremote-tests.sh -t rfc2217://localhost:2217 test_filesystem.sh
+# Fast connection (recommended)
+mpremote connect socket://localhost:2218 resume eval "1+1"
 
-# After optimization
-time ./run-mpremote-tests.sh -t rfc2217://localhost:2217 test_filesystem.sh
+# Compatible connection (for tools that need serial port emulation)
+mpremote connect rfc2217://localhost:2217 eval "1+1"
 ```
 
-Expected metrics:
-- Total test time reduction: 50-80%
-- Per-command latency reduction: 5-10x
-- Throughput for file transfers: 2-5x
+### Benchmark Commands
+
+```bash
+# Single command timing
+time mpremote connect socket://localhost:2218 resume eval "1+1"
+
+# Filesystem test suite
+time ./run-mpremote-tests.sh -t socket://localhost:2218 test_filesystem.sh
+```
 
 ## Code Changes Summary
 

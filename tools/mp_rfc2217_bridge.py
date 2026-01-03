@@ -64,9 +64,11 @@ MPREMOTE_SOFT_REBOOT = b"soft reboot\r\n"
 MPREMOTE_RAW_REPL_SOFT_REBOOT = b"OK\r\nMPY: soft reboot\r\nraw REPL; CTRL-B to exit\r\n>"
 
 # Bridge timing constants (in seconds)
-MP_BRIDGE_RAW_REPL_ENTRY_DELAY = 0.05  # Delay after sending Ctrl-A to enter raw REPL
-MP_BRIDGE_BANNER_READ_TIMEOUT = 0.2  # Timeout for reading banner
-MP_BRIDGE_PROCESS_RESTART_DELAY = 0.1  # Delay after restarting process
+# Note: MicroPython unix port starts in ~2ms and responds to raw REPL in <1ms
+# These delays are safety margins, not performance requirements
+MP_BRIDGE_RAW_REPL_ENTRY_DELAY = 0.005  # Delay after sending Ctrl-A (5ms is plenty)
+MP_BRIDGE_BANNER_READ_TIMEOUT = 0.05  # Timeout for reading banner (50ms max)
+MP_BRIDGE_PROCESS_RESTART_DELAY = 0.01  # Delay after restarting process (10ms)
 MP_BRIDGE_POLL_INTERVAL = 1  # Status line poll interval
 MP_BRIDGE_READ_TIMEOUT = 0.01  # Read timeout for PTY (10ms for responsiveness)
 MP_BRIDGE_READ_BUFFER_SIZE = 4096  # Read buffer size for PTY
@@ -432,6 +434,173 @@ class Redirector:
                 self.thread_poll.join(timeout=1)
 
 
+class SocketRedirector:
+    """
+    Simple socket redirector - direct byte pass-through without RFC 2217 overhead.
+    Much faster than RFC 2217 for local connections.
+    """
+
+    def __init__(self, virtual_serial, socket_conn, debug=False):
+        self.serial = virtual_serial
+        self.socket = socket_conn
+        self._write_lock = threading.Lock()
+        self.log = logging.getLogger("socket-redirector")
+        self.alive = False
+
+    def shortcircuit(self):
+        """Connect the subprocess to the TCP port by copying data bidirectionally."""
+        self.alive = True
+        self.thread_read = threading.Thread(target=self.reader)
+        self.thread_read.daemon = True
+        self.thread_read.name = "socket:subprocess->socket"
+        self.thread_read.start()
+        self.writer()
+
+    def reader(self):
+        """Loop forever and copy subprocess output -> socket."""
+        self.log.debug("reader thread started")
+        while self.alive:
+            try:
+                # Check if process has exited (e.g., from Ctrl-D)
+                if hasattr(self.serial, "process") and self.serial.process:
+                    if self.serial.process.poll() is not None:
+                        self.log.info(
+                            "MicroPython process exited - performing auto-restart (soft reboot)"
+                        )
+
+                        # Remember if we were in raw REPL before restart
+                        was_in_raw_repl = getattr(self.serial, "_in_raw_repl", False)
+                        self.log.debug(f"was_in_raw_repl = {was_in_raw_repl}")
+
+                        # Only send early soft reboot message if NOT in raw REPL
+                        if not was_in_raw_repl:
+                            try:
+                                self.write(MPREMOTE_SOFT_REBOOT)
+                            except:
+                                pass
+
+                        # Restart the process
+                        if (
+                            hasattr(self.serial, "restart_callback")
+                            and self.serial.restart_callback
+                        ):
+                            try:
+                                result = self.serial.restart_callback()
+                                if result:
+                                    self.serial.fd, self.serial.process = result
+                                    self.serial._in_raw_repl = False
+                                    self.serial._closed = False
+                                    self.log.info("Process restarted successfully")
+
+                                    # Give process time to start and output banner
+                                    time.sleep(MP_BRIDGE_PROCESS_RESTART_DELAY)
+
+                                    # Read the banner from the new process (discard it)
+                                    banner = b""
+                                    try:
+                                        ready, _, _ = select.select(
+                                            [self.serial.fd], [], [], MP_BRIDGE_BANNER_READ_TIMEOUT
+                                        )
+                                        if ready:
+                                            banner = os.read(self.serial.fd, 4096)
+                                            self.log.debug(f"Read banner: {banner!r}")
+                                    except Exception as e:
+                                        self.log.error(f"Error reading banner: {e}")
+
+                                    # If we were in raw REPL, re-enter it
+                                    if was_in_raw_repl:
+                                        self.log.info(
+                                            "Re-entering raw REPL mode after soft reboot"
+                                        )
+                                        try:
+                                            os.write(self.serial.fd, b"\x01")
+                                            time.sleep(MP_BRIDGE_RAW_REPL_ENTRY_DELAY)
+
+                                            ready, _, _ = select.select(
+                                                [self.serial.fd],
+                                                [],
+                                                [],
+                                                MP_BRIDGE_BANNER_READ_TIMEOUT,
+                                            )
+                                            if ready:
+                                                raw_response = os.read(self.serial.fd, 4096)
+                                                self.log.debug(
+                                                    f"Raw REPL response: {raw_response!r}"
+                                                )
+
+                                            # Send the expected soft reboot response
+                                            self.write(MPREMOTE_RAW_REPL_SOFT_REBOOT)
+                                            self.serial._in_raw_repl = True
+                                        except Exception as e:
+                                            self.log.error(f"Error re-entering raw REPL: {e}")
+                                            self.write(MPREMOTE_SOFT_REBOOT)
+                                    else:
+                                        # Not in raw REPL, forward the banner
+                                        try:
+                                            if banner:
+                                                self.write(banner)
+                                        except:
+                                            pass
+                            except Exception as e:
+                                self.log.error(f"Process restart failed: {e}")
+                                self.alive = False
+                                break
+                        else:
+                            self.log.error("No restart callback available")
+                            self.alive = False
+                            break
+
+                        continue
+
+                # Read data from PTY and send to socket (no escaping needed)
+                data = self.serial.read(MP_BRIDGE_READ_BUFFER_SIZE)
+                if data:
+                    self.write(data)
+            except socket.error as msg:
+                self.log.error("{}".format(msg))
+                break
+            except Exception as e:
+                self.log.error("Reader error: {}".format(e))
+                break
+        self.alive = False
+        self.log.debug("reader thread terminated")
+
+    def write(self, data):
+        """Thread-safe socket write - direct pass-through."""
+        with self._write_lock:
+            try:
+                self.socket.sendall(data)
+            except socket.error:
+                self.alive = False
+
+    def writer(self):
+        """Loop forever and copy socket -> subprocess input."""
+        while self.alive:
+            try:
+                data = self.socket.recv(4096)
+                if not data:
+                    break
+
+                # Direct pass-through - no RFC 2217 filtering needed
+                self.serial.write(data)
+
+            except socket.error as msg:
+                self.log.error("{}".format(msg))
+                break
+            except Exception as e:
+                self.log.error("Writer error: {}".format(e))
+                break
+        self.stop()
+
+    def stop(self):
+        """Stop copying data."""
+        self.log.debug("stopping")
+        if self.alive:
+            self.alive = False
+            if hasattr(self, "thread_read"):
+                self.thread_read.join(timeout=1)
+
+
 def main():
     # Determine default MicroPython path relative to this script
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -441,7 +610,7 @@ def main():
     default_micropython = os.path.normpath(default_micropython)
 
     parser = argparse.ArgumentParser(
-        description="MicroPython RFC 2217 Bridge - Expose MicroPython REPL via RFC 2217.",
+        description="MicroPython Bridge - Expose MicroPython REPL via RFC 2217 and raw socket.",
         epilog="""\
 NOTE: No security measures are implemented. Anyone can remotely connect
 to this service over the network.
@@ -452,9 +621,14 @@ it waits for the next connect.
 The MicroPython process persists across connections (like a physical MCU).
 Use 'mpremote resume' to preserve state between connections.
 
+Two protocols are supported:
+  - RFC 2217 (port 2217): Compatible with pyserial, supports serial port emulation
+  - Raw socket (port 2218): Faster, no protocol overhead (~300ms faster per connection)
+
 Examples:
   %(prog)s                           # Use default MicroPython
-  %(prog)s -p 2217                   # Use port 2217 (default)
+  %(prog)s -p 2217 -s 2218           # Use RFC 2217 on 2217, socket on 2218 (default)
+  %(prog)s -s 0                      # Disable raw socket port
   %(prog)s ./my_micropython          # Use custom MicroPython path
   %(prog)s --cwd /tmp/mp_root        # Use /tmp/mp_root as filesystem root
   %(prog)s -O -O -X heapsize=4M      # Pass options to MicroPython
@@ -473,9 +647,18 @@ Examples:
         "-p",
         "--port",
         type=int,
-        help="Local TCP port (default: %(default)s)",
+        help="RFC 2217 TCP port (default: %(default)s)",
         metavar="PORT",
         default=2217,
+    )
+
+    parser.add_argument(
+        "-s",
+        "--socket-port",
+        type=int,
+        help="Raw socket TCP port for faster connections (default: %(default)s, 0 to disable)",
+        metavar="PORT",
+        default=2218,
     )
 
     parser.add_argument(
@@ -571,7 +754,7 @@ Examples:
     )
     logging.getLogger("rfc2217").setLevel(level)
 
-    logging.info("MicroPython RFC 2217 Bridge - type Ctrl-C to quit")
+    logging.info("MicroPython Bridge - type Ctrl-C to quit")
     logging.info(f"MicroPython executable: {args.MICROPYTHON_PATH}")
     if args.cwd:
         logging.info(f"MicroPython working directory: {args.cwd}")
@@ -582,20 +765,37 @@ Examples:
     if args.mp_impl_opts:
         logging.info(f"MicroPython options: {', '.join(args.mp_impl_opts)}")
 
-    # Create server socket
-    srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    bind_addr = args.host or "0.0.0.0"
+    servers = []  # List of (socket, protocol_name, redirector_class)
+
+    # Create RFC 2217 server socket
+    srv_rfc2217 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    srv_rfc2217.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     try:
-        srv.bind((args.host, args.port))
-        srv.listen(1)
+        srv_rfc2217.bind((args.host, args.port))
+        srv_rfc2217.listen(1)
+        servers.append((srv_rfc2217, "rfc2217", Redirector))
+        logging.info(f"RFC 2217 server listening on {bind_addr}:{args.port}")
+        logging.info(f"  Connect with: mpremote connect rfc2217://localhost:{args.port}")
     except OSError as e:
-        logging.error(f"Could not bind to {args.host}:{args.port}: {e}")
+        logging.error(f"Could not bind RFC 2217 to {args.host}:{args.port}: {e}")
         sys.exit(1)
 
-    bind_addr = args.host or "0.0.0.0"
-    logging.info(f"RFC 2217 server listening on {bind_addr}:{args.port}")
-    logging.info("Connect with: mpremote connect rfc2217://localhost:{}".format(args.port))
-    logging.info("          or: pyserial-miniterm rfc2217://localhost:{} 115200".format(args.port))
+    # Create raw socket server (optional)
+    srv_socket = None
+    if args.socket_port > 0:
+        srv_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        srv_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            srv_socket.bind((args.host, args.socket_port))
+            srv_socket.listen(1)
+            servers.append((srv_socket, "socket", SocketRedirector))
+            logging.info(f"Raw socket server listening on {bind_addr}:{args.socket_port}")
+            logging.info(f"  Connect with: mpremote connect socket://localhost:{args.socket_port}")
+        except OSError as e:
+            logging.warning(f"Could not bind raw socket to {args.host}:{args.socket_port}: {e}")
+            srv_socket = None
+
     logging.info("Persistent mode: MicroPython process persists across connections")
 
     # Prepare command for MicroPython (done once, outside connection loop)
@@ -669,37 +869,48 @@ Examples:
     )
     virtual_serial.process = process
 
+    # Build a mapping from server socket to (protocol_name, redirector_class)
+    server_map = {srv: (proto, redir_cls) for srv, proto, redir_cls in servers}
+    server_sockets = [srv for srv, _, _ in servers]
+
     try:
         while True:
             try:
                 logging.info("Waiting for connection...")
-                client_socket, addr = srv.accept()
-                logging.info(f"Connected by {addr[0]}:{addr[1]}")
-                client_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 
-                # Check if process is still alive, restart if needed
-                if process.poll() is not None:
-                    logging.info("MicroPython process has exited, restarting...")
-                    master_fd, process = create_micropython_process()
-                    virtual_serial.fd = master_fd
-                    virtual_serial.process = process
-                    virtual_serial._closed = False
+                # Use select to wait for connections on any server
+                readable, _, _ = select.select(server_sockets, [], [])
 
-                # Reset virtual serial state for new connection
-                virtual_serial._in_raw_repl = False
-                virtual_serial._pending_reboot_output = b""
+                for srv in readable:
+                    protocol_name, redirector_class = server_map[srv]
 
-                # Create redirector for this connection
-                r = Redirector(virtual_serial, client_socket, args.verbosity > 0)
+                    client_socket, addr = srv.accept()
+                    logging.info(f"Connected via {protocol_name} by {addr[0]}:{addr[1]}")
+                    client_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 
-                try:
-                    r.shortcircuit()
-                finally:
-                    logging.info("Disconnected")
-                    r.stop()
-                    client_socket.close()
-                    # Note: In persistent mode, we do NOT close master_fd or terminate process
-                    # The MicroPython process keeps running for the next connection
+                    # Check if process is still alive, restart if needed
+                    if process.poll() is not None:
+                        logging.info("MicroPython process has exited, restarting...")
+                        master_fd, process = create_micropython_process()
+                        virtual_serial.fd = master_fd
+                        virtual_serial.process = process
+                        virtual_serial._closed = False
+
+                    # Reset virtual serial state for new connection
+                    virtual_serial._in_raw_repl = False
+                    virtual_serial._pending_reboot_output = b""
+
+                    # Create appropriate redirector for this connection
+                    r = redirector_class(virtual_serial, client_socket, args.verbosity > 0)
+
+                    try:
+                        r.shortcircuit()
+                    finally:
+                        logging.info("Disconnected")
+                        r.stop()
+                        client_socket.close()
+                        # Note: In persistent mode, we do NOT close master_fd or terminate process
+                        # The MicroPython process keeps running for the next connection
 
             except KeyboardInterrupt:
                 sys.stdout.write("\n")
@@ -726,7 +937,12 @@ Examples:
                 logging.warning("MicroPython process did not terminate, killing...")
                 process.kill()
                 process.wait()
-        srv.close()
+        # Close all server sockets
+        for srv, _, _ in servers:
+            try:
+                srv.close()
+            except:
+                pass
         logging.info("--- exit ---")
 
 
