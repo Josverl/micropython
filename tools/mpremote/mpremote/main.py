@@ -42,6 +42,7 @@ from .commands import (
 )
 from .mip import do_mip
 from .repl import do_repl
+from .verbose import set_verbosity_level
 
 _PROG = "mpremote"
 
@@ -62,6 +63,13 @@ def do_help(state, _args=None):
 
     print(_PROG, "-- MicroPython remote control")
     print("See https://docs.micropython.org/en/latest/reference/mpremote.html")
+    print()
+    print("Usage:")
+    print(f"  {_PROG} [-q/--quiet|-v/--verbose] <command> [<args>] [+ <command> [<args>] ...]")
+    print()
+    print("Global options:")
+    print("  -q, --quiet     suppress verbose output (quiet mode)")
+    print("  -v, --verbose   show additional debug output (verbose mode)")
 
     print("\nList of commands:")
     print_commands_help(
@@ -533,6 +541,7 @@ class State:
         self.transport = None
         self._did_action = False
         self._auto_soft_reset = True
+        # Note: quiet is deprecated, use global verbosity level instead
 
     def did_action(self):
         self._did_action = True
@@ -561,7 +570,21 @@ def main():
     config = load_user_config()
     prepare_command_expansions(config)
 
+    # Parse global arguments first
     remaining_args = sys.argv[1:]
+    verbosity_level = 1  # default: normal
+    
+    # Check for global verbosity flags
+    if remaining_args and remaining_args[0] in ("-q", "--quiet"):
+        verbosity_level = 0  # quiet
+        remaining_args = remaining_args[1:]
+    elif remaining_args and remaining_args[0] in ("-v", "--verbose"):
+        verbosity_level = 2  # verbose/debug
+        remaining_args = remaining_args[1:]
+    
+    # Set global verbosity level
+    set_verbosity_level(verbosity_level)
+    
     state = State()
 
     try:

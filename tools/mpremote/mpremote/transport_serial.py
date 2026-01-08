@@ -100,10 +100,10 @@ class SerialTransport(Transport):
             sys.stdout.flush()
         else:
             if delayed:
-                print("")
+                print("", file=sys.stderr)
             raise TransportError("failed to access " + device)
         if delayed:
-            print("")
+            print("", file=sys.stderr)
 
     def close(self):
         # ESP Windows quirk: Prevent target from resetting when Windows clears DTR before RTS
@@ -175,7 +175,7 @@ class SerialTransport(Transport):
                 1, b"raw REPL; CTRL-B to exit\r\n>", timeout_overall=timeout_overall
             )
             if not data.endswith(b"raw REPL; CTRL-B to exit\r\n>"):
-                print(data)
+                print(data, file=sys.stderr)
                 raise TransportError("could not enter raw repl")
 
             self.serial.write(b"\x04")  # ctrl-D: soft reset
@@ -185,12 +185,12 @@ class SerialTransport(Transport):
             # and before "raw REPL".
             data = self.read_until(1, b"soft reboot\r\n", timeout_overall=timeout_overall)
             if not data.endswith(b"soft reboot\r\n"):
-                print(data)
+                print(data, file=sys.stderr)
                 raise TransportError("could not enter raw repl")
 
         data = self.read_until(1, b"raw REPL; CTRL-B to exit\r\n", timeout_overall=timeout_overall)
         if not data.endswith(b"raw REPL; CTRL-B to exit\r\n"):
-            print(data)
+            print(data, file=sys.stderr)
             raise TransportError("could not enter raw repl")
 
         self.in_raw_repl = True
@@ -829,7 +829,7 @@ class PyboardCommand:
         self.fout.write(b)
 
     def log_cmd(self, msg):
-        print(f"[{msg}]", end="\r\n")
+        print(f"[{msg}]", end="\r\n", file=sys.stderr)
 
     def path_check(self, path):
         if not self.unsafe_links:
