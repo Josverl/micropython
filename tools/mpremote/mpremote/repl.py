@@ -1,5 +1,4 @@
-from .console import Console, ConsolePosix
-
+from .console import Console
 from .transport import TransportError
 
 
@@ -140,6 +139,12 @@ def _is_disconnect_exception(exception):
                 return True
         # Check for common disconnect messages in the exception string
         exception_str = str(exception)
-        disconnect_indicators = ["Write timeout", "Device disconnected", "ClearCommError failed"]
+        disconnect_indicators = [
+            "Write timeout",
+            "Device disconnected",
+            "ClearCommError failed",
+            "connection failed",  # rfc2217
+            "socket disconnected",  # socket
+        ]
         return any(indicator in exception_str for indicator in disconnect_indicators)
     return False
