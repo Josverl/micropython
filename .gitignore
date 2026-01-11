@@ -34,4 +34,5 @@ user.props
 /xtensa-lx106-elf/
 
 # Python coverage data files
-**/.coverage
+**/.coverage*
+
