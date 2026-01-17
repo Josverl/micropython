@@ -11,7 +11,7 @@ MicroPython is an implementation of Python 3 for microcontrollers and embedded s
 - **lib/** - External dependencies (submodules)
 - **tests/** - Test framework and test scripts
 - **docs/** - Documentation in Sphinx reStructuredText
-- **tools/** - Utilities including Python tools (some sections in MicroPython)
+- **tools/** - Various development utilities (Python tools, with some utilities written in MicroPython)
 
 ## Multi-Port Architecture
 
@@ -187,7 +187,7 @@ MicroPython runs on constrained devices (as small as 256KB flash + 16KB RAM). **
 **Design Decisions** (document these when deviating from CPython):
 - Some Python 3 features are omitted or simplified for size/efficiency
 - Module APIs may be subsets of their CPython equivalents
-- See `docs/differences/` for documented CPython differences
+- See `docs/differences/python_*.rst` files for version-specific CPython differences
 - See `docs/develop/optimizations.rst` for optimization strategies
 
 ### Cross-Platform Compatibility
