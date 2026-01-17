@@ -213,9 +213,9 @@ MicroPython runs on constrained devices (as small as 256KB flash + 16KB RAM). **
   - Module interfaces
   - Build procedures
 - Follow existing conventions:
-  - Use `:func:\`foo\`` for function cross-refs
-  - Use `:class:\`Foo\`` for class cross-refs
-  - Use `:mod:\`module\`` for module cross-refs
+  - Use `:func:`foo`` for function cross-refs
+  - Use `:class:`Foo`` for class cross-refs
+  - Use `:mod:`module`` for module cross-refs
 
 ## Security
 
