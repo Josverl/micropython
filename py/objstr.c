@@ -214,7 +214,7 @@ mp_obj_t mp_obj_str_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_
                 }
                 
                 #if MICROPY_PY_BUILTINS_STR_UNICODE_CHECK
-                #if MICROPY_PY_BUILTINS_BYTES_DECODE_ERROR_HANDLERS
+                #if MICROPY_PY_BUILTINS_BYTES_DECODE_IGNORE
                 // Check if error handler is specified (3rd argument)
                 const char *errors = "strict";
                 if (n_args >= 3 && args[2] != mp_const_none) {
@@ -237,7 +237,7 @@ mp_obj_t mp_obj_str_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_
                 }
                 
                 // Data has invalid UTF-8, handle based on error mode
-                #if MICROPY_PY_BUILTINS_BYTES_DECODE_ERROR_HANDLERS
+                #if MICROPY_PY_BUILTINS_BYTES_DECODE_IGNORE
                 // Error handlers are enabled
                 #if !MICROPY_PY_BUILTINS_BYTES_DECODE_REPLACE
                 // Raise NotImplementedError if 'replace' is used but not enabled
