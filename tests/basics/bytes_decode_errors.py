@@ -1,5 +1,12 @@
 # Test bytes.decode() with error handlers
 
+# Check if decode method is available (requires MICROPY_CPYTHON_COMPAT)
+try:
+    b''.decode()
+except AttributeError:
+    print("SKIP")
+    raise SystemExit
+
 # Test ignore mode with invalid UTF-8
 print(repr(b'\xff\xfe'.decode('utf-8', 'ignore')))
 
