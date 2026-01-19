@@ -256,28 +256,24 @@ mp_obj_t mp_obj_str_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_
                             p++;
                             
                             // Check continuation bytes
-                            bool valid = true;
-                            for (uint8_t i = 0; i < need && p < end; i++) {
-                                if (!UTF8_IS_CONT(*p)) {
-                                    valid = false;
-                                    break;
-                                }
+                            uint8_t got = 0;
+                            while (got < need && p < end && UTF8_IS_CONT(*p)) {
+                                got++;
                                 p++;
                             }
                             
-                            if (valid && (p - seq_start) == need + 1) {
-                                // Valid sequence, copy it
+                            if (got == need) {
+                                // Valid complete sequence, copy it
                                 vstr_add_strn(&vstr, (const char *)seq_start, need + 1);
                             } else {
-                                // Invalid sequence
+                                // Invalid or incomplete sequence
                                 if (is_replace) {
                                     vstr_add_char(&vstr, 0xFFFD);
                                 }
-                                // Move to next byte after start of invalid sequence
-                                p = seq_start + 1;
+                                // Continue from where we stopped (already advanced past continuation bytes)
                             }
                         } else {
-                            // Invalid start byte
+                            // Invalid start byte (continuation byte without start, or invalid byte)
                             if (is_replace) {
                                 vstr_add_char(&vstr, 0xFFFD);
                             }
