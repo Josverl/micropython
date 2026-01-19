@@ -35,3 +35,26 @@ print(repr(b'\xc2\xa9'.decode('utf-8', 'ignore')))  # © symbol
 
 # Test bytearray as well
 print(repr(bytearray(b'\xff\xfe').decode('utf-8', 'ignore')))
+
+# Test replace mode - should either work or raise NotImplementedError
+try:
+    result = b'\xff\xfe'.decode('utf-8', 'replace')
+    # If replace is implemented, check the result
+    print(repr(result))
+except NotImplementedError:
+    # If replace is not implemented, that's expected
+    print("NotImplementedError: replace")
+    
+# Test replace with valid UTF-8 - should work even if replace isn't fully enabled
+try:
+    result = b'hello'.decode('utf-8', 'replace')
+    print(repr(result))
+except NotImplementedError:
+    print("NotImplementedError: replace")
+
+# Test replace with mixed content
+try:
+    result = b'hello\xffworld'.decode('utf-8', 'replace')
+    print(repr(result))
+except NotImplementedError:
+    print("NotImplementedError: replace")

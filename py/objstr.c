@@ -235,6 +235,13 @@ mp_obj_t mp_obj_str_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_
                 }
                 
                 // Data has invalid UTF-8, handle based on error mode
+                #if !MICROPY_PY_BUILTINS_BYTES_DECODE_REPLACE
+                // Raise NotImplementedError if 'replace' is used but not enabled
+                if (strcmp(errors, "replace") == 0) {
+                    mp_raise_NotImplementedError(MP_ERROR_TEXT("'replace' error handler not enabled"));
+                }
+                #endif
+                
                 if (strcmp(errors, "ignore") == 0
                     #if MICROPY_PY_BUILTINS_BYTES_DECODE_REPLACE
                     || strcmp(errors, "replace") == 0
