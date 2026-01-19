@@ -35,7 +35,7 @@
 # Once the API is stabilised, the idea is that mpremote can be used both
 # as a command line tool and a library for interacting with devices.
 
-import ast, io, os, re, struct, sys, time
+import ast, io, os, re, struct, sys, time, select
 import serial
 import serial.tools.list_ports
 from errno import EPERM, ENOTTY, ENXIO, EIO
@@ -54,6 +54,9 @@ class SerialTransport(Transport):
         self.use_raw_paste = True
         self.device_name = device
         self.mounted = False
+
+        # Detect if using network transport (socket:// or rfc2217://)
+        self.is_network_transport = device.startswith(("socket://", "rfc2217://"))
 
         # Set options, and exclusive if pyserial supports it
         serial_kwargs = {
@@ -137,6 +140,89 @@ class SerialTransport(Transport):
 
         data = b""
         begin_overall_s = begin_char_s = time.monotonic()
+
+        # For network transports (socket://, rfc2217://), use direct socket read for better performance
+        # This optimization works for both raw socket and RFC2217 connections
+        is_raw_socket = self.is_network_transport
+
+        if is_raw_socket:
+            # Get the underlying socket for direct access
+            sock = getattr(self.serial, "_socket", None)
+
+            if sock:
+                # Use socket directly with aggressive buffering for optimal performance
+                # Key strategy: Read ALL buffered data in one non-blocking burst, avoiding
+                # repeated select() calls which add per-operation overhead.
+
+                select_timeout = 0.1  # 100ms initial (allows device response time)
+                # Track if we just read data - if so, skip select() and try immediate read
+                just_read_data = False
+
+                while True:
+                    if data.endswith(ending):
+                        break
+
+                    # Check timeouts
+                    if timeout is not None:
+                        time_left = timeout - (time.monotonic() - begin_char_s)
+                        if time_left <= 0:
+                            break
+                        select_timeout = min(select_timeout, time_left)
+
+                    if timeout_overall is not None:
+                        time_left = timeout_overall - (time.monotonic() - begin_overall_s)
+                        if time_left <= 0:
+                            break
+                        select_timeout = min(select_timeout, time_left)
+
+                    # Only use select() if we didn't just read data
+                    # This eliminates per-operation overhead for buffered responses
+                    if not just_read_data:
+                        ready, _, _ = select.select([sock], [], [], select_timeout)
+                        if not ready:
+                            continue
+
+                    # After first data, use extremely short timeout (0.1ms) if we need select() again
+                    select_timeout = 0.0001  # 0.1ms
+                    just_read_data = False  # Reset for next iteration
+
+                    # Read from socket directly - read ALL available data in one shot
+                    try:
+                        # Make socket non-blocking temporarily
+                        sock.setblocking(False)
+                        chunks = []
+                        try:
+                            while True:
+                                chunk = sock.recv(4096)
+                                if not chunk:
+                                    break
+                                chunks.append(chunk)
+                        except BlockingIOError:
+                            pass  # No more data available
+                        finally:
+                            sock.setblocking(True)
+
+                        if not chunks:
+                            break
+
+                        new_data = b"".join(chunks)
+
+                        if data_consumer:
+                            # Process byte by byte for data_consumer
+                            for byte in new_data:
+                                data_consumer(bytes([byte]))
+                            data = new_data[-1:]
+                        else:
+                            data = data + new_data
+
+                        begin_char_s = time.monotonic()
+                        just_read_data = True  # Skip select() on next iteration
+                    except OSError:
+                        break
+
+                return data
+
+        # Original implementation for serial ports
         while True:
             if data.endswith(ending):
                 break
@@ -156,7 +242,7 @@ class SerialTransport(Transport):
                     and time.monotonic() >= begin_overall_s + timeout_overall
                 ):
                     break
-                time.sleep(0.01)
+                time.sleep(0.00001)
         return data
 
     def enter_raw_repl(self, soft_reset=True, timeout_overall=10):
