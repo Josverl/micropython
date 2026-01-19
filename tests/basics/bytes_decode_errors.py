@@ -7,6 +7,18 @@ except AttributeError:
     print("SKIP")
     raise SystemExit
 
+# Check if error handlers are available (requires MICROPY_PY_BUILTINS_BYTES_DECODE_IGNORE)
+# When feature is disabled, invalid UTF-8 raises UnicodeError even with 'ignore'
+# When feature is enabled, invalid UTF-8 with 'ignore' returns a string
+try:
+    result = b'\xff'.decode('utf-8', 'ignore')
+    # If we get here, feature is available
+    has_error_handlers = True
+except UnicodeError:
+    # Feature not available - 'ignore' was ignored, strict mode was used
+    print("SKIP")
+    raise SystemExit
+
 # Test ignore mode with invalid UTF-8
 print(repr(b'\xff\xfe'.decode('utf-8', 'ignore')))
 
