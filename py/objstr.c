@@ -218,10 +218,6 @@ mp_obj_t mp_obj_str_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_
                 const char *errors = "strict";
                 if (n_args >= 3 && args[2] != mp_const_none) {
                     errors = mp_obj_str_get_str(args[2]);
-                    // Validate error handler
-                    if (strcmp(errors, "strict") != 0 && strcmp(errors, "ignore") != 0 && strcmp(errors, "replace") != 0) {
-                        mp_raise_msg_varg(&mp_type_ValueError, MP_ERROR_TEXT("unknown error handler '%s'"), errors);
-                    }
                 }
                 
                 // Fast path: if data is valid UTF-8, return directly
@@ -239,13 +235,16 @@ mp_obj_t mp_obj_str_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_
                 }
                 
                 // Data has invalid UTF-8, handle based on error mode
-                if (strcmp(errors, "ignore") == 0 || strcmp(errors, "replace") == 0) {
-                    // Build new string with error handling
+                if (strcmp(errors, "ignore") == 0
+                    #if MICROPY_PY_BUILTINS_BYTES_DECODE_REPLACE
+                    || strcmp(errors, "replace") == 0
+                    #endif
+                    ) {
+                    // Build new string skipping/replacing invalid bytes
                     vstr_t vstr;
                     vstr_init(&vstr, str_len);
                     const byte *p = str_data;
                     const byte *end = str_data + str_len;
-                    bool is_replace = strcmp(errors, "replace") == 0;
                     
                     while (p < end) {
                         byte c = *p;
@@ -255,8 +254,6 @@ mp_obj_t mp_obj_str_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_
                             p++;
                         } else if (c >= 0xc0 && c < 0xf8) {
                             // Potential multi-byte sequence
-                            // Calculate expected continuation bytes using UTF-8 encoding rules
-                            // Same formula as used in utf8_check()
                             uint8_t need = (0xe5 >> ((c >> 3) & 0x6)) & 3;
                             const byte *seq_start = p;
                             p++;
@@ -271,25 +268,31 @@ mp_obj_t mp_obj_str_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_
                             if (got == need) {
                                 // Valid complete sequence, copy it
                                 vstr_add_strn(&vstr, (const char *)seq_start, need + 1);
-                            } else {
-                                // Invalid or incomplete sequence
-                                if (is_replace) {
-                                    vstr_add_char(&vstr, 0xFFFD);
-                                }
-                                // Continue from where we stopped (already advanced past continuation bytes)
                             }
-                        } else {
-                            // Invalid start byte (continuation byte without start, or invalid byte)
-                            if (is_replace) {
+                            #if MICROPY_PY_BUILTINS_BYTES_DECODE_REPLACE
+                            else if (strcmp(errors, "replace") == 0) {
+                                // Invalid or incomplete sequence - replace with U+FFFD
                                 vstr_add_char(&vstr, 0xFFFD);
                             }
+                            #endif
+                            // For 'ignore' mode, do nothing (skip invalid bytes)
+                        }
+                        #if MICROPY_PY_BUILTINS_BYTES_DECODE_REPLACE
+                        else if (strcmp(errors, "replace") == 0) {
+                            // Invalid start byte - replace with U+FFFD
+                            vstr_add_char(&vstr, 0xFFFD);
+                            p++;
+                        }
+                        #endif
+                        else {
+                            // Invalid start byte - skip for 'ignore' mode
                             p++;
                         }
                     }
                     
                     return mp_obj_new_str_type_from_vstr(type, &vstr);
                 } else {
-                    // Strict mode
+                    // Strict mode (or unrecognized error handler)
                     mp_raise_msg(&mp_type_UnicodeError, NULL);
                 }
                 #else
