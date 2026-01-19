@@ -218,6 +218,10 @@ mp_obj_t mp_obj_str_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_
                 const char *errors = "strict";
                 if (n_args >= 3 && args[2] != mp_const_none) {
                     errors = mp_obj_str_get_str(args[2]);
+                    // Validate error handler
+                    if (strcmp(errors, "strict") != 0 && strcmp(errors, "ignore") != 0 && strcmp(errors, "replace") != 0) {
+                        mp_raise_msg_varg(&mp_type_ValueError, MP_ERROR_TEXT("unknown error handler '%s'"), errors);
+                    }
                 }
                 
                 // Fast path: if data is valid UTF-8, return directly
@@ -251,6 +255,8 @@ mp_obj_t mp_obj_str_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_
                             p++;
                         } else if (c >= 0xc0 && c < 0xf8) {
                             // Potential multi-byte sequence
+                            // Calculate expected continuation bytes using UTF-8 encoding rules
+                            // Same formula as used in utf8_check()
                             uint8_t need = (0xe5 >> ((c >> 3) & 0x6)) & 3;
                             const byte *seq_start = p;
                             p++;
@@ -283,7 +289,7 @@ mp_obj_t mp_obj_str_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_
                     
                     return mp_obj_new_str_type_from_vstr(type, &vstr);
                 } else {
-                    // Strict mode or unrecognized error handler
+                    // Strict mode
                     mp_raise_msg(&mp_type_UnicodeError, NULL);
                 }
                 #else
