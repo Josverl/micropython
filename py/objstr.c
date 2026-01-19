@@ -214,11 +214,13 @@ mp_obj_t mp_obj_str_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_
                 }
                 
                 #if MICROPY_PY_BUILTINS_STR_UNICODE_CHECK
+                #if MICROPY_PY_BUILTINS_BYTES_DECODE_ERROR_HANDLERS
                 // Check if error handler is specified (3rd argument)
                 const char *errors = "strict";
                 if (n_args >= 3 && args[2] != mp_const_none) {
                     errors = mp_obj_str_get_str(args[2]);
                 }
+                #endif
                 
                 // Fast path: if data is valid UTF-8, return directly
                 if (utf8_check(str_data, str_len)) {
@@ -235,10 +237,12 @@ mp_obj_t mp_obj_str_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_
                 }
                 
                 // Data has invalid UTF-8, handle based on error mode
+                #if MICROPY_PY_BUILTINS_BYTES_DECODE_ERROR_HANDLERS
+                // Error handlers are enabled
                 #if !MICROPY_PY_BUILTINS_BYTES_DECODE_REPLACE
                 // Raise NotImplementedError if 'replace' is used but not enabled
                 if (strcmp(errors, "replace") == 0) {
-                    mp_raise_NotImplementedError(MP_ERROR_TEXT("'replace' error handler not enabled"));
+                    mp_raise_NotImplementedError(NULL);
                 }
                 #endif
                 
@@ -302,6 +306,10 @@ mp_obj_t mp_obj_str_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_
                     // Strict mode (or unrecognized error handler)
                     mp_raise_msg(&mp_type_UnicodeError, NULL);
                 }
+                #else
+                // Error handlers are not enabled - just raise UnicodeError on invalid UTF-8
+                mp_raise_msg(&mp_type_UnicodeError, NULL);
+                #endif
                 #else
                 // Check if a qstr with this data already exists
                 qstr q = qstr_find_strn((const char *)str_data, str_len);
