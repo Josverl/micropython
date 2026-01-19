@@ -9,6 +9,6 @@ UnicodeError
 'hello'
 '\xa9'
 ''
-NotImplementedError: replace
+'\ufffd\ufffd'
 'hello'
-NotImplementedError: replace
+'hello\ufffdworld'
