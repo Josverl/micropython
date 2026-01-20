@@ -201,7 +201,6 @@ mp_obj_t mp_obj_str_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_
         }
 
         default: // 2 or 3 args
-            // TODO: validate 2nd/3rd args
             #if MICROPY_PY_BUILTINS_BYTEARRAY
             if (mp_obj_is_type(args[0], &mp_type_bytes) || mp_obj_is_type(args[0], &mp_type_bytearray)) {
             #else

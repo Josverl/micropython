@@ -19,61 +19,88 @@ except UnicodeError:
     print("SKIP")
     raise SystemExit
 
-# Test ignore mode with invalid UTF-8
-print(repr(b'\xff\xfe'.decode('utf-8', 'ignore')))
-
-# Test strict mode (default) with invalid UTF-8
 try:
-    b'\xff\xfe'.decode('utf-8')
-except UnicodeError:
-    print("UnicodeError")
+    import unittest
+except ImportError:
+    print("SKIP")
+    raise SystemExit
 
-try:
-    b'\xff\xfe'.decode('utf-8', 'strict')
-except UnicodeError:
-    print("UnicodeError")
 
-# Test with valid UTF-8
-print(repr(b'hello'.decode('utf-8', 'ignore')))
-print(repr(b'hello'.decode('utf-8')))
+class TestBytesDecodeErrors(unittest.TestCase):
+    def test_ignore_invalid_utf8(self):
+        # Test ignore mode with invalid UTF-8
+        self.assertEqual(b'\xff\xfe'.decode('utf-8', 'ignore'), '')
 
-# Test mixed valid and invalid UTF-8
-print(repr(b'hello\xffworld'.decode('utf-8', 'ignore')))
+    def test_strict_mode_default(self):
+        # Test strict mode (default) with invalid UTF-8
+        with self.assertRaises(UnicodeError):
+            b'\xff\xfe'.decode('utf-8')
 
-# Test multiple invalid bytes
-print(repr(b'\x80\x81\x82'.decode('utf-8', 'ignore')))
+    def test_strict_mode_explicit(self):
+        # Test strict mode (explicit) with invalid UTF-8
+        with self.assertRaises(UnicodeError):
+            b'\xff\xfe'.decode('utf-8', 'strict')
 
-# Test invalid continuation byte
-print(repr(b'\xc0\x20'.decode('utf-8', 'ignore')))
+    def test_ignore_valid_utf8(self):
+        # Test with valid UTF-8
+        self.assertEqual(b'hello'.decode('utf-8', 'ignore'), 'hello')
 
-# Test incomplete sequence at end
-print(repr(b'hello\xc0'.decode('utf-8', 'ignore')))
+    def test_valid_utf8_default(self):
+        # Test valid UTF-8 with default mode
+        self.assertEqual(b'hello'.decode('utf-8'), 'hello')
 
-# Test valid multi-byte UTF-8
-print(repr(b'\xc2\xa9'.decode('utf-8', 'ignore')))  # © symbol
+    def test_ignore_mixed_content(self):
+        # Test mixed valid and invalid UTF-8
+        self.assertEqual(b'hello\xffworld'.decode('utf-8', 'ignore'), 'helloworld')
 
-# Test bytearray as well
-print(repr(bytearray(b'\xff\xfe').decode('utf-8', 'ignore')))
+    def test_ignore_multiple_invalid(self):
+        # Test multiple invalid bytes
+        self.assertEqual(b'\x80\x81\x82'.decode('utf-8', 'ignore'), '')
 
-# Test replace mode - should either work or raise NotImplementedError
-try:
-    result = b'\xff\xfe'.decode('utf-8', 'replace')
-    # If replace is implemented, check the result
-    print(repr(result))
-except NotImplementedError:
-    # If replace is not implemented, that's expected
-    print("NotImplementedError: replace")
-    
-# Test replace with valid UTF-8 - should work even if replace isn't fully enabled
-try:
-    result = b'hello'.decode('utf-8', 'replace')
-    print(repr(result))
-except NotImplementedError:
-    print("NotImplementedError: replace")
+    def test_ignore_invalid_continuation(self):
+        # Test invalid continuation byte
+        self.assertEqual(b'\xc0\x20'.decode('utf-8', 'ignore'), ' ')
 
-# Test replace with mixed content
-try:
-    result = b'hello\xffworld'.decode('utf-8', 'replace')
-    print(repr(result))
-except NotImplementedError:
-    print("NotImplementedError: replace")
+    def test_ignore_incomplete_sequence(self):
+        # Test incomplete sequence at end
+        self.assertEqual(b'hello\xc0'.decode('utf-8', 'ignore'), 'hello')
+
+    def test_ignore_valid_multibyte(self):
+        # Test valid multi-byte UTF-8 (© symbol)
+        self.assertEqual(b'\xc2\xa9'.decode('utf-8', 'ignore'), '\xa9')
+
+    def test_bytearray_ignore(self):
+        # Test bytearray support
+        self.assertEqual(bytearray(b'\xff\xfe').decode('utf-8', 'ignore'), '')
+
+    def test_replace_invalid_utf8(self):
+        # Test replace mode - should either work or raise NotImplementedError
+        try:
+            result = b'\xff\xfe'.decode('utf-8', 'replace')
+            # If replace is implemented, check the result
+            self.assertEqual(result, '\ufffd\ufffd')
+        except NotImplementedError:
+            # If replace is not implemented, that's expected
+            pass
+
+    def test_replace_valid_utf8(self):
+        # Test replace with valid UTF-8 - should work even if replace isn't fully enabled
+        try:
+            result = b'hello'.decode('utf-8', 'replace')
+            self.assertEqual(result, 'hello')
+        except NotImplementedError:
+            # If replace is not implemented, that's expected
+            pass
+
+    def test_replace_mixed_content(self):
+        # Test replace with mixed content
+        try:
+            result = b'hello\xffworld'.decode('utf-8', 'replace')
+            self.assertEqual(result, 'hello\ufffdworld')
+        except NotImplementedError:
+            # If replace is not implemented, that's expected
+            pass
+
+
+if __name__ == "__main__":
+    unittest.main()
