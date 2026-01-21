@@ -104,6 +104,11 @@ typedef struct _readline_t {
     #if MICROPY_REPL_AUTO_INDENT
     uint8_t auto_indent_state;
     #endif
+    #if MICROPY_PY_BUILTINS_STR_UNICODE
+    uint8_t utf8_buf[4];  // buffer for UTF-8 multi-byte sequences
+    uint8_t utf8_len;     // expected length of current UTF-8 sequence
+    uint8_t utf8_pos;     // current position in utf8_buf
+    #endif
     const char *prompt;
 } readline_t;
 
@@ -277,11 +282,58 @@ int readline_process_char(int c) {
             }
         #endif
         } else if (32 <= c && c <= 126) {
-            // printable character
+            // printable ASCII character
             vstr_ins_char(rl.line, rl.cursor_pos, c);
             // set redraw parameters
             redraw_from_cursor = true;
             redraw_step_forward = 1;
+        #if MICROPY_PY_BUILTINS_STR_UNICODE
+        } else if (c >= 0x80) {
+            // UTF-8 multi-byte sequence
+            if (rl.utf8_len == 0) {
+                // Start of new UTF-8 sequence
+                rl.utf8_buf[0] = c;
+                rl.utf8_pos = 1;
+                
+                // Determine expected sequence length from first byte
+                if ((c & 0xE0) == 0xC0) {
+                    rl.utf8_len = 2;  // 110xxxxx - 2-byte sequence
+                } else if ((c & 0xF0) == 0xE0) {
+                    rl.utf8_len = 3;  // 1110xxxx - 3-byte sequence
+                } else if ((c & 0xF8) == 0xF0) {
+                    rl.utf8_len = 4;  // 11110xxx - 4-byte sequence
+                } else {
+                    // Invalid start byte, reset
+                    rl.utf8_len = 0;
+                    rl.utf8_pos = 0;
+                }
+            } else {
+                // Continuation byte
+                if ((c & 0xC0) == 0x80) {
+                    // Valid continuation byte (10xxxxxx)
+                    rl.utf8_buf[rl.utf8_pos++] = c;
+                    
+                    if (rl.utf8_pos == rl.utf8_len) {
+                        // Complete UTF-8 sequence received
+                        size_t utf8_byte_len = rl.utf8_len;
+                        // Insert all bytes of the character
+                        for (size_t i = 0; i < utf8_byte_len; ++i) {
+                            vstr_ins_byte(rl.line, rl.cursor_pos + i, rl.utf8_buf[i]);
+                        }
+                        // Reset UTF-8 state
+                        rl.utf8_len = 0;
+                        rl.utf8_pos = 0;
+                        // Set redraw parameters (move forward by number of bytes inserted)
+                        redraw_from_cursor = true;
+                        redraw_step_forward = utf8_byte_len;
+                    }
+                } else {
+                    // Invalid continuation byte, reset
+                    rl.utf8_len = 0;
+                    rl.utf8_pos = 0;
+                }
+            }
+        #endif
         }
     } else if (rl.escape_seq == ESEQ_ESC) {
         switch (c) {
@@ -543,6 +595,10 @@ void readline_init(vstr_t *line, const char *prompt) {
     rl.escape_seq_buf[0] = 0;
     rl.hist_cur = -1;
     rl.cursor_pos = rl.orig_line_len;
+    #if MICROPY_PY_BUILTINS_STR_UNICODE
+    rl.utf8_len = 0;
+    rl.utf8_pos = 0;
+    #endif
     rl.prompt = prompt;
     mp_hal_stdout_tx_str(prompt);
     #if MICROPY_REPL_AUTO_INDENT
