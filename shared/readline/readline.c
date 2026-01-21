@@ -52,7 +52,7 @@ enum { ESEQ_NONE, ESEQ_ESC, ESEQ_ESC_BRACKET, ESEQ_ESC_BRACKET_DIGIT, ESEQ_ESC_O
 #endif
 
 void readline_init0(void) {
-    memset(MP_STATE_PORT(readline_hist), 0, MICROPY_READLINE_HISTORY_SIZE * sizeof(const char*));
+    memset(MP_STATE_PORT(readline_hist), 0, MICROPY_READLINE_HISTORY_SIZE * sizeof(const char *));
 }
 
 static char *str_dup_maybe(const char *str) {
@@ -64,6 +64,28 @@ static char *str_dup_maybe(const char *str) {
     memcpy(s2, str, len + 1);
     return s2;
 }
+
+#if MICROPY_PY_BUILTINS_STR_UNICODE
+// Find the start of the UTF-8 character at or before the given position
+static size_t utf8_char_start(const char *buf, size_t pos) {
+    while (pos > 0 && UTF8_IS_CONT(buf[pos])) {
+        pos--;
+    }
+    return pos;
+}
+
+// Find the length of the UTF-8 character starting at the given position
+static size_t utf8_char_len(const char *buf, size_t pos, size_t buf_len) {
+    if (pos >= buf_len) {
+        return 0;
+    }
+    size_t len = 1;
+    while (pos + len < buf_len && UTF8_IS_CONT(buf[pos + len])) {
+        len++;
+    }
+    return len;
+}
+#endif
 
 // By default assume terminal which implements VT100 commands...
 #ifndef MICROPY_HAL_HAS_VT100
@@ -148,6 +170,15 @@ int readline_process_char(int c) {
     int redraw_step_back = 0;
     bool redraw_from_cursor = false;
     int redraw_step_forward = 0;
+
+    #if MICROPY_PY_BUILTINS_STR_UNICODE
+    // If we're expecting UTF-8 continuation bytes but got something else, reset state
+    if (rl.utf8_len > 0 && (c < 0x80 || (c & 0xC0) != 0x80)) {
+        rl.utf8_len = 0;
+        rl.utf8_pos = 0;
+    }
+    #endif
+
     if (rl.escape_seq == ESEQ_NONE) {
         if (CHAR_CTRL_A <= c && c <= CHAR_CTRL_E && vstr_len(rl.line) == rl.orig_line_len) {
             // control character with empty line
@@ -227,10 +258,22 @@ int readline_process_char(int c) {
                 int nspace = 1;
                 #endif
 
+                // Find the start of the UTF-8 character before the cursor
+                size_t char_start = utf8_char_start(rl.line->buf, rl.cursor_pos - 1);
+                size_t char_bytes = rl.cursor_pos - char_start;
+
+                // For auto-indent, only adjust if we're deleting a single-byte space
+                #if MICROPY_REPL_AUTO_INDENT
+                if (nspace > 1 && char_bytes == 1 && rl.line->buf[char_start] == ' ') {
+                    char_bytes = nspace;
+                    char_start = rl.cursor_pos - nspace;
+                }
+                #endif
+
                 // do the backspace
-                vstr_cut_out_bytes(rl.line, rl.cursor_pos - nspace, nspace);
+                vstr_cut_out_bytes(rl.line, char_start, char_bytes);
                 // set redraw parameters
-                redraw_step_back = nspace;
+                redraw_step_back = char_bytes;
                 redraw_from_cursor = true;
             }
         #if MICROPY_REPL_AUTO_INDENT
@@ -294,7 +337,7 @@ int readline_process_char(int c) {
                 // Start of new UTF-8 sequence
                 rl.utf8_buf[0] = c;
                 rl.utf8_pos = 1;
-                
+
                 // Determine expected sequence length from first byte
                 if ((c & 0xE0) == 0xC0) {
                     rl.utf8_len = 2;  // 110xxxxx - 2-byte sequence
@@ -312,7 +355,7 @@ int readline_process_char(int c) {
                 if ((c & 0xC0) == 0x80) {
                     // Valid continuation byte (10xxxxxx)
                     rl.utf8_buf[rl.utf8_pos++] = c;
-                    
+
                     if (rl.utf8_pos == rl.utf8_len) {
                         // Complete UTF-8 sequence received
                         size_t utf8_byte_len = rl.utf8_len;
@@ -345,16 +388,16 @@ int readline_process_char(int c) {
                 break;
             #if MICROPY_REPL_EMACS_WORDS_MOVE
             case 'b':
-#if MICROPY_REPL_EMACS_EXTRA_WORDS_MOVE
-backward_word:
-#endif
+                #if MICROPY_REPL_EMACS_EXTRA_WORDS_MOVE
+            backward_word:
+                #endif
                 redraw_step_back = cursor_count_word(0);
                 rl.escape_seq = ESEQ_NONE;
                 break;
             case 'f':
-#if MICROPY_REPL_EMACS_EXTRA_WORDS_MOVE
-forward_word:
-#endif
+                #if MICROPY_REPL_EMACS_EXTRA_WORDS_MOVE
+            forward_word:
+                #endif
                 redraw_step_forward = cursor_count_word(1);
                 rl.escape_seq = ESEQ_NONE;
                 break;
@@ -364,9 +407,9 @@ forward_word:
                 rl.escape_seq = ESEQ_NONE;
                 break;
             case 127:
-#if MICROPY_REPL_EMACS_EXTRA_WORDS_MOVE
-backward_kill_word:
-#endif
+                #if MICROPY_REPL_EMACS_EXTRA_WORDS_MOVE
+            backward_kill_word:
+                #endif
                 redraw_step_back = cursor_count_word(0);
                 vstr_cut_out_bytes(rl.line, rl.cursor_pos - redraw_step_back, redraw_step_back);
                 redraw_from_cursor = true;
@@ -385,9 +428,9 @@ backward_kill_word:
         } else {
             rl.escape_seq = ESEQ_NONE;
             if (c == 'A') {
-#if MICROPY_REPL_EMACS_KEYS
-up_arrow_key:
-#endif
+                #if MICROPY_REPL_EMACS_KEYS
+            up_arrow_key:
+                #endif
                 // up arrow
                 if (rl.hist_cur + 1 < MICROPY_READLINE_HISTORY_SIZE && MP_STATE_PORT(readline_hist)[rl.hist_cur + 1] != NULL) {
                     // increase hist num
@@ -401,9 +444,9 @@ up_arrow_key:
                     redraw_step_forward = rl.line->len - rl.orig_line_len;
                 }
             } else if (c == 'B') {
-#if MICROPY_REPL_EMACS_KEYS
-down_arrow_key:
-#endif
+                #if MICROPY_REPL_EMACS_KEYS
+            down_arrow_key:
+                #endif
                 // down arrow
                 if (rl.hist_cur >= 0) {
                     // decrease hist num
@@ -419,20 +462,24 @@ down_arrow_key:
                     redraw_step_forward = rl.line->len - rl.orig_line_len;
                 }
             } else if (c == 'C') {
-#if MICROPY_REPL_EMACS_KEYS
-right_arrow_key:
-#endif
+                #if MICROPY_REPL_EMACS_KEYS
+            right_arrow_key:
+                #endif
                 // right arrow
                 if (rl.cursor_pos < rl.line->len) {
-                    redraw_step_forward = 1;
+                    // Move forward by one UTF-8 character
+                    size_t char_len = utf8_char_len(rl.line->buf, rl.cursor_pos, rl.line->len);
+                    redraw_step_forward = char_len;
                 }
             } else if (c == 'D') {
-#if MICROPY_REPL_EMACS_KEYS
-left_arrow_key:
-#endif
+                #if MICROPY_REPL_EMACS_KEYS
+            left_arrow_key:
+                #endif
                 // left arrow
                 if (rl.cursor_pos > rl.orig_line_len) {
-                    redraw_step_back = 1;
+                    // Move back by one UTF-8 character
+                    size_t char_start = utf8_char_start(rl.line->buf, rl.cursor_pos - 1);
+                    redraw_step_back = rl.cursor_pos - char_start;
                 }
             } else if (c == 'H') {
                 // home
@@ -447,18 +494,20 @@ left_arrow_key:
     } else if (rl.escape_seq == ESEQ_ESC_BRACKET_DIGIT) {
         if (c == '~') {
             if (rl.escape_seq_buf[0] == '1' || rl.escape_seq_buf[0] == '7') {
-home_key:
+            home_key:
                 redraw_step_back = rl.cursor_pos - rl.orig_line_len;
             } else if (rl.escape_seq_buf[0] == '4' || rl.escape_seq_buf[0] == '8') {
-end_key:
+            end_key:
                 redraw_step_forward = rl.line->len - rl.cursor_pos;
             } else if (rl.escape_seq_buf[0] == '3') {
                 // delete
-#if MICROPY_REPL_EMACS_KEYS
-delete_key:
-#endif
+                #if MICROPY_REPL_EMACS_KEYS
+            delete_key:
+                #endif
                 if (rl.cursor_pos < rl.line->len) {
-                    vstr_cut_out_bytes(rl.line, rl.cursor_pos, 1);
+                    // Delete the entire UTF-8 character at cursor
+                    size_t char_len = utf8_char_len(rl.line->buf, rl.cursor_pos, rl.line->len);
+                    vstr_cut_out_bytes(rl.line, rl.cursor_pos, char_len);
                     redraw_from_cursor = true;
                 }
             } else {
@@ -500,9 +549,9 @@ delete_key:
         rl.escape_seq = ESEQ_NONE;
     }
 
-#if MICROPY_REPL_EMACS_EXTRA_WORDS_MOVE
+    #if MICROPY_REPL_EMACS_EXTRA_WORDS_MOVE
 redraw:
-#endif
+    #endif
 
     // redraw command prompt, efficiently
     if (redraw_step_back > 0) {
