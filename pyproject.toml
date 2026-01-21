@@ -86,3 +86,9 @@ exclude = [
   "tests/micropython/test_normalize_newlines.py",
   "tests/micropython/viper_args.py",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests/pytest"]
+python_files = ["test_*.py", "*_test.py", "pytest_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
