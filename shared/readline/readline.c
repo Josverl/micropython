@@ -258,9 +258,15 @@ int readline_process_char(int c) {
                 int nspace = 1;
                 #endif
 
+                #if MICROPY_PY_BUILTINS_STR_UNICODE
                 // Find the start of the UTF-8 character before the cursor
                 size_t char_start = utf8_char_start(rl.line->buf, rl.cursor_pos - 1);
                 size_t char_bytes = rl.cursor_pos - char_start;
+                #else
+                // Single-byte character handling
+                size_t char_start = rl.cursor_pos - 1;
+                size_t char_bytes = 1;
+                #endif
 
                 // For auto-indent, only adjust if we're deleting a single-byte space
                 #if MICROPY_REPL_AUTO_INDENT
@@ -467,9 +473,14 @@ int readline_process_char(int c) {
                 #endif
                 // right arrow
                 if (rl.cursor_pos < rl.line->len) {
+                    #if MICROPY_PY_BUILTINS_STR_UNICODE
                     // Move forward by one UTF-8 character
                     size_t char_len = utf8_char_len(rl.line->buf, rl.cursor_pos, rl.line->len);
                     redraw_step_forward = char_len;
+                    #else
+                    // Single-byte character
+                    redraw_step_forward = 1;
+                    #endif
                 }
             } else if (c == 'D') {
                 #if MICROPY_REPL_EMACS_KEYS
@@ -477,9 +488,14 @@ int readline_process_char(int c) {
                 #endif
                 // left arrow
                 if (rl.cursor_pos > rl.orig_line_len) {
+                    #if MICROPY_PY_BUILTINS_STR_UNICODE
                     // Move back by one UTF-8 character
                     size_t char_start = utf8_char_start(rl.line->buf, rl.cursor_pos - 1);
                     redraw_step_back = rl.cursor_pos - char_start;
+                    #else
+                    // Single-byte character
+                    redraw_step_back = 1;
+                    #endif
                 }
             } else if (c == 'H') {
                 // home
@@ -505,9 +521,14 @@ int readline_process_char(int c) {
             delete_key:
                 #endif
                 if (rl.cursor_pos < rl.line->len) {
+                    #if MICROPY_PY_BUILTINS_STR_UNICODE
                     // Delete the entire UTF-8 character at cursor
                     size_t char_len = utf8_char_len(rl.line->buf, rl.cursor_pos, rl.line->len);
                     vstr_cut_out_bytes(rl.line, rl.cursor_pos, char_len);
+                    #else
+                    // Single-byte character
+                    vstr_cut_out_bytes(rl.line, rl.cursor_pos, 1);
+                    #endif
                     redraw_from_cursor = true;
                 }
             } else {
