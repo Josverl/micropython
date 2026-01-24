@@ -130,7 +130,15 @@ static void decompress_error_text_maybe(mp_obj_exception_t *o) {
     #if MICROPY_ROM_TEXT_COMPRESSION
     if (o->args->len == 1 && mp_obj_is_exact_type(o->args->items[0], &mp_type_str)) {
         mp_obj_str_t *o_str = MP_OBJ_TO_PTR(o->args->items[0]);
-        if (MP_IS_COMPRESSED_ROM_STRING(o_str->data)) {
+        // Only decompress if it looks like a compressed ROM string AND the data pointer
+        // is NOT in the GC heap (to avoid false positives from user-created strings).
+        // This check mirrors VERIFY_PTR from gc.c - if the pointer is in the heap,
+        // it cannot be a compressed ROM string.
+        const byte *data = o_str->data;
+        bool is_in_heap = ((uintptr_t)data & (MICROPY_BYTES_PER_GC_BLOCK - 1)) == 0
+            && data >= (const byte *)MP_STATE_MEM(area).gc_pool_start
+            && data < (const byte *)MP_STATE_MEM(area).gc_pool_end;
+        if (MP_IS_COMPRESSED_ROM_STRING(data) && !is_in_heap) {
             byte *buf = m_new_maybe(byte, MP_MAX_UNCOMPRESSED_TEXT_LEN + 1);
             if (!buf) {
                 #if MICROPY_ENABLE_EMERGENCY_EXCEPTION_BUF
