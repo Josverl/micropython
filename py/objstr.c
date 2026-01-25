@@ -303,11 +303,11 @@ mp_obj_t mp_obj_str_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_
                     return mp_obj_new_str_type_from_vstr(type, &vstr);
                 } else {
                     // Strict mode (or unrecognized error handler)
-                    mp_raise_msg(&mp_type_UnicodeError, NULL);
+                    mp_raise_msg(&mp_type_LookupError, NULL);
                 }
                 #else
                 // Error handlers are not enabled - just raise UnicodeError on invalid UTF-8
-                mp_raise_msg(&mp_type_UnicodeError, NULL);
+                mp_raise_msg(&mp_type_LookupError, NULL);
                 #endif
                 #else
                 // Check if a qstr with this data already exists
