@@ -1,6 +1,0 @@
-Caught ValueError with size 1
-Caught ValueError with size 10
-Caught ValueError with size 100
-Caught ValueError with size 1000
-Exception string starts with: '\xff\xfe\xfe\xfe\xfe\xfe\xfe\xfe\xfe\xfe'
-All tests passed
