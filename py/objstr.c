@@ -276,8 +276,12 @@ mp_obj_t mp_obj_str_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_
                             }
 
                             if (got == need) {
-                                // Valid complete sequence, copy it
-                                vstr_add_strn(&vstr, (const char *)seq_start, need + 1);
+                                // Valid complete sequence, decode and add the character
+                                unichar ch = *seq_start & (0x7f >> need);
+                                for (uint8_t i = 0; i < need; i++) {
+                                    ch = (ch << 6) | (seq_start[i + 1] & 0x3f);
+                                }
+                                vstr_add_char(&vstr, ch);
                             }
                             #if MICROPY_PY_BUILTINS_BYTES_DECODE_REPLACE
                             else if (strcmp(errors, "replace") == 0) {
@@ -303,11 +307,11 @@ mp_obj_t mp_obj_str_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_
                     return mp_obj_new_str_type_from_vstr(type, &vstr);
                 } else {
                     // Strict mode (or unrecognized error handler)
-                    mp_raise_msg(&mp_type_LookupError, NULL);
+                    mp_raise_msg(&mp_type_UnicodeError, NULL);
                 }
                 #else
                 // Error handlers are not enabled - just raise UnicodeError on invalid UTF-8
-                mp_raise_msg(&mp_type_LookupError, NULL);
+                mp_raise_msg(&mp_type_UnicodeError, NULL);
                 #endif
                 #else
                 // Check if a qstr with this data already exists
