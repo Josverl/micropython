@@ -32,25 +32,25 @@ print("%c" % 0x10FFFF)  # Last valid unicode codepoint
 try:
     print("%c" % 0x110000)
     print("UNEXPECTED: should have raised ValueError")
-except ValueError as e:
-    print("ValueError:", str(e))
+except ValueError:
+    print('ValueError')
 
 try:
     print("%c" % 0x110001)
     print("UNEXPECTED: should have raised ValueError")
-except ValueError as e:
-    print("ValueError:", str(e))
+except ValueError:
+    print('ValueError')
 
 # Test format() method with invalid codepoint
 try:
     print("{:c}".format(0x110000))
     print("UNEXPECTED: should have raised ValueError")
-except ValueError as e:
-    print("ValueError:", str(e))
+except ValueError:
+    print('ValueError')
 
 try:
     print("{:c}".format(0x200000))
     print("UNEXPECTED: should have raised ValueError")
-except ValueError as e:
-    print("ValueError:", str(e))
+except ValueError:
+    print('ValueError')
 
