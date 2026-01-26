@@ -24,3 +24,33 @@ c = 169
 print(f"{c:c}")
 c = 0x1F600
 print(f"{c:c}")
+
+# Test boundary values - valid maximum unicode codepoint
+print("%c" % 0x10FFFF)  # Last valid unicode codepoint
+
+# Test invalid codepoint - >= 0x110000 should raise ValueError
+try:
+    print("%c" % 0x110000)
+    print("UNEXPECTED: should have raised ValueError")
+except ValueError as e:
+    print("ValueError:", str(e))
+
+try:
+    print("%c" % 0x110001)
+    print("UNEXPECTED: should have raised ValueError")
+except ValueError as e:
+    print("ValueError:", str(e))
+
+# Test format() method with invalid codepoint
+try:
+    print("{:c}".format(0x110000))
+    print("UNEXPECTED: should have raised ValueError")
+except ValueError as e:
+    print("ValueError:", str(e))
+
+try:
+    print("{:c}".format(0x200000))
+    print("UNEXPECTED: should have raised ValueError")
+except ValueError as e:
+    print("ValueError:", str(e))
+

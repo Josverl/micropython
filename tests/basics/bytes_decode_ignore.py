@@ -59,4 +59,44 @@ print(repr(b'\xc2\xa9'.decode('utf-8', 'ignore')))
 # Test bytearray support
 print(repr(bytearray(b'\xff\xfe').decode('utf-8', 'ignore')))
 
+# Additional tests for continuation byte validation and incomplete sequences
+
+# Test 3-byte UTF-8 sequence - valid (e.g., U+4E00 - 一)
+print(repr(b'\xe4\xb8\x80'.decode('utf-8', 'ignore')))
+
+# Test 4-byte UTF-8 sequence - valid (e.g., U+1F600 - 😀)
+print(repr(b'\xf0\x9f\x98\x80'.decode('utf-8', 'ignore')))
+
+# Test incomplete 3-byte sequence (missing 2 continuation bytes)
+print(repr(b'\xe4'.decode('utf-8', 'ignore')))
+
+# Test incomplete 3-byte sequence (missing 1 continuation byte)
+print(repr(b'\xe4\xb8'.decode('utf-8', 'ignore')))
+
+# Test incomplete 4-byte sequence (missing 3 continuation bytes)
+print(repr(b'\xf0'.decode('utf-8', 'ignore')))
+
+# Test incomplete 4-byte sequence (missing 2 continuation bytes)
+print(repr(b'\xf0\x9f'.decode('utf-8', 'ignore')))
+
+# Test incomplete 4-byte sequence (missing 1 continuation byte)
+print(repr(b'\xf0\x9f\x98'.decode('utf-8', 'ignore')))
+
+# Test 3-byte sequence with invalid continuation byte (first byte invalid)
+print(repr(b'\xe4\x20\x80'.decode('utf-8', 'ignore')))
+
+# Test 3-byte sequence with invalid continuation byte (second byte invalid)
+print(repr(b'\xe4\xb8\x20'.decode('utf-8', 'ignore')))
+
+# Test 4-byte sequence with invalid continuation bytes
+print(repr(b'\xf0\x20\x98\x80'.decode('utf-8', 'ignore')))
+print(repr(b'\xf0\x9f\x20\x80'.decode('utf-8', 'ignore')))
+print(repr(b'\xf0\x9f\x98\x20'.decode('utf-8', 'ignore')))
+
+# Test mixed valid and incomplete sequences
+print(repr(b'hello\xe4world'.decode('utf-8', 'ignore')))
+print(repr(b'hello\xf0world'.decode('utf-8', 'ignore')))
+
+# Test multiple incomplete sequences in a row
+print(repr(b'\xe4\xf0\xe4'.decode('utf-8', 'ignore')))
 
