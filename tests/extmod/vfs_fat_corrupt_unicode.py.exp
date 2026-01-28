@@ -1,0 +1,16 @@
+Test 1: Valid UTF-8 filenames
+Normal listing: True
+
+Test 2: Valid non-ASCII UTF-8
+Valid UTF-8 works: True
+
+Test 3: Corrupted filename simulation
+Corruption handling: no-check-or-cached
+
+Test 4: getcwd with valid path
+getcwd works: True
+
+Test 5: Byte listing bypasses UTF-8 check
+Byte listing works: True
+
+Tests completed

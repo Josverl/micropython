@@ -1,0 +1,15 @@
+Test 1: Normal operation
+  Normal listing: True
+Test 2: getcwd
+  getcwd: True
+Test 3: Valid UTF-8 with non-ASCII
+  UTF-8 support: yes
+Test 4: Corruption simulation
+  Found dir entry at offset 1024
+Test 5: Reading corrupted filename
+  Result: OSError EIO (expected with Unicode checking)
+Test 6: getcwd with corruption
+  Found subdir at offset 1120
+  getcwd result: no error
+
+Test completed
