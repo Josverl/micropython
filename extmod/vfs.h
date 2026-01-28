@@ -102,6 +102,11 @@ mp_obj_t mp_vfs_chdir(mp_obj_t path_in);
 mp_obj_t mp_vfs_getcwd(void);
 mp_obj_t mp_vfs_ilistdir(size_t n_args, const mp_obj_t *args);
 mp_obj_t mp_vfs_listdir(size_t n_args, const mp_obj_t *args);
+
+// Helper function to safely create string from C string with UTF-8 validation
+// This is used by VFS implementations to detect filesystem corruption
+mp_obj_t mp_vfs_new_str_from_cstr_safe(const char *str);
+
 #if MICROPY_VFS_WRITABLE
 mp_obj_t mp_vfs_mkdir(mp_obj_t path_in);
 mp_obj_t mp_vfs_remove(mp_obj_t path_in);

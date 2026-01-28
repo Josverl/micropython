@@ -1,0 +1,8 @@
+Test 1: Valid UTF-8 filenames
+  getcwd works: True
+Test 2: Directory listing
+  Listing works: True
+Test 3: UTF-8 validation
+  Protection enabled: yes
+
+Test completed

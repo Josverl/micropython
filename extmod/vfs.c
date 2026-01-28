@@ -30,6 +30,7 @@
 #include "py/runtime.h"
 #include "py/objstr.h"
 #include "py/mperrno.h"
+#include "py/unicode.h"
 #include "extmod/vfs.h"
 
 #if MICROPY_VFS
@@ -53,6 +54,22 @@
 // For mp_vfs_proxy_call, the maximum number of additional args that can be passed.
 // A fixed maximum size is used to avoid the need for a costly variable array.
 #define PROXY_MAX_ARGS (2)
+
+// Helper function to safely create a string object from a C string,
+// checking for invalid UTF-8 that might indicate filesystem corruption.
+// Returns a string object on success, raises OSError(EIO) if invalid UTF-8 detected.
+mp_obj_t mp_vfs_new_str_from_cstr_safe(const char *str) {
+    #if MICROPY_PY_BUILTINS_STR_UNICODE && MICROPY_PY_BUILTINS_STR_UNICODE_CHECK
+    // Check if the string from the filesystem is valid UTF-8
+    // Invalid UTF-8 may indicate filesystem corruption
+    size_t str_len = strlen(str);
+    if (!utf8_check((const byte *)str, str_len)) {
+        // Filesystem corruption detected - raise OSError with EIO (I/O error)
+        mp_raise_OSError(MP_EIO);
+    }
+    #endif
+    return mp_obj_new_str_from_cstr(str);
+}
 
 // path is the path to lookup and *path_out holds the path within the VFS
 // object (starts with / if an absolute path).
