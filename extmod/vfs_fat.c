@@ -39,6 +39,7 @@
 #include <string.h>
 #include "py/runtime.h"
 #include "py/mperrno.h"
+#include "py/unicode.h"
 #include "lib/oofatfs/ff.h"
 #include "extmod/vfs_fat.h"
 #include "shared/timeutils/timeutils.h"
@@ -149,6 +150,13 @@ static mp_obj_t mp_vfs_fat_ilistdir_it_iternext(mp_obj_t self_in) {
         // make 4-tuple with info about this entry
         mp_obj_tuple_t *t = MP_OBJ_TO_PTR(mp_obj_new_tuple(4, NULL));
         if (self->is_str) {
+            // Check if the filename from the FAT filesystem is valid UTF-8
+            // Invalid UTF-8 indicates filesystem corruption
+            size_t fn_len = strlen(fn);
+            if (!utf8_check((const byte *)fn, fn_len)) {
+                // Filesystem corruption detected - raise OSError with EIO (I/O error)
+                mp_raise_OSError(MP_EIO);
+            }
             t->items[0] = mp_obj_new_str_from_cstr(fn);
         } else {
             t->items[0] = mp_obj_new_bytes((const byte *)fn, strlen(fn));
@@ -295,6 +303,12 @@ static mp_obj_t fat_vfs_getcwd(mp_obj_t vfs_in) {
     FRESULT res = f_getcwd(&self->fatfs, buf, sizeof(buf));
     if (res != FR_OK) {
         mp_raise_OSError(fresult_to_errno_table[res]);
+    }
+    // Check if the path from the FAT filesystem is valid UTF-8
+    // Invalid UTF-8 indicates filesystem corruption
+    size_t buf_len = strlen(buf);
+    if (!utf8_check((const byte *)buf, buf_len)) {
+        mp_raise_OSError(MP_EIO);
     }
     return mp_obj_new_str_from_cstr(buf);
 }
