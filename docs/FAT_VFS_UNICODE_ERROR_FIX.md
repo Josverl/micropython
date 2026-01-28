@@ -19,19 +19,23 @@ The actual issue was filesystem corruption, but the error message didn't make th
 1. **FAT Filesystem Encoding**: The FatFS library (oofatfs) with `FF_LFN_UNICODE=0` uses ANSI/OEM encoding (typically CP437) for filenames
 2. **UTF-8 Expectation**: MicroPython expects all string objects to contain valid UTF-8
 3. **Corruption Impact**: When FAT directory entries are corrupted, the resulting byte sequences may not be valid UTF-8
-4. **Error Propagation**: The `mp_obj_new_str_from_cstr()` function validates UTF-8 and raises `UnicodeError` for invalid sequences
+4. **Error Propagation**: When `MICROPY_PY_BUILTINS_STR_UNICODE_CHECK` is enabled, the `mp_obj_new_str_from_cstr()` function validates UTF-8 and raises `UnicodeError` for invalid sequences
 
 This led to a misleading error message - users thought they had an encoding problem when they actually had filesystem corruption.
+
+**Note**: This issue only occurs when `MICROPY_PY_BUILTINS_STR_UNICODE_CHECK` is enabled. When disabled, invalid UTF-8 is silently accepted, which could lead to other issues.
 
 ## Solution
 
 Modified `extmod/vfs_fat.c` to proactively check for invalid UTF-8 in filenames before attempting to create string objects:
 
-1. Added UTF-8 validation using `utf8_check()` function
-2. When invalid UTF-8 is detected, raise `OSError` with errno `EIO` (I/O error) instead
+1. Added UTF-8 validation using `utf8_check()` function (when `MICROPY_PY_BUILTINS_STR_UNICODE_CHECK` is enabled)
+2. When invalid UTF-8 is detected, raise `OSError` with errno `EIO` (I/O error) instead of allowing `UnicodeError` to propagate
 3. Applied the fix to:
    - `mp_vfs_fat_ilistdir_it_iternext()`: Directory listing operations
    - `fat_vfs_getcwd()`: Get current working directory operations
+
+**Important**: This fix intercepts the UTF-8 validation that `mp_obj_new_str_from_cstr()` would perform and converts the error type from `UnicodeError` to `OSError(EIO)`. This provides a more meaningful error message to users.
 
 ## Changes Made
 
@@ -43,6 +47,7 @@ Modified `extmod/vfs_fat.c` to proactively check for invalid UTF-8 in filenames 
 
 // In mp_vfs_fat_ilistdir_it_iternext():
 if (self->is_str) {
+    #if MICROPY_PY_BUILTINS_STR_UNICODE && MICROPY_PY_BUILTINS_STR_UNICODE_CHECK
     // Check if the filename from the FAT filesystem is valid UTF-8
     // Invalid UTF-8 indicates filesystem corruption
     size_t fn_len = strlen(fn);
@@ -50,11 +55,14 @@ if (self->is_str) {
         // Filesystem corruption detected - raise OSError with EIO (I/O error)
         mp_raise_OSError(MP_EIO);
     }
+    #endif
     t->items[0] = mp_obj_new_str_from_cstr(fn);
 }
 
 // Similar change in fat_vfs_getcwd()
 ```
+
+**Note**: The checks are conditional on `MICROPY_PY_BUILTINS_STR_UNICODE_CHECK` being enabled. This ensures the code only adds UTF-8 validation overhead when the build configuration requires it.
 
 ## User Impact
 
