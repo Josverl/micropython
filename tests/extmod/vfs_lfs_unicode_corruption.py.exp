@@ -1,0 +1,10 @@
+Test 1: Valid UTF-8 filenames
+  Normal listing: True
+Test 2: Valid non-ASCII UTF-8
+  UTF-8 support: yes
+Test 3: Corruption simulation
+  Found potential filename at offset 1096
+Test 4: Reading corrupted filename
+  Result: no error (checking disabled or entry unreadable)
+
+Test completed
