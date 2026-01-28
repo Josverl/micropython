@@ -85,8 +85,13 @@ print("Test 3: Corruption simulation")
 # We'll search for the filename "test" and replace it with invalid UTF-8
 corrupted = False
 for offset in range(0, len(bdev.data) - 10):
-    # Look for "test" in the data
-    if bdev.data[offset:offset + 4] == b"test":
+    # Look for "test" in the data - compare byte by byte to avoid slice syntax
+    if (
+        bdev.data[offset] == ord(b"t")
+        and bdev.data[offset + 1] == ord(b"e")
+        and bdev.data[offset + 2] == ord(b"s")
+        and bdev.data[offset + 3] == ord(b"t")
+    ):
         # Check it's likely a filename (not other data)
         # In LittleFS, filenames are stored with length prefix
         if offset > 0 and bdev.data[offset - 1] in range(1, 20):

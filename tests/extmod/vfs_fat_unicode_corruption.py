@@ -93,7 +93,13 @@ print("Test 4: Corruption simulation")
 corrupted = False
 for offset in range(0, len(bdev.data) - 32):
     # Check if this looks like a directory entry with "TEST"
-    if bdev.data[offset:offset + 4] == b"TEST":
+    # Compare byte by byte to avoid slice syntax
+    if (
+        bdev.data[offset] == ord(b"T")
+        and bdev.data[offset + 1] == ord(b"E")
+        and bdev.data[offset + 2] == ord(b"S")
+        and bdev.data[offset + 3] == ord(b"T")
+    ):
         # Found it - corrupt with invalid UTF-8
         # 0xC0 and 0xC1 are invalid UTF-8 start bytes (overlong encoding)
         print("  Found dir entry at offset", offset)
@@ -137,7 +143,15 @@ if corrupted:
 
         # Corrupt "SUBDIR" in the filesystem
         for offset in range(0, len(bdev.data) - 32):
-            if bdev.data[offset:offset + 6] == b"SUBDIR":
+            # Compare byte by byte to avoid slice syntax
+            if (
+                bdev.data[offset] == ord(b"S")
+                and bdev.data[offset + 1] == ord(b"U")
+                and bdev.data[offset + 2] == ord(b"B")
+                and bdev.data[offset + 3] == ord(b"D")
+                and bdev.data[offset + 4] == ord(b"I")
+                and bdev.data[offset + 5] == ord(b"R")
+            ):
                 print("  Found subdir at offset", offset)
                 bdev.data[offset] = 0xFE  # 0xFE is invalid in UTF-8
                 break
