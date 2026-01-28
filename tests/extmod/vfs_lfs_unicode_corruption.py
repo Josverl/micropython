@@ -65,7 +65,11 @@ try:
     with fs.open("café.txt", "w") as f:
         f.write("test")
     items = list(fs.ilistdir())
-    found = any("caf" in item[0] for item in items)
+    found = False
+    for item in items:
+        if "caf" in item[0]:
+            found = True
+            break
     print("  UTF-8 support:", "yes" if found else "limited")
 except (OSError, UnicodeError):
     print("  UTF-8 support: limited")

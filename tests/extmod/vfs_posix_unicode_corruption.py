@@ -6,7 +6,7 @@ in filenames from the native filesystem, raising OSError(EIO) instead of Unicode
 """
 
 try:
-    import errno, os, vfs
+    import os, vfs
 
     vfs.VfsPosix
 except (ImportError, AttributeError):

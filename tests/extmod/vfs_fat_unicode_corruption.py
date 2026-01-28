@@ -10,7 +10,7 @@ then physically corrupts the directory entries in the raw block device data.
 """
 
 try:
-    import errno, os, vfs
+    import errno, vfs
 
     vfs.VfsFat
 except (ImportError, AttributeError):
@@ -71,7 +71,11 @@ try:
     with fs.open("café.txt", "w") as f:
         f.write("test")
     items = list(fs.ilistdir())
-    found_cafe = any("caf" in item[0] for item in items)
+    found_cafe = False
+    for item in items:
+        if "caf" in item[0]:
+            found_cafe = True
+            break
     print("  UTF-8 support:", "yes" if found_cafe else "limited")
 except (OSError, UnicodeError):
     print("  UTF-8 support: limited")

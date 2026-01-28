@@ -10,7 +10,7 @@ invalid UTF-8 sequences (e.g., from CP437 codepage: b"Fr\x81hst\x81ck.wav").
 """
 
 try:
-    import errno, os, vfs
+    import errno, vfs
 
     vfs.VfsFat
 except (ImportError, AttributeError):
