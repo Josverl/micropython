@@ -79,3 +79,39 @@ try:
     print(repr(result))
 except NotImplementedError:
     print('NotImplementedError')
+
+# Test surrogateescape mode - should either work or raise NotImplementedError
+try:
+    result = b'\xff\xfe'.decode('utf-8', 'surrogateescape')
+    print(repr(result))
+except NotImplementedError:
+    print('NotImplementedError')
+
+# Test surrogateescape with valid UTF-8 (should pass through)
+try:
+    result = b'hello'.decode('utf-8', 'surrogateescape')
+    print(repr(result))
+except NotImplementedError:
+    print('NotImplementedError')
+
+# Test surrogateescape with mixed valid/invalid UTF-8
+try:
+    result = b'hello\xffworld'.decode('utf-8', 'surrogateescape')
+    print(repr(result))
+except NotImplementedError:
+    print('NotImplementedError')
+
+# Test surrogateescape with multiple invalid bytes
+try:
+    result = b'\x80\x81\x82'.decode('utf-8', 'surrogateescape')
+    print(repr(result))
+except NotImplementedError:
+    print('NotImplementedError')
+
+# Test surrogateescape with incomplete sequence
+try:
+    result = b'hello\xc0'.decode('utf-8', 'surrogateescape')
+    print(repr(result))
+except NotImplementedError:
+    print('NotImplementedError')
+

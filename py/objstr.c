@@ -244,10 +244,19 @@ mp_obj_t mp_obj_str_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_
                     mp_raise_NotImplementedError(NULL);
                 }
                 #endif
+                #if !MICROPY_PY_BUILTINS_BYTES_DECODE_SURROGATEESCAPE
+                // Raise NotImplementedError if 'surrogateescape' is used but not enabled
+                if (strcmp(errors, "surrogateescape") == 0) {
+                    mp_raise_NotImplementedError(NULL);
+                }
+                #endif
 
                 if (strcmp(errors, "ignore") == 0
                     #if MICROPY_PY_BUILTINS_BYTES_DECODE_REPLACE
                     || strcmp(errors, "replace") == 0
+                    #endif
+                    #if MICROPY_PY_BUILTINS_BYTES_DECODE_SURROGATEESCAPE
+                    || strcmp(errors, "surrogateescape") == 0
                     #endif
                     ) {
                     // Build new string skipping/replacing invalid bytes
@@ -285,12 +294,28 @@ mp_obj_t mp_obj_str_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_
                                 vstr_add_char(&vstr, 0xFFFD);
                             }
                             #endif
+                            #if MICROPY_PY_BUILTINS_BYTES_DECODE_SURROGATEESCAPE
+                            else if (strcmp(errors, "surrogateescape") == 0) {
+                                // Invalid or incomplete sequence - map each byte to surrogate
+                                while (seq_start < p) {
+                                    vstr_add_char(&vstr, 0xDC00 + *seq_start);
+                                    seq_start++;
+                                }
+                            }
+                            #endif
                             // For 'ignore' mode, do nothing (skip invalid bytes)
                         }
                         #if MICROPY_PY_BUILTINS_BYTES_DECODE_REPLACE
                         else if (strcmp(errors, "replace") == 0) {
                             // Invalid start byte - replace with U+FFFD
                             vstr_add_char(&vstr, 0xFFFD);
+                            p++;
+                        }
+                        #endif
+                        #if MICROPY_PY_BUILTINS_BYTES_DECODE_SURROGATEESCAPE
+                        else if (strcmp(errors, "surrogateescape") == 0) {
+                            // Invalid start byte - map to surrogate
+                            vstr_add_char(&vstr, 0xDC00 + c);
                             p++;
                         }
                         #endif

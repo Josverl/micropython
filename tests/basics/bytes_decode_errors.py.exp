@@ -12,3 +12,8 @@ UnicodeError
 '\ufffd\ufffd'
 'hello'
 'hello\ufffdworld'
+'\udcff\udcfe'
+'hello'
+'hello\udcffworld'
+'\udc80\udc81\udc82'
+'hello\udcc0'
