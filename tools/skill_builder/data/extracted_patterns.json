@@ -1,0 +1,877 @@
+{
+  "timestamp": "os.stat_result(st_mode=16877, st_ino=536800, st_dev=2096, st_nlink=3, st_uid=1000, st_gid=1000, st_size=4096, st_atime=1769638041, st_mtime=1769638040, st_ctime=1769638040)",
+  "statistics": {
+    "total_patterns": 16,
+    "patterns_by_type": {
+      "type_safety": {
+        "total": 1491,
+        "by_author": {
+          "dpgeorge": 232,
+          "jepler": 73,
+          "pi-anl": 64,
+          "agatti": 105,
+          "projectgus": 188,
+          "robert-hh": 606,
+          "DvdGiessen": 181,
+          "yn386": 37,
+          "arachsys": 5
+        }
+      },
+      "inline_comments": {
+        "total": 3341,
+        "by_author": {
+          "dpgeorge": 305,
+          "jepler": 155,
+          "pi-anl": 173,
+          "agatti": 479,
+          "projectgus": 480,
+          "robert-hh": 955,
+          "DvdGiessen": 519,
+          "yn386": 216,
+          "arachsys": 59
+        }
+      },
+      "encapsulation": {
+        "total": 373,
+        "by_author": {
+          "dpgeorge": 38,
+          "jepler": 6,
+          "pi-anl": 11,
+          "agatti": 62,
+          "projectgus": 43,
+          "robert-hh": 61,
+          "DvdGiessen": 146,
+          "yn386": 6
+        }
+      },
+      "mp_obj_new": {
+        "total": 132,
+        "by_author": {
+          "dpgeorge": 34,
+          "jepler": 33,
+          "agatti": 18,
+          "projectgus": 15,
+          "DvdGiessen": 31,
+          "robert-hh": 1
+        }
+      },
+      "config_guard": {
+        "total": 520,
+        "by_author": {
+          "dpgeorge": 90,
+          "jepler": 49,
+          "pi-anl": 85,
+          "agatti": 93,
+          "projectgus": 38,
+          "robert-hh": 108,
+          "DvdGiessen": 21,
+          "yn386": 30,
+          "arachsys": 6
+        }
+      },
+      "boundary_check": {
+        "total": 840,
+        "by_author": {
+          "dpgeorge": 72,
+          "jepler": 52,
+          "pi-anl": 25,
+          "agatti": 64,
+          "projectgus": 98,
+          "robert-hh": 266,
+          "DvdGiessen": 203,
+          "yn386": 46,
+          "arachsys": 14
+        }
+      },
+      "qstr_usage": {
+        "total": 730,
+        "by_author": {
+          "dpgeorge": 49,
+          "jepler": 45,
+          "pi-anl": 22,
+          "agatti": 285,
+          "projectgus": 88,
+          "robert-hh": 142,
+          "DvdGiessen": 80,
+          "arachsys": 19
+        }
+      },
+      "error_handling": {
+        "total": 193,
+        "by_author": {
+          "dpgeorge": 3,
+          "jepler": 10,
+          "pi-anl": 18,
+          "agatti": 21,
+          "projectgus": 42,
+          "robert-hh": 50,
+          "DvdGiessen": 41,
+          "yn386": 4,
+          "arachsys": 4
+        }
+      },
+      "error_text_macro": {
+        "total": 174,
+        "by_author": {
+          "dpgeorge": 3,
+          "jepler": 11,
+          "pi-anl": 18,
+          "agatti": 19,
+          "projectgus": 35,
+          "robert-hh": 46,
+          "DvdGiessen": 34,
+          "yn386": 4,
+          "arachsys": 4
+        }
+      },
+      "memory_allocation": {
+        "total": 21,
+        "by_author": {
+          "dpgeorge": 5,
+          "jepler": 1,
+          "robert-hh": 10,
+          "DvdGiessen": 4,
+          "projectgus": 1
+        }
+      },
+      "mp_arg": {
+        "total": 167,
+        "by_author": {
+          "dpgeorge": 10,
+          "pi-anl": 2,
+          "projectgus": 31,
+          "robert-hh": 90,
+          "DvdGiessen": 10,
+          "arachsys": 14,
+          "jepler": 9,
+          "agatti": 1
+        }
+      },
+      "mp_stream": {
+        "total": 75,
+        "by_author": {
+          "jepler": 5,
+          "pi-anl": 9,
+          "robert-hh": 23,
+          "DvdGiessen": 25,
+          "agatti": 13
+        }
+      },
+      "rom_table": {
+        "total": 260,
+        "by_author": {
+          "pi-anl": 19,
+          "agatti": 29,
+          "projectgus": 69,
+          "robert-hh": 71,
+          "DvdGiessen": 37,
+          "dpgeorge": 9,
+          "jepler": 21,
+          "arachsys": 5
+        }
+      },
+      "mp_printf": {
+        "total": 74,
+        "by_author": {
+          "pi-anl": 7,
+          "agatti": 6,
+          "robert-hh": 23,
+          "DvdGiessen": 12,
+          "yn386": 10,
+          "arachsys": 4,
+          "dpgeorge": 5,
+          "jepler": 3,
+          "projectgus": 4
+        }
+      },
+      "const_fun_obj": {
+        "total": 44,
+        "by_author": {
+          "pi-anl": 1,
+          "agatti": 16,
+          "robert-hh": 11,
+          "DvdGiessen": 11,
+          "projectgus": 5
+        }
+      },
+      "vstr_usage": {
+        "total": 59,
+        "by_author": {
+          "dpgeorge": 49,
+          "jepler": 1,
+          "agatti": 9
+        }
+      }
+    },
+    "authors": [
+      "dpgeorge",
+      "jepler",
+      "pi-anl",
+      "agatti",
+      "projectgus",
+      "robert-hh",
+      "DvdGiessen",
+      "yn386",
+      "arachsys"
+    ]
+  },
+  "code_samples": {
+    "mp_obj_new": [
+      {
+        "line": "mp_obj_new_int(tm.tm_year),",
+        "ref": "1b2f6e3d"
+      },
+      {
+        "line": "mp_obj_new_int(tm.tm_mon),",
+        "ref": "1b2f6e3d"
+      },
+      {
+        "line": "mp_obj_new_int(tm.tm_mday),",
+        "ref": "1b2f6e3d"
+      },
+      {
+        "line": "mp_obj_new_int(tm.tm_wday),",
+        "ref": "1b2f6e3d"
+      },
+      {
+        "line": "mp_obj_new_int(tm.tm_hour),",
+        "ref": "1b2f6e3d"
+      },
+      {
+        "line": "mp_obj_new_int(tm.tm_min),",
+        "ref": "1b2f6e3d"
+      },
+      {
+        "line": "mp_obj_new_int(tm.tm_sec),",
+        "ref": "1b2f6e3d"
+      },
+      {
+        "line": "mp_obj_new_int((ticks % 32768) * 15625U / 512U),",
+        "ref": "1b2f6e3d"
+      },
+      {
+        "line": "dest[0] = mp_obj_new_code(self->context->constants, proto_fun);",
+        "ref": "878f8004"
+      },
+      {
+        "line": "return mp_obj_new_int(cur);",
+        "ref": "72867bce"
+      }
+    ],
+    "config_guard": [
+      {
+        "line": "#if MICROPY_PERSISTENT_CODE_SAVE",
+        "ref": "878f8004"
+      },
+      {
+        "line": "#if MICROPY_PY_BUILTINS_CODE >= MICROPY_PY_BUILTINS_CODE_FULL",
+        "ref": "384cc627"
+      },
+      {
+        "line": "#if MICROPY_MODULE_FROZEN_MPY || MICROPY_PY_FUNCTION_ATTRS_CODE",
+        "ref": "a5bda23a"
+      },
+      {
+        "line": "#if MICROPY_HW_STM_USB_STACK || MICROPY_HW_TINYUSB_STACK",
+        "ref": "9c2b0cd2"
+      },
+      {
+        "line": "#if MICROPY_HW_STM_USB_STACK || MICROPY_HW_TINYUSB_STACK",
+        "ref": "9c2b0cd2"
+      },
+      {
+        "line": "#if MICROPY_HW_STM_USB_STACK && MICROPY_HW_ENABLE_USB",
+        "ref": "63c94fe7"
+      },
+      {
+        "line": "#if MICROPY_HW_TINYUSB_STACK && MICROPY_HW_ENABLE_USBDEV",
+        "ref": "63c94fe7"
+      },
+      {
+        "line": "#if MICROPY_HW_USB_FS",
+        "ref": "f43810b1"
+      },
+      {
+        "line": "#if MICROPY_HW_USB_HS",
+        "ref": "f43810b1"
+      },
+      {
+        "line": "#if MICROPY_HW_TINYUSB_STACK",
+        "ref": "f43810b1"
+      }
+    ],
+    "qstr_usage": [
+      {
+        "line": "static void proto_fun_to_raw_code_simplified(const void *proto_fun, bit_vector_t *qstr_table_used, bit_vector_t *obj_table_used, mp_raw_code_simplified_t *rcs) {",
+        "ref": "384cc627"
+      },
+      {
+        "line": "bit_vector_set(qstr_table_used, simple_name);",
+        "ref": "384cc627"
+      },
+      {
+        "line": "bit_vector_set(qstr_table_used, arg_name);",
+        "ref": "384cc627"
+      },
+      {
+        "line": "bit_vector_set(qstr_table_used, op.arg);",
+        "ref": "384cc627"
+      },
+      {
+        "line": "proto_fun_to_raw_code_simplified(children[i], qstr_table_used, obj_table_used, &rcs->children[i]);",
+        "ref": "384cc627"
+      },
+      {
+        "line": "bit_vector_t qstr_table_used;",
+        "ref": "384cc627"
+      },
+      {
+        "line": "bit_vector_init(&qstr_table_used);",
+        "ref": "384cc627"
+      },
+      {
+        "line": "bit_vector_set(&qstr_table_used, 0);",
+        "ref": "384cc627"
+      },
+      {
+        "line": "proto_fun_to_raw_code_simplified(proto_fun, &qstr_table_used, &obj_table_used, &rcs);",
+        "ref": "384cc627"
+      },
+      {
+        "line": "{ MP_QSTR_phy_type, MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = NETWORK_LAN_PHY} },",
+        "ref": "5bd68408"
+      }
+    ],
+    "error_handling": [
+      {
+        "line": "mp_raise_ValueError(MP_ERROR_TEXT(\"function must be bytecode\"));",
+        "ref": "384cc627"
+      },
+      {
+        "line": "mp_raise_ValueError(NULL);",
+        "ref": "0615d139"
+      },
+      {
+        "line": "mp_raise_ValueError(MP_ERROR_TEXT(\"invalid pin\"));",
+        "ref": "9bde1970"
+      },
+      {
+        "line": "mp_raise_ValueError(MP_ERROR_TEXT(\"pulls are not supported for external pins\"));",
+        "ref": "9bde1970"
+      },
+      {
+        "line": "mp_raise_ValueError(MP_ERROR_TEXT(\"alternate functions are not supported for external pins\"));",
+        "ref": "9bde1970"
+      },
+      {
+        "line": "mp_raise_ValueError(MP_ERROR_TEXT(\"only Pin.OUT and Pin.IN are supported for this pin\"));",
+        "ref": "9bde1970"
+      },
+      {
+        "line": "mp_raise_ValueError(MP_ERROR_TEXT(\"irq claimed by external resource\"));",
+        "ref": "9bde1970"
+      },
+      {
+        "line": "mp_raise_ValueError(MP_ERROR_TEXT(\"invalid PIO\"));",
+        "ref": "9bde1970"
+      },
+      {
+        "line": "mp_raise_ValueError(MP_ERROR_TEXT(\"prog not in instruction memory\"));",
+        "ref": "9bde1970"
+      },
+      {
+        "line": "mp_raise_ValueError(MP_ERROR_TEXT(\"invalid StateMachine\"));",
+        "ref": "9bde1970"
+      }
+    ],
+    "error_text_macro": [
+      {
+        "line": "mp_raise_ValueError(MP_ERROR_TEXT(\"function must be bytecode\"));",
+        "ref": "384cc627"
+      },
+      {
+        "line": "MP_ERROR_TEXT(\"memory allocation failed, allocating \" SIZE_FMT \" bytes\"), num_bytes);",
+        "ref": "c91e091a"
+      },
+      {
+        "line": "mp_raise_ValueError(MP_ERROR_TEXT(\"invalid pin\"));",
+        "ref": "9bde1970"
+      },
+      {
+        "line": "mp_raise_ValueError(MP_ERROR_TEXT(\"pulls are not supported for external pins\"));",
+        "ref": "9bde1970"
+      },
+      {
+        "line": "mp_raise_ValueError(MP_ERROR_TEXT(\"alternate functions are not supported for external pins\"));",
+        "ref": "9bde1970"
+      },
+      {
+        "line": "mp_raise_ValueError(MP_ERROR_TEXT(\"only Pin.OUT and Pin.IN are supported for this pin\"));",
+        "ref": "9bde1970"
+      },
+      {
+        "line": "mp_raise_ValueError(MP_ERROR_TEXT(\"irq claimed by external resource\"));",
+        "ref": "9bde1970"
+      },
+      {
+        "line": "mp_raise_ValueError(MP_ERROR_TEXT(\"invalid PIO\"));",
+        "ref": "9bde1970"
+      },
+      {
+        "line": "mp_raise_ValueError(MP_ERROR_TEXT(\"prog not in instruction memory\"));",
+        "ref": "9bde1970"
+      },
+      {
+        "line": "mp_raise_ValueError(MP_ERROR_TEXT(\"invalid StateMachine\"));",
+        "ref": "9bde1970"
+      }
+    ],
+    "memory_allocation": [
+      {
+        "line": "rcs->children = m_new(mp_raw_code_simplified_t, n_children);",
+        "ref": "384cc627"
+      },
+      {
+        "line": "m_del(mp_raw_code_simplified_t, rcs->children, rcs->n_children);",
+        "ref": "384cc627"
+      },
+      {
+        "line": "bufinfo.buf = m_new(uint8_t, bufinfo.len);",
+        "ref": "0615d139"
+      },
+      {
+        "line": "buf = m_new(uint8_t, len);",
+        "ref": "3546f231"
+      },
+      {
+        "line": "m_del(uint8_t, buf, len);",
+        "ref": "3546f231"
+      },
+      {
+        "line": "m_del(uint8_t, buf, len);",
+        "ref": "3546f231"
+      },
+      {
+        "line": "self->rxbuf = m_new(uint8_t, self->rxbuf_len + 1);",
+        "ref": "b85ad4bd"
+      },
+      {
+        "line": "self->txbuf = m_new(uint8_t, self->txbuf_len); // Allocate the TX buffer.",
+        "ref": "b85ad4bd"
+      },
+      {
+        "line": "TaskStatus_t *task_array = m_new(TaskStatus_t, task_count_max);",
+        "ref": "06d8c084"
+      },
+      {
+        "line": "m_del(TaskStatus_t, task_array, task_count_max);",
+        "ref": "06d8c084"
+      }
+    ],
+    "mp_arg": [
+      {
+        "line": "{ MP_QSTR_phy_type, MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = NETWORK_LAN_PHY} },",
+        "ref": "5bd68408"
+      },
+      {
+        "line": "{ MP_QSTR_id, MP_ARG_INT, {.u_int = DEFAULT_ETH_ID} },",
+        "ref": "77e62f62"
+      },
+      {
+        "line": "mp_arg_check_num(n_args, n_kw, 1, 1, false);",
+        "ref": "7e14680a"
+      },
+      {
+        "line": "{ MP_QSTR_client_id, MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_rom_obj = MP_ROM_NONE} },",
+        "ref": "41e0ec96"
+      },
+      {
+        "line": "mp_arg_check_num(n_args, n_kw, 0, 0, false);",
+        "ref": "c07b178d"
+      },
+      {
+        "line": "{ MP_QSTR_freq, MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = -1} },",
+        "ref": "3546f231"
+      },
+      {
+        "line": "{ MP_QSTR_timeout, MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = -1} },",
+        "ref": "3546f231"
+      },
+      {
+        "line": "static const mp_arg_t allowed_args[] = {",
+        "ref": "79d182de"
+      },
+      {
+        "line": "{ MP_QSTR_id, MP_ARG_REQUIRED | MP_ARG_INT, {.u_int = -1} },",
+        "ref": "79d182de"
+      },
+      {
+        "line": "{ MP_QSTR_id, MP_ARG_INT, {.u_int = MICROPY_HW_DEFAULT_I2C_ID} },",
+        "ref": "79d182de"
+      }
+    ],
+    "mp_stream": [
+      {
+        "line": "mp_stream_close(self->sock);",
+        "ref": "b94162b5"
+      },
+      {
+        "line": "const mp_stream_p_t *stream_p = mp_get_stream_raise(file, MP_STREAM_OP_READ);",
+        "ref": "4b013ec3"
+      },
+      {
+        "line": "{ MP_ROM_QSTR(MP_QSTR_read), MP_ROM_PTR(&mp_stream_read_obj) },",
+        "ref": "7e14680a"
+      },
+      {
+        "line": "{ MP_ROM_QSTR(MP_QSTR_readline), MP_ROM_PTR(&mp_stream_unbuffered_readline_obj) },",
+        "ref": "7e14680a"
+      },
+      {
+        "line": "{ MP_ROM_QSTR(MP_QSTR_readinto), MP_ROM_PTR(&mp_stream_readinto_obj) },",
+        "ref": "7e14680a"
+      },
+      {
+        "line": "{ MP_ROM_QSTR(MP_QSTR_write), MP_ROM_PTR(&mp_stream_write_obj) },",
+        "ref": "7e14680a"
+      },
+      {
+        "line": "{ MP_ROM_QSTR(MP_QSTR_close), MP_ROM_PTR(&mp_stream_close_obj) },",
+        "ref": "7e14680a"
+      },
+      {
+        "line": "static const mp_stream_p_t ringio_stream_p = {",
+        "ref": "7e14680a"
+      },
+      {
+        "line": "reader->buflen = mp_stream_rw(reader->file, reader->buf, reader->bufsize, &errcode, MP_STREAM_RW_READ | MP_STREAM_RW_ONCE);",
+        "ref": "4cf74106"
+      },
+      {
+        "line": "const mp_stream_p_t *stream_p = mp_get_stream(file);",
+        "ref": "4cf74106"
+      }
+    ],
+    "rom_table": [
+      {
+        "line": "{ MP_ROM_QSTR(MP_QSTR_PHY_DP83867), MP_ROM_INT(PHY_DP83867) },",
+        "ref": "2a5a8cc1"
+      },
+      {
+        "line": "{ MP_ROM_QSTR(MP_QSTR_WLAN), MP_ROM_PTR(&mp_network_cyw43_type) },",
+        "ref": "fffaf8a4"
+      },
+      {
+        "line": "{ MP_ROM_QSTR(MP_QSTR_STAT_IDLE), MP_ROM_INT(CYW43_LINK_DOWN) },",
+        "ref": "fffaf8a4"
+      },
+      {
+        "line": "{ MP_ROM_QSTR(MP_QSTR_STAT_CONNECTING), MP_ROM_INT(CYW43_LINK_JOIN) },",
+        "ref": "fffaf8a4"
+      },
+      {
+        "line": "{ MP_ROM_QSTR(MP_QSTR_STAT_WRONG_PASSWORD), MP_ROM_INT(CYW43_LINK_BADAUTH) },",
+        "ref": "fffaf8a4"
+      },
+      {
+        "line": "{ MP_ROM_QSTR(MP_QSTR_STAT_NO_AP_FOUND), MP_ROM_INT(CYW43_LINK_NONET) },",
+        "ref": "fffaf8a4"
+      },
+      {
+        "line": "{ MP_ROM_QSTR(MP_QSTR_STAT_CONNECT_FAIL), MP_ROM_INT(CYW43_LINK_FAIL) },",
+        "ref": "fffaf8a4"
+      },
+      {
+        "line": "{ MP_ROM_QSTR(MP_QSTR_STAT_GOT_IP), MP_ROM_INT(CYW43_LINK_UP) },",
+        "ref": "fffaf8a4"
+      },
+      {
+        "line": "{ MP_ROM_QSTR(MP_QSTR_WIZNET5K), MP_ROM_PTR(&mod_network_nic_type_wiznet5k) },",
+        "ref": "fffaf8a4"
+      },
+      {
+        "line": "{ MP_ROM_QSTR(MP_QSTR_WLAN), MP_ROM_PTR(&mod_network_nic_type_nina) },",
+        "ref": "fffaf8a4"
+      }
+    ],
+    "mp_printf": [
+      {
+        "line": "mp_printf(&mp_plat_print, \"scheduled function\\n\");",
+        "ref": "82048535"
+      },
+      {
+        "line": "mp_printf(&mp_plat_print, \"loop\\n\");",
+        "ref": "82048535"
+      },
+      {
+        "line": "mp_printf(&mp_plat_print, \"%d\\n\", ringbuf_put_bytes(&ringbuf, put, 7));",
+        "ref": "7e14680a"
+      },
+      {
+        "line": "mp_printf(&mp_plat_print, \"%d\\n\", ringbuf_get_bytes(&ringbuf, get, 7));",
+        "ref": "7e14680a"
+      },
+      {
+        "line": "mp_printf(&mp_plat_print, \"%s\\n\", get);",
+        "ref": "7e14680a"
+      },
+      {
+        "line": "mp_printf(&mp_plat_print, \"%d\\n\", ringbuf_put_bytes(&ringbuf, put, 7));",
+        "ref": "7e14680a"
+      },
+      {
+        "line": "mp_printf(&mp_plat_print, \"%d\\n\", ringbuf_put_bytes(&ringbuf, large, sizeof(large)));",
+        "ref": "7e14680a"
+      },
+      {
+        "line": "mp_printf(&mp_stderr_print, \"unrecognised arch flags\\n\");",
+        "ref": "965c77ad"
+      },
+      {
+        "line": "mp_printf(&mp_stderr_print,",
+        "ref": "965c77ad"
+      },
+      {
+        "line": "mp_printf(print, \"I2C(%u, scl=%u, sda=%u, freq=%u, timeout=%u)\",",
+        "ref": "3546f231"
+      }
+    ],
+    "const_fun_obj": [
+      {
+        "line": "static MP_DEFINE_CONST_FUN_OBJ_1(micropython_ringio_any_obj, micropython_ringio_any);",
+        "ref": "7e14680a"
+      },
+      {
+        "line": "static MP_DEFINE_CONST_FUN_OBJ_0(platform_processor_obj, platform_processor);",
+        "ref": "c224e976"
+      },
+      {
+        "line": "static MP_DEFINE_CONST_FUN_OBJ_1(pin_toggle_obj, pin_toggle);",
+        "ref": "22310ae2"
+      },
+      {
+        "line": "static MP_DEFINE_CONST_FUN_OBJ_1(machine_pin_toggle_obj, machine_pin_toggle);",
+        "ref": "e009ab06"
+      },
+      {
+        "line": "static MP_DEFINE_CONST_FUN_OBJ_1(machine_pin_toggle_obj, machine_pin_toggle);",
+        "ref": "61cb293b"
+      },
+      {
+        "line": "static MP_DEFINE_CONST_FUN_OBJ_0(esp32_idf_task_info_obj, esp32_idf_task_info);",
+        "ref": "06d8c084"
+      },
+      {
+        "line": "static MP_DEFINE_CONST_FUN_OBJ_1(network_ppp___del___obj, network_ppp___del__);",
+        "ref": "3b1e22c6"
+      },
+      {
+        "line": "static MP_DEFINE_CONST_FUN_OBJ_1(network_ppp_status_obj, network_ppp_status);",
+        "ref": "3b1e22c6"
+      },
+      {
+        "line": "static MP_DEFINE_CONST_FUN_OBJ_1(network_ppp_disconnect_obj, network_ppp_disconnect);",
+        "ref": "3b1e22c6"
+      },
+      {
+        "line": "static MP_DEFINE_CONST_FUN_OBJ_1(network_ppp_isconnected_obj, network_ppp_isconnected);",
+        "ref": "3b1e22c6"
+      }
+    ],
+    "vstr_usage": [
+      {
+        "line": "vstr_add_byte(&lex->vstr, '(');",
+        "ref": "PR#18650"
+      },
+      {
+        "line": "vstr_add_byte(&lex->vstr, '(');",
+        "ref": "PR#18650"
+      },
+      {
+        "line": "vstr_add_byte(&lex->vstr, quote_char);",
+        "ref": "PR#18650"
+      },
+      {
+        "line": "vstr_add_byte(&lex->vstr, '\\\\');",
+        "ref": "PR#18650"
+      },
+      {
+        "line": "vstr_add_byte(&lex->vstr, 'n');",
+        "ref": "PR#18650"
+      },
+      {
+        "line": "vstr_add_byte(&lex->vstr, '{');",
+        "ref": "PR#18650"
+      },
+      {
+        "line": "vstr_add_byte(&lex->fstring_args, quote_char);",
+        "ref": "PR#18650"
+      },
+      {
+        "line": "vstr_add_byte(&lex->fstring_args, '\\\\');",
+        "ref": "PR#18650"
+      },
+      {
+        "line": "vstr_add_byte(&lex->fstring_args, '\\\\');",
+        "ref": "PR#18650"
+      },
+      {
+        "line": "vstr_add_byte(&lex->fstring_args, b);",
+        "ref": "PR#18650"
+      }
+    ]
+  },
+  "patterns": {
+    "type_safety": {
+      "dpgeorge": 232,
+      "jepler": 73,
+      "pi-anl": 64,
+      "agatti": 105,
+      "projectgus": 188,
+      "robert-hh": 606,
+      "DvdGiessen": 181,
+      "yn386": 37,
+      "arachsys": 5
+    },
+    "inline_comments": {
+      "dpgeorge": 305,
+      "jepler": 155,
+      "pi-anl": 173,
+      "agatti": 479,
+      "projectgus": 480,
+      "robert-hh": 955,
+      "DvdGiessen": 519,
+      "yn386": 216,
+      "arachsys": 59
+    },
+    "encapsulation": {
+      "dpgeorge": 38,
+      "jepler": 6,
+      "pi-anl": 11,
+      "agatti": 62,
+      "projectgus": 43,
+      "robert-hh": 61,
+      "DvdGiessen": 146,
+      "yn386": 6
+    },
+    "mp_obj_new": {
+      "dpgeorge": 34,
+      "jepler": 33,
+      "agatti": 18,
+      "projectgus": 15,
+      "DvdGiessen": 31,
+      "robert-hh": 1
+    },
+    "config_guard": {
+      "dpgeorge": 90,
+      "jepler": 49,
+      "pi-anl": 85,
+      "agatti": 93,
+      "projectgus": 38,
+      "robert-hh": 108,
+      "DvdGiessen": 21,
+      "yn386": 30,
+      "arachsys": 6
+    },
+    "boundary_check": {
+      "dpgeorge": 72,
+      "jepler": 52,
+      "pi-anl": 25,
+      "agatti": 64,
+      "projectgus": 98,
+      "robert-hh": 266,
+      "DvdGiessen": 203,
+      "yn386": 46,
+      "arachsys": 14
+    },
+    "qstr_usage": {
+      "dpgeorge": 49,
+      "jepler": 45,
+      "pi-anl": 22,
+      "agatti": 285,
+      "projectgus": 88,
+      "robert-hh": 142,
+      "DvdGiessen": 80,
+      "arachsys": 19
+    },
+    "error_handling": {
+      "dpgeorge": 3,
+      "jepler": 10,
+      "pi-anl": 18,
+      "agatti": 21,
+      "projectgus": 42,
+      "robert-hh": 50,
+      "DvdGiessen": 41,
+      "yn386": 4,
+      "arachsys": 4
+    },
+    "error_text_macro": {
+      "dpgeorge": 3,
+      "jepler": 11,
+      "pi-anl": 18,
+      "agatti": 19,
+      "projectgus": 35,
+      "robert-hh": 46,
+      "DvdGiessen": 34,
+      "yn386": 4,
+      "arachsys": 4
+    },
+    "memory_allocation": {
+      "dpgeorge": 5,
+      "jepler": 1,
+      "robert-hh": 10,
+      "DvdGiessen": 4,
+      "projectgus": 1
+    },
+    "mp_arg": {
+      "dpgeorge": 10,
+      "pi-anl": 2,
+      "projectgus": 31,
+      "robert-hh": 90,
+      "DvdGiessen": 10,
+      "arachsys": 14,
+      "jepler": 9,
+      "agatti": 1
+    },
+    "mp_stream": {
+      "jepler": 5,
+      "pi-anl": 9,
+      "robert-hh": 23,
+      "DvdGiessen": 25,
+      "agatti": 13
+    },
+    "rom_table": {
+      "pi-anl": 19,
+      "agatti": 29,
+      "projectgus": 69,
+      "robert-hh": 71,
+      "DvdGiessen": 37,
+      "dpgeorge": 9,
+      "jepler": 21,
+      "arachsys": 5
+    },
+    "mp_printf": {
+      "pi-anl": 7,
+      "agatti": 6,
+      "robert-hh": 23,
+      "DvdGiessen": 12,
+      "yn386": 10,
+      "arachsys": 4,
+      "dpgeorge": 5,
+      "jepler": 3,
+      "projectgus": 4
+    },
+    "const_fun_obj": {
+      "pi-anl": 1,
+      "agatti": 16,
+      "robert-hh": 11,
+      "DvdGiessen": 11,
+      "projectgus": 5
+    },
+    "vstr_usage": {
+      "dpgeorge": 49,
+      "jepler": 1,
+      "agatti": 9
+    }
+  }
+}

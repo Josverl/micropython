@@ -1,0 +1,277 @@
+# MicroPython C Code Review Skill
+# Generated from analysis of core contributor commits and PRs
+
+skill:
+  name: MicroPython C Code Review
+  version: "1.0.0"
+  description: >
+    Automated code review rules for MicroPython C code based on
+    analysis of commits from core contributors.
+  target_language: c
+  
+rules:
+
+  - id: micropy-memory-allocation
+    category: memory_safety
+    severity: error
+    title: Use MicroPython memory allocation functions
+    description: |
+      Use m_new, m_renew, and m_del for memory management instead of malloc/free. This ensures consistent memory tracking and debugging.
+    pattern: '\b(malloc|calloc|realloc|free)\s*\('
+    examples:
+      bad: |
+        void *ptr = malloc(size);
+      good: |
+        mp_obj_t *ptr = m_new(mp_obj_t, size);
+
+  - id: micropy-error-handling
+    category: error_handling
+    severity: warning
+    title: Use mp_raise_* functions for exceptions
+    description: |
+      Raise MicroPython exceptions using mp_raise_* functions with proper error types. This ensures consistent exception handling across the codebase.
+    pattern: '\b(raise|throw|assert)\b'
+    examples:
+      bad: |
+        if (!valid) assert(0);
+      good: |
+        if (!valid) mp_raise_ValueError(MP_ERROR_TEXT("invalid value"));
+
+  - id: micropy-error-text-macro
+    category: error_handling
+    severity: warning
+    title: Use MP_ERROR_TEXT for error messages
+    description: |
+      Wrap error message strings with MP_ERROR_TEXT macro for proper handling of compile-time error text storage.
+    pattern: 'mp_raise_\w+\s*\(\s*['\"]'
+    examples:
+      bad: |
+        mp_raise_ValueError("invalid");
+      good: |
+        mp_raise_ValueError(MP_ERROR_TEXT("invalid"));
+
+  - id: micropy-config-guard
+    category: configuration
+    severity: suggestion
+    title: Consider using configuration guards for optional features
+    description: |
+      Use #if MICROPY_* preprocessor guards for optional features to reduce binary size on constrained devices.
+    pattern: '#define\s+FEATURE_'
+    examples:
+      pattern: |
+        #if MICROPY_PY_FEATURE_NAME
+    // implementation
+#endif
+
+  - id: micropy-type-safety
+    category: type_safety
+    severity: warning
+    title: Use MicroPython type definitions
+    description: |
+      Use mp_obj_t, mp_int_t, size_t, and other MicroPython types for consistency and portability across platforms.
+    examples:
+      bad: |
+        void process(int *data, int len) {}
+      good: |
+        void process(mp_obj_t *data, size_t len) {}
+
+  - id: micropy-encapsulation
+    category: code_style
+    severity: suggestion
+    title: Use static and const for encapsulation
+    description: |
+      Mark internal functions and data as static, and use const for immutable data to reduce namespace pollution and enable optimization.
+
+  - id: micropy-inline-docs
+    category: documentation
+    severity: suggestion
+    title: Add inline comments for non-obvious code
+    description: |
+      Include comments explaining intent for complex logic, memory optimizations, and MicroPython-specific decisions.
+
+  - id: micropy-boundary-check
+    category: memory_safety
+    severity: error
+    title: Validate buffer boundaries and sizes
+    description: |
+      Always validate array bounds and buffer sizes to prevent buffer overflows on embedded systems with limited memory.
+
+  - id: micropy-mp-obj-new
+    category: api_usage
+    severity: suggestion
+    title: Use mp_obj_new_* helpers
+    description: |
+      Create MicroPython objects using mp_obj_new_* helpers for consistent object construction.
+    pattern: '\bmp_obj_new_\w+\b'
+    examples:
+      observed: |
+        mp_obj_new_int(tm.tm_year),
+mp_obj_new_int(tm.tm_mon),
+mp_obj_new_int(tm.tm_mday),
+
+  - id: micropy-qstr-usage
+    category: memory_safety
+    severity: suggestion
+    title: Prefer qstr for interned strings
+    description: |
+      Use qstr (MP_QSTR_*) for interned strings to save memory and enable fast comparisons.
+    pattern: '\bMP_QSTR_\w+\b|\bqstr_\w+\b'
+    examples:
+      observed: |
+        static void proto_fun_to_raw_code_simplified(const void *proto_fun, bit_vector_t *qstr_table_used, bit_vector_t *obj_table_used, mp_raw_code_simplified_t *rcs) {
+bit_vector_set(qstr_table_used, simple_name);
+bit_vector_set(qstr_table_used, arg_name);
+
+  - id: micropy-mp-arg
+    category: api_usage
+    severity: suggestion
+    title: Use mp_arg_* for argument parsing
+    description: |
+      Use mp_arg_* helpers for consistent argument parsing and validation.
+    pattern: '\bmp_arg_\w+\b|\bMP_ARG_\w+\b'
+    examples:
+      observed: |
+        { MP_QSTR_phy_type, MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = NETWORK_LAN_PHY} },
+{ MP_QSTR_id, MP_ARG_INT, {.u_int = DEFAULT_ETH_ID} },
+mp_arg_check_num(n_args, n_kw, 1, 1, false);
+
+  - id: micropy-mp-stream
+    category: io
+    severity: suggestion
+    title: Use mp_stream_* for stream protocol
+    description: |
+      Use mp_stream_* helpers to implement stream protocol consistently across ports.
+    pattern: '\bmp_stream_\w+\b'
+    examples:
+      observed: |
+        mp_stream_close(self->sock);
+const mp_stream_p_t *stream_p = mp_get_stream_raise(file, MP_STREAM_OP_READ);
+{ MP_ROM_QSTR(MP_QSTR_read), MP_ROM_PTR(&mp_stream_read_obj) },
+
+  - id: micropy-rom-table
+    category: memory_safety
+    severity: suggestion
+    title: Use MP_ROM_PTR/MP_ROM_QSTR for ROM tables
+    description: |
+      Store constant pointers and qstrs in ROM with MP_ROM_PTR/MP_ROM_QSTR to reduce RAM usage.
+    pattern: '\bMP_ROM_(PTR|QSTR)\b'
+    examples:
+      observed: |
+        { MP_ROM_QSTR(MP_QSTR_PHY_DP83867), MP_ROM_INT(PHY_DP83867) },
+{ MP_ROM_QSTR(MP_QSTR_WLAN), MP_ROM_PTR(&mp_network_cyw43_type) },
+{ MP_ROM_QSTR(MP_QSTR_STAT_IDLE), MP_ROM_INT(CYW43_LINK_DOWN) },
+
+  - id: micropy-mp-printf
+    category: logging
+    severity: suggestion
+    title: Use mp_printf for diagnostics
+    description: |
+      Prefer mp_printf/mp_vprintf for diagnostic output to integrate with MicroPython's print backend.
+    pattern: '\bmp_(v)?printf\b'
+    examples:
+      observed: |
+        mp_printf(&mp_plat_print, "scheduled function\n");
+mp_printf(&mp_plat_print, "loop\n");
+mp_printf(&mp_plat_print, "%d\n", ringbuf_put_bytes(&ringbuf, put, 7));
+
+  - id: micropy-const-fun-obj
+    category: api_binding
+    severity: warning
+    title: Use MP_DEFINE_CONST_FUN_OBJ_* for function bindings
+    description: |
+      Expose C functions to Python using MP_DEFINE_CONST_FUN_OBJ_* macros for consistent bindings.
+    pattern: '\bMP_DEFINE_CONST_FUN_OBJ(_\d+)?\b'
+    examples:
+      observed: |
+        static MP_DEFINE_CONST_FUN_OBJ_1(micropython_ringio_any_obj, micropython_ringio_any);
+static MP_DEFINE_CONST_FUN_OBJ_0(platform_processor_obj, platform_processor);
+static MP_DEFINE_CONST_FUN_OBJ_1(pin_toggle_obj, pin_toggle);
+
+  - id: micropy-vstr-usage
+    category: memory_safety
+    severity: suggestion
+    title: Use vstr for dynamic string building
+    description: |
+      Use vstr_* helpers for incremental string construction to avoid repeated reallocations.
+    pattern: '\bvstr_(init|add|add_str|add_byte|add_char|add_len|printf)\b'
+    examples:
+      observed: |
+        vstr_add_byte(&lex->vstr, '(');
+vstr_add_byte(&lex->vstr, '(');
+vstr_add_byte(&lex->vstr, quote_char);
+
+  - id: micropy-auto-type-safety
+    category: auto
+    severity: suggestion
+    title: Review pattern: type safety
+    description: |
+      This rule was auto-generated from observed code patterns. Review usage for consistency with MicroPython practices.
+
+  - id: micropy-auto-inline-comments
+    category: auto
+    severity: suggestion
+    title: Review pattern: inline comments
+    description: |
+      This rule was auto-generated from observed code patterns. Review usage for consistency with MicroPython practices.
+
+  - id: micropy-auto-encapsulation
+    category: auto
+    severity: suggestion
+    title: Review pattern: encapsulation
+    description: |
+      This rule was auto-generated from observed code patterns. Review usage for consistency with MicroPython practices.
+
+  - id: micropy-auto-config-guard
+    category: auto
+    severity: suggestion
+    title: Review pattern: config guard
+    description: |
+      This rule was auto-generated from observed code patterns. Review usage for consistency with MicroPython practices.
+    examples:
+      observed: |
+        #if MICROPY_PERSISTENT_CODE_SAVE
+#if MICROPY_PY_BUILTINS_CODE >= MICROPY_PY_BUILTINS_CODE_FULL
+#if MICROPY_MODULE_FROZEN_MPY || MICROPY_PY_FUNCTION_ATTRS_CODE
+
+  - id: micropy-auto-boundary-check
+    category: auto
+    severity: suggestion
+    title: Review pattern: boundary check
+    description: |
+      This rule was auto-generated from observed code patterns. Review usage for consistency with MicroPython practices.
+
+  - id: micropy-auto-error-handling
+    category: auto
+    severity: suggestion
+    title: Review pattern: error handling
+    description: |
+      This rule was auto-generated from observed code patterns. Review usage for consistency with MicroPython practices.
+    examples:
+      observed: |
+        mp_raise_ValueError(MP_ERROR_TEXT("function must be bytecode"));
+mp_raise_ValueError(NULL);
+mp_raise_ValueError(MP_ERROR_TEXT("invalid pin"));
+
+  - id: micropy-auto-error-text-macro
+    category: auto
+    severity: suggestion
+    title: Review pattern: error text macro
+    description: |
+      This rule was auto-generated from observed code patterns. Review usage for consistency with MicroPython practices.
+    examples:
+      observed: |
+        mp_raise_ValueError(MP_ERROR_TEXT("function must be bytecode"));
+MP_ERROR_TEXT("memory allocation failed, allocating " SIZE_FMT " bytes"), num_bytes);
+mp_raise_ValueError(MP_ERROR_TEXT("invalid pin"));
+
+  - id: micropy-auto-memory-allocation
+    category: auto
+    severity: suggestion
+    title: Review pattern: memory allocation
+    description: |
+      This rule was auto-generated from observed code patterns. Review usage for consistency with MicroPython practices.
+    examples:
+      observed: |
+        rcs->children = m_new(mp_raw_code_simplified_t, n_children);
+m_del(mp_raw_code_simplified_t, rcs->children, rcs->n_children);
+bufinfo.buf = m_new(uint8_t, bufinfo.len);
