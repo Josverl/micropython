@@ -38,7 +38,7 @@
 import ast, io, os, re, struct, sys, time
 import serial
 import serial.tools.list_ports
-from errno import EPERM, ENOTTY
+from errno import EPERM, ENOTTY, ENXIO, EIO
 from .console import VT_ENABLED
 from .transport import TransportError, TransportExecError, Transport
 
@@ -111,8 +111,8 @@ class SerialTransport(Transport):
             self.serial.rts = False
             self.serial.dtr = False
         except OSError as er:
-            if er.errno == ENOTTY:
-                # Some devices (like QEMU pts) don't support RTS/DTR control
+            if er.errno in (ENOTTY, EIO, ENXIO):  # ENOTTY, EIO (5), ENXIO (6) - device gone
+                # Device doesn't support RTS/DTR control or has disconnected
                 pass
             else:
                 raise er
