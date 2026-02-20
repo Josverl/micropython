@@ -5,7 +5,11 @@ from .transport import TransportError
 
 def _is_rfc2217(serial):
     """Check if the serial port is an RFC2217 connection."""
-    return hasattr(serial, "_socket")
+    # Check specifically for RFC2217 module, not just presence of _socket
+    try:
+        return serial.__class__.__module__ == "serial.rfc2217"
+    except AttributeError:
+        return False
 
 
 def do_repl_main_loop(
