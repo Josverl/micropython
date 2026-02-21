@@ -573,7 +573,7 @@ def main():
 
     remaining_args = sys.argv[1:]
     state = State()
-
+    disconnected = False
     try:
         while remaining_args:
             # Skip the terminator.
@@ -621,19 +621,19 @@ def main():
             args = cmd_parser.parse_args(command_args)
 
             # Execute command.
-            handler_func(state, args)
+            disconnected = handler_func(state, args)
 
             # Get any leftover unprocessed args.
             remaining_args = args.next_command + extra_args
 
         # If no commands were "actions" then implicitly finish with the REPL
         # using default args.
-        if state.run_repl_on_completion():
+        if not disconnected and state.run_repl_on_completion():
             disconnected = do_repl(state, argparse_repl().parse_args([]))
 
-            # Handle disconnection message
-            if disconnected:
-                print("\ndevice disconnected")
+        # Handle disconnection message
+        if disconnected:
+            print("\ndevice disconnected")
 
         return 0
     except CommandError as e:
