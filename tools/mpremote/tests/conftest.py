@@ -21,7 +21,7 @@ from shared_utils import get_scenario_from_device
 # Module-level paths for subprocess coverage
 _TESTS_DIR = Path(__file__).parent.absolute()
 _MPREMOTE_DIR = _TESTS_DIR.parent
-_CONFIG_FILE = _MPREMOTE_DIR / "pyproject.toml"
+_CONFIG_FILE = _MPREMOTE_DIR.parent.parent / "pyproject.toml"
 
 
 def get_device_scenario():
