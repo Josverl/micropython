@@ -9,6 +9,9 @@ concurrency:
 jobs:
   code-formatting:
     runs-on: ubuntu-22.04
+    permissions:
+      issues: write
+      pull-requests: write
     steps:
     - uses: actions/checkout@v6
     - uses: actions/setup-python@v6
@@ -18,3 +21,17 @@ jobs:
       run: tools/ci.sh c_code_formatting_run
     - name: Check code formatting
       run: git diff --exit-code
+    - name: Report failure
+      if: failure() && github.event_name == 'pull_request'
+      uses: ./.github/actions/pr-status-comment
+      with:
+        status: error
+        description: |
+          C code formatting check failed. Run `tools/codeformat.py <changed-files>` locally and commit the result.
+          You can identify changed files with `git diff --name-only HEAD~1` (or against your base branch).
+          [View run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+    - name: Report success
+      if: success() && github.event_name == 'pull_request'
+      uses: ./.github/actions/pr-status-comment
+      with:
+        status: passed
