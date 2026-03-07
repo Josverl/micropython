@@ -9,6 +9,9 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
     steps:
     - uses: actions/checkout@v6
       with:
@@ -16,3 +19,16 @@ jobs:
     - uses: actions/setup-python@v6
     - name: Check commit message formatting
       run: tools/ci.sh commit_formatting_run
+    - name: Report failure
+      if: failure()
+      uses: ./.github/actions/pr-status-comment
+      with:
+        status: error
+        description: |
+          Commit message formatting check failed. Please review the [commit message guidelines](https://github.com/micropython/micropython/blob/master/CODECONVENTIONS.md#git-commit-messages).
+          [View run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+    - name: Report success
+      if: success()
+      uses: ./.github/actions/pr-status-comment
+      with:
+        status: passed
