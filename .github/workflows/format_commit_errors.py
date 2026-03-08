@@ -22,7 +22,7 @@ import subprocess
 import sys
 
 
-def format_errors(raw: str) -> str:
+def format_errors(raw:str) -> str:
     """Parse raw verifygitlog output and return a Markdown string.
 
     Each failing commit gets a header line followed by a bullet list of its

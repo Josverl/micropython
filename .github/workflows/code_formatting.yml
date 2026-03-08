@@ -21,6 +21,29 @@ jobs:
       run: tools/ci.sh c_code_formatting_run
     - name: Check code formatting
       run: git diff --exit-code
+    - name: Collect formatting error files
+      if: failure() && github.event_name == 'pull_request'
+      id: formatting-errors
+      shell: python
+      run: |
+        import os, subprocess
+        result = subprocess.run(
+            ["git", "diff", "--name-only"],
+            check=True,
+            text=True,
+            capture_output=True,
+        )
+        files = [line for line in result.stdout.splitlines() if line]
+        if files:
+            lines = [f"- {path}" for path in files]
+        else:
+            lines = ["- (none detected)"]
+        output_path = os.environ["GITHUB_OUTPUT"]
+        with open(output_path, "a", encoding="utf-8") as f:
+            f.write("files_md<<EOF\n")
+            f.write("\n".join(lines))
+            f.write("\nEOF\n")
+
     - name: Report failure
       if: failure() && github.event_name == 'pull_request'
       uses: ./.github/actions/add-status-comment
@@ -30,6 +53,9 @@ jobs:
         description: |
           C code formatting check failed. Run `tools/codeformat.py <changed-files>` locally and commit the result.
           You can identify changed files with `git diff --name-only HEAD~1` (or against your base branch).
+          Files with formatting errors:
+          ${{ steps.formatting-errors.outputs.files_md }}
+
           [View run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
     - name: Report success
       if: success() && github.event_name == 'pull_request'
