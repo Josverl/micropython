@@ -7,7 +7,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  check_commit_messages:
     runs-on: ubuntu-latest
     permissions:
       issues: write
