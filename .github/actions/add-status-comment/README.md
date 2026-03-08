@@ -36,7 +36,7 @@ permissions:
 
 | Input | Required | Default | Description |
 |---|---|---|---|
-| `status` | ✅ | — | `"error"` or `"passed"` (case-insensitive) |
+| `status` | ✅ | — | `"info"` , `"error"` or `"passed"` (case-insensitive) |
 | `category` | ❌ | `github.workflow` | Label used to find/manage the single comment for this context |
 | `description` | ❌ | `""` | Optional markdown appended to the comment after the status heading |
 | `token` | ❌ | `github.token` | GitHub token; must have the permissions listed above |

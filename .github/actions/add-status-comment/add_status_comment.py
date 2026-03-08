@@ -153,11 +153,14 @@ def main() -> int:
     if status_lower == "error":
         status_emoji = "❌"
         status_label = "Error"
-    else:
+    elif status_lower == "passed":
         status_emoji = "✅"
         status_label = "Passed"
+    else:
+        status_emoji = "ℹ️"
+        status_label = "Info"
 
-    body = f"{marker}\n## {status_emoji} {category}: {status_label}"
+    body = f"{marker}\n### {status_emoji} {category}: {status_label}"
     description = os.environ.get("INPUT_DESCRIPTION", "")
     if description:
         body = f"{body}\n\n{description}"
