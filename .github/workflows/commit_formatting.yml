@@ -40,6 +40,7 @@ jobs:
       uses: ./.github/actions/pr-status-comment
       with:
         status: error
+        category: commit-formatting
         description: |
           ${{ steps.format.outputs.formatted }}
 
@@ -50,6 +51,7 @@ jobs:
       uses: ./.github/actions/pr-status-comment
       with:
         status: passed
+        category: commit-formatting
     - name: Fail if formatting check failed
       if: steps.check.outcome == 'failure'
       run: exit 1

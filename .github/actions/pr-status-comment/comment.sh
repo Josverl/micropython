@@ -58,7 +58,7 @@ COMMENT_JSON=$(
     | jq -s \
         --arg bot "github-actions[bot]" \
         --arg marker "$MARKER" \
-        'add // [] | first(.[] | select(.user.login == $bot and (.body | contains($marker)))) // empty'
+        'add // [] | first(.[] | select(.user.login == $bot and (.body | startswith($marker)))) // empty'
 )
 
 COMMENT_ID=""

@@ -26,6 +26,7 @@ jobs:
       uses: ./.github/actions/pr-status-comment
       with:
         status: error
+        category: code-formatting
         description: |
           C code formatting check failed. Run `tools/codeformat.py <changed-files>` locally and commit the result.
           You can identify changed files with `git diff --name-only HEAD~1` (or against your base branch).
@@ -35,3 +36,4 @@ jobs:
       uses: ./.github/actions/pr-status-comment
       with:
         status: passed
+        category: code-formatting

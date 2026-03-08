@@ -24,6 +24,7 @@ jobs:
       uses: ./.github/actions/pr-status-comment
       with:
         status: error
+        category: codespell
         description: |
           Spell checking failed. Run `codespell` locally and fix the reported issues.
           [View run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
@@ -32,3 +33,4 @@ jobs:
       uses: ./.github/actions/pr-status-comment
       with:
         status: passed
+        category: codespell
