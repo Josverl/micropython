@@ -38,7 +38,7 @@ runs:
   steps:
     - name: Create or update PR status comment
       shell: bash
-      run: python3 ${{ github.action_path }}/status_comment.py
+      run: python3 ${{ github.action_path }}/add_status_comment.py
       env:
         GH_TOKEN: ${{ inputs.token }}
         INPUT_STATUS: ${{ inputs.status }}

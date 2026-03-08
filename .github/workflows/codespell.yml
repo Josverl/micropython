@@ -21,7 +21,7 @@ jobs:
         fi
     - name: Report failure
       if: failure() && github.event_name == 'pull_request'
-      uses: ./.github/actions/pr-status-comment
+      uses: ./.github/actions/add-status-comment
       with:
         status: error
         category: codespell
@@ -30,7 +30,7 @@ jobs:
           [View run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
     - name: Report success
       if: success() && github.event_name == 'pull_request'
-      uses: ./.github/actions/pr-status-comment
+      uses: ./.github/actions/add-status-comment
       with:
         status: passed
         category: codespell

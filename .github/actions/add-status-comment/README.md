@@ -11,7 +11,7 @@ is updated and minimized (collapsed) so the PR conversation stays clean.
 
 | Capability | Details |
 |---|---|
-| One comment per category | A hidden `<!-- pr-status-comment:{category} -->` marker identifies the comment |
+| One comment per category | A hidden `<!-- add-status-comment:{category} -->` marker identifies the comment |
 | Create **or** update | `status: error` → create if absent, update if present |
 | Pass-only update | `status: passed` → update existing comment; never creates a new one |
 | Minimize / unminimize | `passed` collapses the comment (`RESOLVED`); `error` reopens it |
@@ -63,7 +63,7 @@ jobs:
 
       - name: Report failure
         if: failure()
-        uses: ./.github/actions/pr-status-comment
+        uses: ./.github/actions/add-status-comment
         with:
           status: error
           description: |
@@ -71,7 +71,7 @@ jobs:
 
       - name: Report success
         if: success()
-        uses: ./.github/actions/pr-status-comment
+        uses: ./.github/actions/add-status-comment
         with:
           status: passed
           description: All tests passed. ✔
@@ -85,7 +85,7 @@ you want a separate comment for each:
 ```yaml
       - name: Report lint status
         if: always()
-        uses: ./.github/actions/pr-status-comment
+        uses: ./.github/actions/add-status-comment
         with:
           status: ${{ steps.lint.outcome == 'success' && 'passed' || 'error' }}
           category: 'Code Formatting'
@@ -93,7 +93,7 @@ you want a separate comment for each:
 
       - name: Report test status
         if: always()
-        uses: ./.github/actions/pr-status-comment
+        uses: ./.github/actions/add-status-comment
         with:
           status: ${{ steps.tests.outcome == 'success' && 'passed' || 'error' }}
           category: 'Unit Tests'
@@ -104,7 +104,7 @@ you want a separate comment for each:
 
 ```yaml
       - name: Report status
-        uses: ./.github/actions/pr-status-comment
+        uses: ./.github/actions/add-status-comment
         with:
           status: error
           token: ${{ secrets.MY_BOT_TOKEN }}
@@ -116,7 +116,7 @@ you want a separate comment for each:
 
 1. **Marker** – every managed comment contains a hidden HTML comment at the
    top of its body:  
-   `<!-- pr-status-comment:{category} -->`  
+   `<!-- add-status-comment:{category} -->`  
    This lets the action find its own comment reliably, even across many runs.
 
 2. **Find** – the action lists all issue comments for the PR and selects the

@@ -37,7 +37,7 @@ jobs:
       run: python .github/workflows/format_commit_errors.py
     - name: Report failure
       if: steps.check.outcome == 'failure'
-      uses: ./.github/actions/pr-status-comment
+      uses: ./.github/actions/add-status-comment
       with:
         status: error
         category: commit-formatting
@@ -48,7 +48,7 @@ jobs:
           [View run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
     - name: Report success
       if: steps.check.outcome == 'success'
-      uses: ./.github/actions/pr-status-comment
+      uses: ./.github/actions/add-status-comment
       with:
         status: passed
         category: commit-formatting
