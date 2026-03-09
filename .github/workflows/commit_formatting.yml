@@ -9,10 +9,47 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
     steps:
     - uses: actions/checkout@v6
       with:
         fetch-depth: 100
     - uses: actions/setup-python@v6
     - name: Check commit message formatting
-      run: tools/ci.sh commit_formatting_run
+      id: check
+      continue-on-error: true
+      run: |
+        set +e
+        OUTPUT=$(tools/ci.sh commit_formatting_run 2>&1)
+        EXIT_CODE=$?
+        printf '%s\n' "$OUTPUT"
+        {
+          printf 'raw_output<<__HEREDOC__\n%s\n__HEREDOC__\n' "$OUTPUT"
+        } >> "$GITHUB_OUTPUT"
+        exit $EXIT_CODE
+    - name: Format commit errors
+      id: format
+      if: steps.check.outcome == 'failure'
+      env:
+        RAW_OUTPUT: ${{ steps.check.outputs.raw_output }}
+      run: python .github/workflows/format_commit_errors.py
+    - name: Report failure
+      if: steps.check.outcome == 'failure'
+      uses: ./.github/actions/pr-status-comment
+      with:
+        status: error
+        description: |
+          ${{ steps.format.outputs.formatted }}
+
+          Please review the [commit message guidelines](https://github.com/micropython/micropython/blob/master/CODECONVENTIONS.md#git-commit-messages).
+          [View run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+    - name: Report success
+      if: steps.check.outcome == 'success'
+      uses: ./.github/actions/pr-status-comment
+      with:
+        status: passed
+    - name: Fail if formatting check failed
+      if: steps.check.outcome == 'failure'
+      run: exit 1
