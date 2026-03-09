@@ -307,7 +307,18 @@ class Transport:
                 chunk_size = 256
 
         try:
-            self.exec("f=open(%s,'wb')\nw=f.write" % _quote_path(dest))
+            # Setup imports and file handle on device
+            if encoding == "deflate":
+                self.exec(
+                    "from binascii import a2b_base64\n"
+                    "from io import BytesIO\n"
+                    "from deflate import DeflateIO,RAW\n"
+                    "f=open('%s','wb')\nw=f.write" % _quote_path(dest)
+                )
+            elif encoding == "base64":
+                self.exec("from binascii import a2b_base64\nf=open(%s,'wb')\nw=f.write" % _quote_path(dest))
+            else:
+                self.exec("f=open(%s,'wb')\nw=f.write" % _quote_path(dest))
             while data:
                 chunk = data[:chunk_size]
                 if encoding == "deflate":
