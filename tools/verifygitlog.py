@@ -9,6 +9,8 @@ suggestions = 1  # Set to 0 to not include lengthy suggestions in error messages
 
 ignore_prefixes = []
 
+SUBJECT_LINE_FORMAT = r"^[^!]+: [A-Z]+.+ .+\.$"
+
 
 def verbose(*args):
     if verbosity:
@@ -47,7 +49,6 @@ def git_log(pretty_format, *args):
 
 
 def diagnose_subject_line(subject_line, subject_line_format, err):
-    err.error('Subject line: "' + subject_line + '"')
     if not subject_line.endswith("."):
         err.error('* must end with "."')
     if not re.match(r"^[^!]+: ", subject_line):
@@ -59,18 +60,19 @@ def diagnose_subject_line(subject_line, subject_line_format, err):
         err.error('* first word of subject ("{}") must be capitalised.'.format(m.group(1)))
     if re.match(r"^[^!]+: [^ ]+$", subject_line):
         err.error("* subject must contain more than one word.")
-    err.error("* must match: " + repr(subject_line_format))
-    err.error('* Example: "py/runtime: Add support for foo to bar."')
 
 
 def verify(sha, err):
     verbose("verify", sha)
     err.prefix = "commit " + sha + ": "
 
-    # Author and committer email.
+    # Author and committer email – deduplicate to avoid reporting the same
+    # noreply address twice when author and committer are the same.
+    seen_emails = set()
     for line in git_log("%ae%n%ce", sha, "-n1"):
         very_verbose("email", line)
-        if "noreply" in line:
+        if "noreply" in line and line not in seen_emails:
+            seen_emails.add(line)
             err.error("Unwanted email address: " + line)
 
     # Message body.
@@ -90,11 +92,10 @@ def verify_message_body(raw_body, err):
             verbose("Skipping ignored commit message")
             return
     very_verbose("subject_line", subject_line)
-    subject_line_format = r"^[^!]+: [A-Z]+.+ .+\.$"
-    if not re.match(subject_line_format, subject_line):
-        diagnose_subject_line(subject_line, subject_line_format, err)
+    if not re.match(SUBJECT_LINE_FORMAT, subject_line):
+        diagnose_subject_line(subject_line, SUBJECT_LINE_FORMAT, err)
     if len(subject_line) >= 73:
-        err.error("Subject line must be 72 or fewer characters: " + subject_line)
+        err.error("Subject line is too long ({} characters, max 72)".format(len(subject_line)))
 
     # Do additional checks on the prefix of the subject line.
     verify_subject_line_prefix(subject_line.split(": ")[0], err)
@@ -158,6 +159,8 @@ def run(args):
     if err.has_errors or err.has_warnings:
         if suggestions:
             print("See https://github.com/micropython/micropython/blob/master/CODECONVENTIONS.md")
+            print("Commit message format: must match " + repr(SUBJECT_LINE_FORMAT))
+            print('Example: "py/runtime: Add support for foo to bar."')
     else:
         print("ok")
     if err.has_errors:

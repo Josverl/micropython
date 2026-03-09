@@ -5,9 +5,83 @@ on: [push, pull_request]
 jobs:
   ruff:
     runs-on: ubuntu-latest
+    permissions: {contents: read, issues: write, pull-requests: write}
     steps:
     - uses: actions/checkout@v6
     # ruff version should be kept in sync with .pre-commit-config.yaml & also micropython-lib
     - run: pipx install ruff==0.11.6
-    - run: ruff check --output-format=github .
-    - run: ruff format --diff .
+
+    - name: check code with ruff
+      id: check
+      continue-on-error: true
+      run: |
+        set +e
+        out="$(ruff check --output-format=github . 2>&1)"
+        status=$?
+        echo "$out"
+        echo "status=$status" >> "$GITHUB_OUTPUT"
+        if [ "$status" -ne 0 ]; then
+          echo "result<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$out" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+        fi
+        exit $status
+
+    - name: format code with ruff
+      id: format
+      continue-on-error: true
+      run: |
+        set +e
+        out="$(ruff format --diff . 2>&1)"
+        status=$?
+        echo "$out"
+        echo "status=$status" >> "$GITHUB_OUTPUT"
+        if [ "$status" -ne 0 ]; then
+          echo "result<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$out" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+        fi
+        exit $status
+
+    - name: Build ruff comment body
+      if: github.event_name == 'pull_request' && (steps.check.outputs.result != '' || steps.format.outputs.result != '')
+      id: comment
+      env:
+        CHECK_RESULT: ${{ steps.check.outputs.result }}
+        FORMAT_RESULT: ${{ steps.format.outputs.result }}
+      shell: python
+      run: |
+        import os
+
+        body = ""
+        check_result = os.environ.get("CHECK_RESULT", "").strip()
+        format_result = os.environ.get("FORMAT_RESULT", "").strip()
+
+        if check_result:
+            body += "<details><summary>ruff check</summary>\n<p>\n\n"
+            body += check_result
+            body += "\n\n</p>\n</details>\n"
+
+        if format_result:
+            body += "<details><summary>ruff format</summary>\n<p>\n\n"
+            body += "```diff\n"
+            body += format_result
+            body += "```\n"
+            body += "\n\n</p>\n</details>"
+
+        with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
+            f.write("body<<EOF\n")
+            f.write(body)
+            f.write("\nEOF\n")
+
+    - name: Add ruff comment
+      if: github.event_name == 'pull_request' && steps.comment.outputs.body != ''
+      uses: ./.github/actions/add-status-comment
+      with:
+        status: error
+        description: ${{ steps.comment.outputs.body }}
+
+    - name: Raise any ruff issue
+      if: steps.check.outputs.status != '0' || steps.format.outputs.status != '0'
+      run: exit 1
+
