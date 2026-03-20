@@ -28,10 +28,15 @@
     // Configure tool-specific properties.
     "customizations": {
         // Configure properties specific to Codespaces.
+        
         "codespaces": {
-            "openFiles": [
-                "README.md"
-            ]
+            "repositories": {
+                "josverl/mp_integration": {"permissions": { "contents": "write"}},
+                "josverl/micropython-lib": {"permissions": { "contents": "write"}}
+            }
+            // "openFiles": [
+            //     "README.md"
+            // ]
         },
         // Configure properties specific to VS Code.
         "vscode": {
