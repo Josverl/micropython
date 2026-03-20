@@ -39,38 +39,34 @@ jobs:
           rm -rf dist
           python -m build
 
-      - name: Prepare gh-pages worktree (safe)
-        env:
-          REPO: ${{ github.repository }}
+      - name: Prepare gh-pages worktree (robust)
         run: |
           set -eux
-
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # If gh-pages exists, check it out as a worktree.
-          if git ls-remote --exit-code --heads origin gh-pages; then
-            git fetch origin gh-pages
-            git worktree add gh-pages-worktree gh-pages
+          git fetch origin --prune
+
+          if git show-ref --quiet refs/remotes/origin/gh-pages; then
+            # Branch exists on remote: add worktree from it
+            git worktree add -B gh-pages gh-pages-worktree origin/gh-pages
           else
-            # Create an empty orphan gh-pages branch in a separate temp dir (not a worktree of HEAD)
-            rm -rf gh-pages-init
-            mkdir -p gh-pages-init
-            pushd gh-pages-init
-            git init
-            git remote add origin "https://github.com/${REPO}.git"
-            git fetch origin
+            # Branch does not exist: create it as an orphan branch in a detached worktree,
+            # then push it explicitly to origin.
+            git worktree add gh-pages-worktree --detach
+            pushd gh-pages-worktree
             git checkout --orphan gh-pages
             rm -rf ./* ./.??* || true
             touch .nojekyll
             git add .nojekyll
             git commit -m "Initialize gh-pages"
-            git push origin gh-pages
+            git push origin HEAD:refs/heads/gh-pages
             popd
 
-            # Now add a worktree of that new branch
+            # Re-attach the worktree to the remote branch (keeps refs clean)
+            git worktree remove --force gh-pages-worktree
             git fetch origin gh-pages
-            git worktree add gh-pages-worktree gh-pages
+            git worktree add -B gh-pages gh-pages-worktree origin/gh-pages
           fi
 
       - name: Publish artifacts into branch-scoped simple index (keep last 10)
@@ -144,10 +140,8 @@ jobs:
           set -eux
           pushd gh-pages-worktree
 
-          # Ensure .nojekyll exists
           test -f .nojekyll || touch .nojekyll
 
-          # Stage only the pages content
           git add .nojekyll simple/
 
           if git diff --cached --quiet; then
