@@ -20,7 +20,7 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # needed for vcs-based versioning
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -39,19 +39,38 @@ jobs:
           rm -rf dist
           python -m build
 
-      - name: Checkout gh-pages branch (create if missing)
+      - name: Prepare gh-pages worktree (safe)
+        env:
+          REPO: ${{ github.repository }}
         run: |
+          set -eux
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
+          # If gh-pages exists, check it out as a worktree.
           if git ls-remote --exit-code --heads origin gh-pages; then
             git fetch origin gh-pages
             git worktree add gh-pages-worktree gh-pages
           else
-            git worktree add gh-pages-worktree
-            pushd gh-pages-worktree
+            # Create an empty orphan gh-pages branch in a separate temp dir (not a worktree of HEAD)
+            rm -rf gh-pages-init
+            mkdir -p gh-pages-init
+            pushd gh-pages-init
+            git init
+            git remote add origin "https://github.com/${REPO}.git"
+            git fetch origin
             git checkout --orphan gh-pages
+            rm -rf ./* ./.??* || true
+            touch .nojekyll
+            git add .nojekyll
+            git commit -m "Initialize gh-pages"
+            git push origin gh-pages
             popd
+
+            # Now add a worktree of that new branch
+            git fetch origin gh-pages
+            git worktree add gh-pages-worktree gh-pages
           fi
 
       - name: Publish artifacts into branch-scoped simple index (keep last 10)
@@ -103,7 +122,12 @@ jobs:
           kept_files = sorted([p.name for p in dest.iterdir() if p.is_file() and p.name != "index.html"])
 
           def esc(s: str) -> str:
-              return (s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;"))
+              return (
+                  s.replace("&", "&amp;")
+                   .replace("<", "&lt;")
+                   .replace(">", "&gt;")
+                   .replace('"', "&quot;")
+              )
 
           links = "\n".join(f'<a href="{esc(n)}">{esc(n)}</a><br>' for n in kept_files)
           (dest / "index.html").write_text(f"<html><body>\n{links}\n</body></html>\n", encoding="utf-8")
@@ -115,15 +139,22 @@ jobs:
           )
           PY
 
-      - name: Commit and push gh-pages
+      - name: Commit and push gh-pages (only Pages content)
         run: |
           set -eux
           pushd gh-pages-worktree
-          git add .
+
+          # Ensure .nojekyll exists
+          test -f .nojekyll || touch .nojekyll
+
+          # Stage only the pages content
+          git add .nojekyll simple/
+
           if git diff --cached --quiet; then
             echo "No changes to publish."
             exit 0
           fi
+
           git commit -m "Publish mpremote simple index for ${{ github.ref_name }} @ ${{ github.sha }}"
           git push origin HEAD:gh-pages
           popd
