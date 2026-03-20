@@ -1,0 +1,189 @@
+on:
+  push:
+    branches:
+      - "*mpremote*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: "mpremote-pages-simple-index-${{ github.ref_name }}"
+  cancel-in-progress: true
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # hatch-vcs needs git history/tags
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.8"
+
+      - name: Install build tooling
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install hatch
+
+      - name: Build mpremote (wheel + sdist) with branch-local version
+        working-directory: tools/mpremote
+        env:
+          BRANCH: ${{ github.ref_name }}
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          set -eux
+
+          BASE_VERSION="$(hatch version)"
+
+          BRANCH_SLUG="$(python - <<'PY'
+          import os, re
+          b = os.environ["BRANCH"].lower()
+          b = re.sub(r"[^a-z0-9]+", "_", b).strip("_")
+          print(b[:40] or "branch")
+          PY
+          )"
+
+          export BASE_VERSION
+          export BRANCH_SLUG
+
+          NEW_VERSION="$(python - <<'PY'
+          import os
+          base = os.environ["BASE_VERSION"]
+          branch = os.environ["BRANCH_SLUG"]
+          run = os.environ["RUN_NUMBER"]
+          local = f"br.{branch}.{run}"
+          if "+" in base:
+              out = base + "." + local
+          else:
+              out = base + "+" + local
+          print(out)
+          PY
+          )"
+
+          export HATCH_VERSION="${NEW_VERSION}"
+          echo "Building version: ${HATCH_VERSION}"
+
+          hatch build
+
+      - name: Checkout gh-pages branch (create if missing)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if git ls-remote --exit-code --heads origin gh-pages; then
+            git fetch origin gh-pages
+            git worktree add gh-pages-worktree gh-pages
+          else
+            git worktree add gh-pages-worktree
+            pushd gh-pages-worktree
+            git checkout --orphan gh-pages
+            popd
+          fi
+
+      - name: Publish artifacts into branch-scoped simple index (keep last 10)
+        env:
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          set -eux
+
+          DEST="gh-pages-worktree/simple/${BRANCH}/mpremote"
+          mkdir -p "${DEST}"
+
+          # Copy new artifacts in (do not delete first; we will prune after)
+          cp -v tools/mpremote/dist/* "${DEST}/"
+
+          # Prune old artifacts: keep last 10 version groups (wheel+sdist)
+          python - <<'PY'
+          import os
+          import re
+          from collections import defaultdict
+          from pathlib import Path
+
+          branch = os.environ["BRANCH"]
+          dest = Path("gh-pages-worktree") / "simple" / branch / "mpremote"
+          keep_versions = 10
+
+          # Collect artifact files (ignore index.html)
+          files = [p for p in dest.iterdir() if p.is_file() and p.name != "index.html"]
+
+          # Group by version extracted from filename.
+          rx = re.compile(r"^mpremote-(?P<ver>.+?)(?:-py.+\.whl|\.tar\.gz)$")
+
+          groups = defaultdict(list)
+          unknown = []
+          for p in files:
+              m = rx.match(p.name)
+              if not m:
+                  unknown.append(p)
+                  continue
+              groups[m.group("ver")].append(p)
+
+          # Rank version groups by newest mtime among files in that group
+          ranked = []
+          for ver, ps in groups.items():
+              newest = max(p.stat().st_mtime for p in ps)
+              ranked.append((newest, ver))
+          ranked.sort(reverse=True)  # newest first
+
+          keep_set = set(ver for _, ver in ranked[:keep_versions])
+
+          # Delete files not in keep_set
+          deleted = 0
+          for ver, ps in groups.items():
+              if ver in keep_set:
+                  continue
+              for p in ps:
+                  p.unlink(missing_ok=True)
+                  deleted += 1
+
+          print(f"Kept {len(keep_set)} version groups, deleted {deleted} files; unknown kept={len(unknown)}")
+
+          # Regenerate index.html for the package folder
+          kept_files = sorted(
+              [p.name for p in dest.iterdir() if p.is_file() and p.name != "index.html"]
+          )
+
+          def html_escape(s: str) -> str:
+              return (
+                  s.replace("&", "&amp;")
+                   .replace("<", "&lt;")
+                   .replace(">", "&gt;")
+                   .replace('"', "&quot;")
+              )
+
+          links = "\n".join(
+              f'<a href="{html_escape(name)}">{html_escape(name)}</a><br>' for name in kept_files
+          )
+          (dest / "index.html").write_text(f"<html><body>\n{links}\n</body></html>\n", encoding="utf-8")
+
+          # Branch root index page (pip will request /simple/<branch>/)
+          root = dest.parent
+          root.mkdir(parents=True, exist_ok=True)
+          (root / "index.html").write_text(
+              '<html><body>\n<a href="mpremote/">mpremote</a><br>\n</body></html>\n',
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Commit and push gh-pages
+        run: |
+          set -eux
+          pushd gh-pages-worktree
+
+          # If this is a brand-new orphan branch, there may be no commit yet.
+          # Ensure we have at least something to commit.
+          git add .
+
+          if git diff --cached --quiet; then
+            echo "No changes to publish."
+            exit 0
+          fi
+
+          git commit -m "Publish mpremote simple index for ${{ github.ref_name }} @ ${{ github.sha }}"
+          git push origin HEAD:gh-pages
+          popd
