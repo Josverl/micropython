@@ -17,19 +17,11 @@ freq_margin_per_thousand = 0
 duty_margin_per_thousand = 0
 timing_margin_us = 5
 
-# Slow MCUs cannot capture short pulses using `time_pulse_us` so limit the maximum PWM
-# frequency tested on such targets.
-if hasattr(machine, "freq"):
-    f = machine.freq()
-    if isinstance(f, tuple):
-        f = f[0]
-    if f <= 48_000_000:
-        pwm_freq_limit = 2_000
-    elif f <= 64_000_000:
-        pwm_freq_limit = 5_000
-
-# Tune test parameters based on the target.
-if "esp32" in sys.platform:
+# Configure pins based on the target.
+if "alif" in sys.platform:
+    pwm_pulse_pins = (("P0_4", "P0_5"),)
+elif "esp32" in sys.platform:
+    pwm_pulse_pins = ((4, 5),)
     freq_margin_per_thousand = 2
     duty_margin_per_thousand = 1
     timing_margin_us = 20
