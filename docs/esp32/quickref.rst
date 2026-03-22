@@ -380,8 +380,12 @@ tx     1      10     17
 rx     3      9      16
 =====  =====  =====  =====
 
-On ESP32 with SPIRAM, the default pins for UART1 are ``tx=5`` and ``rx=4``
-to avoid possible conflicts with the SPIRAM pins.
+You can pass a initialized Pin to ``tx`` and ``rx``::
+
+    from machine import UART, Pin
+
+    uart1 = UART(1, baudrate=9600, tx=Pin( 10, Pin.OPEN_DRAIN ), rx=Pin(9, Pin.IN, Pin.PULL_UP )  )
+
 
 PWM (pulse width modulation)
 ----------------------------
