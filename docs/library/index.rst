@@ -69,6 +69,7 @@ library.
    hashlib.rst
    heapq.rst
    io.rst
+   io.IOBase.rst
    json.rst
    marshal.rst
    math.rst
