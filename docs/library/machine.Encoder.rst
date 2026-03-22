@@ -12,8 +12,8 @@ Minimal ESP32 example usage::
 
     from machine import Pin, Encoder
 
-    encoder = Encoder(0, Pin(0, Pin.IN), Pin(1, Pin.IN))   # create Encoder for pins 0, 1 and begin counting
-    value = encoder.value()                                # retrieve current count
+    counter = Encoder(0, Pin(2, Pin.IN), Pin(5, Pin.IN))   # create Encoder for pins 2, 5 and begin counting
+    value = counter.value()                                # retrieve current count
 
 Availability: **ESP32, MIMXRT**
 
