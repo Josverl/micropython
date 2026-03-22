@@ -1,0 +1,52 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/cpp
+{
+    "name": "MicroPython-Dev",
+    "build": {
+        "dockerfile": "Dockerfile"
+    },
+    // Features to add to the dev container. More info: https://containers.dev/features.
+    "features": {
+        "ghcr.io/devcontainers/features/python:1": {},
+        "ghcr.io/devcontainers-contrib/features/act:1": {},
+        "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+        "ghcr.io/devcontainers/features/github-cli:1": {}
+    },
+    "remoteEnv": {
+        // required to run sphinx
+        "TZ": "UTC"
+    },
+    // 1st of the lifecycle scripts 
+    "onCreateCommand": "sudo cp .devcontainer/welcome.txt /usr/local/etc/vscode-dev-containers/first-run-notice.txt",
+    // 3rd - Use 'postCreateCommand' to run commands after the container is created.
+    "postCreateCommand": "bash .devcontainer/post_create.sh",
+    // "postStartCommand": ""
+    // Use 'forwardPorts' to make a list of ports inside the container available locally.
+    // "forwardPorts": [],
+    // Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
+    // "remoteUser": "root"
+    // Configure tool-specific properties.
+    "customizations": {
+        // Configure properties specific to Codespaces.
+        
+        "codespaces": {
+            "repositories": {
+                "josverl/mp_integration": {"permissions": { "contents": "write"}},
+                "josverl/micropython-lib": {"permissions": { "contents": "write"}}
+            }
+            // "openFiles": [
+            //     "README.md"
+            // ]
+        },
+        // Configure properties specific to VS Code.
+        "vscode": {
+            // Set *default* container specific settings.json values on container create.
+            "settings": {},
+            "extensions": [
+				"ms-python.python",
+				"ms-vscode.cpptools",
+				"ms-vscode.cmake-tools"
+			]
+        }
+    }
+}
