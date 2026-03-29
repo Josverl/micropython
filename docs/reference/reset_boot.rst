@@ -176,10 +176,13 @@ Some tips for ``main.py`` usage:
 - Any global variables that were set in ``boot.py`` will still be set in the
   global context of ``main.py``.
 
-- To fully optimise flash usage and memory consumption, you can copy
-  :doc:`pre-compiled <mpyfiles>` ``main.mpy`` and/or ``boot.mpy`` files to the
-  filesystem, or even :doc:`freeze <manifest>` them into the firmware build
-  instead.
+- To fully optimise flash usage and memory consumption, you can pre-compile
+  application modules to :doc:`.mpy <mpyfiles>` and import them from
+  ``boot.py``/``main.py``.
+
+  Startup still looks for ``boot.py`` and ``main.py`` on the filesystem.
+  For pre-compiled startup entry points, :doc:`freeze <manifest>` modules named
+  ``boot.py`` and/or ``main.py`` into the firmware build.
 - ``main.py`` execution is skipped when a soft reset is initiated from :ref:`raw
   REPL mode <raw_repl>` (for example, when :doc:`mpremote <mpremote>` or another
   program is interacting directly with MicroPython).
