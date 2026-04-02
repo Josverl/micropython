@@ -2102,7 +2102,6 @@ MP_DEFINE_CONST_FUN_OBJ_1(str_islower_obj, str_islower);
 // These methods are superfluous in the presence of str() and bytes()
 // constructors.
 
-#if MICROPY_PY_BUILTINS_BYTES_DECODE_IGNORE && MICROPY_PY_BUILTINS_STR_UNICODE
 static void check_utf8_encoding(const char *encoding) {
     if (!(strcmp(encoding, "utf-8") == 0 || strcmp(encoding, "utf8") == 0 ||
           strcmp(encoding, "ascii") == 0)) {
@@ -2110,7 +2109,6 @@ static void check_utf8_encoding(const char *encoding) {
             MP_ERROR_TEXT("encoding not supported: %s"), encoding);
     }
 }
-#endif
 
 // TODO: should accept kwargs too
 static mp_obj_t bytes_decode(size_t n_args, const mp_obj_t *args) {
@@ -2121,9 +2119,7 @@ static mp_obj_t bytes_decode(size_t n_args, const mp_obj_t *args) {
         args = new_args;
         n_args++;
     } else if (n_args >= 2) {
-        #if MICROPY_PY_BUILTINS_BYTES_DECODE_IGNORE && MICROPY_PY_BUILTINS_STR_UNICODE
         check_utf8_encoding(mp_obj_str_get_str(args[1]));
-        #endif
     }
     return mp_obj_str_make_new(&mp_type_str, n_args, 0, args);
 }
@@ -2138,9 +2134,7 @@ static mp_obj_t str_encode(size_t n_args, const mp_obj_t *args) {
         args = new_args;
         n_args++;
     } else if (n_args >= 2) {
-        #if MICROPY_PY_BUILTINS_BYTES_DECODE_IGNORE && MICROPY_PY_BUILTINS_STR_UNICODE
         check_utf8_encoding(mp_obj_str_get_str(args[1]));
-        #endif
     }
     return bytes_make_new(NULL, n_args, 0, args);
 }
