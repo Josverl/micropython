@@ -39,6 +39,8 @@ This document is an AI assisted synthesis of best practices derived from compreh
 - Complex variant configurations (RISC-V, performance modes)
 
 ### Board Complexity Tiers
+Not sure if this categorisation is useful but it does seem like there are some natural groupings 
+of board complexity and feature sets that correlate with different best practices and testing requirements.
 
 **Type A - Simple Boards** (~35% of merged PRs)
 - Single microcontroller variant
@@ -64,27 +66,13 @@ This document is an AI assisted synthesis of best practices derived from compreh
 
 ---
 
-## Part 5: Submission Checklist for PR Authors
+### Suggested PR-Submission Checklist
 
-When submitting a board definition PR:
-
-### PR-Submission Checklist
-
-- [ ] **Board Configuration**
-  - [ ] Board builds: `make BOARD=MYBOARD`
-  - [ ] Board boots and REPL responds
-  - [ ] All variants build (if applicable)
-
-- [ ] **Test Suite**
-  - [ ] Run MicroPython test suite against the board hardware (see [tests/README.md](tests/README.md) for instructions)
-  - [ ] Minimum: `./run-tests.py -t /dev/ttyACM0` completes without regressions
-  - [ ] Document any tests that are skipped or expected to fail (and why)
-  - [ ] All variants tested separately (if applicable)
-  - [ ] Test results confirm board functionality matches hardware capabilities
+When submitting a board definition PR please follow the below checklist to 
+help improve the quality of your submission as well as streamline the review process. 
 
 - [ ] **File Organization**
   - [ ] All files in correct directory: `ports/<PORT>/boards/<BOARDNAME>/`
-  - [ ] No extra files or temporary test files
   - [ ] Directory name is UPPERCASE with underscores
 
 - [ ] **Core Files Present**
@@ -106,11 +94,31 @@ When submitting a board definition PR:
   - [ ] I2C/SPI pins named if multiple buses
   - [ ] No generic "GPIO" naming only
 
-- [ ] **Documentation**
-  - [ ] PR includes comprehensive "Testing" section
-  - [ ] Hardware features documented
-  - [ ] Any known limitations documented
-  - [ ] Board.md created if needed
+- [ ] **Board Configuration**
+  - [ ] Board builds: `make BOARD=MYBOARD`
+  - [ ] Board boots and REPL responds
+  - [ ] All variants build (if applicable)
+
+- [ ] **Hardware Testing**
+  - [ ] Run MicroPython test suite against the board hardware with the new board definition (see [tests/README.md](tests/README.md) for instructions)
+  - [ ] Document any tests that are skipped or expected to fail (and why)
+  - [ ] All variants tested separately (if applicable)
+  - [ ] Test results confirm board functionality matches hardware capabilities
+
+    Minimum Testing:
+    - [ ] `./run-tests.py -t <comport>` completes without regressions
+    - [ ] Firmware builds successfully for all variants
+    - [ ] Board boots and REPL responds
+    - [ ] GPIO operations (LED toggles, button reads)
+    - [ ] Primary communication buses tested (UART/I2C/SPI)
+
+    Extended Testing (for feature-rich boards):
+    - [ ] Each documented feature tested
+    - [ ] External memory tested (SDRAM, Flash)
+    - [ ] Networking tested (WiFi/BLE/Ethernet)
+    - [ ] Specialized hardware validated (camera, audio codec, LoRa)
+    - [ ] Variants tested separately
+
 
 - [ ] **Images** (to be provided in a separate media PR)
   - [ ] Board images in correct format
@@ -125,6 +133,7 @@ Generic contribution checks/guidelines:
   - [ ] C code compiles without warnings
   - [ ] No spelling errors (`codespell`)
   - [ ] No copy-paste artifacts
+  - [ ] No extra files or temporary test files
 
 ---
 
@@ -564,7 +573,7 @@ If `test_full` or a hardware test is not feasible, document why.
 - **Testing**: What was tested and how
 - **Trade-offs & Alternatives**: Design decisions
 
-**Good Example from Merged PR:**
+**Good Example from [PR #18303](https://github.com/micropython/micropython/pull/18303) (STM32H747I-DISCO):**
 ```markdown
 ## Summary
 Add board definitions for [Board Name] with comprehensive hardware support.
@@ -583,22 +592,6 @@ Add board definitions for [Board Name] with comprehensive hardware support.
 - ✓ GPIO toggled successfully
 - ✓ I2C/SPI interfaces verified
 - ✓ (Networking tested if applicable)
-```
-```
-
-#### 6.2 Code Style Compliance
-**Best Practice:** Follow MicroPython conventions all code passes linting.
-
-**Checklist:**
-- [ ] Follows [MicroPython style guide](https://github.com/micropython/micropython/blob/master/CODING_STYLE.md)
-- [ ] Python code: passes `ruff check` and `ruff format`
-- [ ] C code: consistent with port conventions  
-- [ ] Filenames: follow port conventions (lowercase with underscores)
-- [ ] Spelling: checked with `codespell`
-
-**Validation Example (merged media workflow, see [PR #18508](https://github.com/micropython/micropython/pull/18508)):**
-```bash
-python3 -m json.tool ports/esp32/boards/MYBOARD/board.json
 ```
 
 ---
