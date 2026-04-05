@@ -194,7 +194,7 @@ RX,GPIO3
 - **`features`** (array): All major hardware capabilities
   - Examples: `BLE`, `WiFi`, `External Flash`, `USB-C`, `Dual-core`, `Ethernet`, `OTA`
   - Be specific and consistent across boards
-- **`images`** (array): List of board image filenames (must exist in micropython-media)
+- **`images`** (array): List of board image filenames (must exist in micropython-media main or be provided via a companion micropython-media PR)
 - **`deploy`**: Deployment instruction files (usually `../deploy.md`)
 - **`deploy_options`**: Flash offset, partition tables, etc.
 - **`docs`**: Documentation string (can be empty if board.md exists)
@@ -202,7 +202,7 @@ RX,GPIO3
 **Evidence from PRs:**
 - PR #18958 (SEEED_XIAO_ESP32C6): Includes all standard fields plus thoughtful feature list
 - PR #18303 (STM32H747I-DISCO): Shows extensive feature enumeration with dual-core, networking, storage capabilities
-- PR #18505: Entire tooling PR dedicated to validating board.json image references
+- PR #18508: Corrected ESP32 board image filenames to match assets pending in micropython-media
 
 #### 1.2 Hardware Features Enumeration
 **Best Practice:** Systematically document all on-board hardware in the features array.
@@ -250,10 +250,10 @@ RX,GPIO3
   - Audio: `SAI_MCLK`, `SAI_BCLK`, `SAI_DATA`
 
 **Evidence from Merged PRs:**
-- PR #19026 (Pycom LoPy4): Includes P0-P23 + specialized LORA_* pins + NEOPIXEL + antenna pins
-  - Allows users to write: `Pin.board.LORA_MOSI` instead of `Pin.board.GPIO27`
-- PR #18847 (Cytron Motion 2350 Pro): Includes M1A/M1B (motor pins), ADC0-3, NEOPIXEL
-- PR #18958 (SEEED_XIAO_ESP32C6): Includes D0-D10, A0-A2, LED, MTDO/MTDI/MTCK/MTMS, RF_SEL, RF_POWER
+- PR #18958 (SEEED_XIAO_ESP32C6): Arduino-compatible naming (D0-D10, A0-A2)
+- PR #18847 (Cytron Motion 2350 Pro): Specialized motor pins (M1A/M1B/M2A/M2B, ADC0-3)
+- Boards with radios/specialized hardware: Domain-specific naming (LORA_*, AUDIO_*, RF_*)
+- Naming shows clear intent so users can write `Pin.board.LED` instead of GPIO numbers
 
 **Anti-pattern (Avoid):**
 ```csv
@@ -343,7 +343,7 @@ set(PICO_BOARD "waveshare_rp2350b_core")
 
 **PR Evidence:**
 - PR #18847 (Cytron Motion 2350 Pro): Includes both ARM and RISC-V variants
-- PR #19026 (Pycom LoPy4): Includes OTA variant with custom partition table
+- Various ESP32 boards with 8MB+ flash: OTA variant with custom partition tables
 
 ---
 
@@ -404,28 +404,44 @@ Ethernet, the MEMS microphone must be disconnected from PC1.
 - [ ] Specialized hardware validated (camera, audio codec, LoRa)
 - [ ] Variants tested separately
 
-**Example from PR #19026 (Pycom LoPy4):**
+**Example from PR #18303 (STM32H747I-DISCO):**
 ```
 Build verification:
-- make BOARD=PYCOM_LOPY4 (1.5MB app, 24% free)
-- make BOARD=PYCOM_LOPY4 BOARD_VARIANT=OTA
+- make BOARD=STM32H747I_DISCO
+- All variants build successfully
 
 Hardware tests:
-- GPIO (pins P0-P23, NEOPIXEL)
-- SPI (LoRa radio chip detection)
-- I2C (sensor initialization)
-- WiFi scan
-- BLE activation
-- PSRAM detection
+- GPIO (all ports A-K)
+- UART communication verified
+- I2C bus scanning (multiple buses)
+- SPI interface
+- Dual-core functionality
+- Ethernet interface (with hardware modification note)
+- External SDRAM detection
+```
+
+**Example from Feature-Rich Board (Merged PR):**
+```
+Build verification:
+- make BOARD=MYBOARD (successful build, reasonable size)
+- make BOARD=MYBOARD BOARD_VARIANT=primary (or alternate variant)
+
+Hardware tests:
+- GPIO (all named pins toggle correctly)
+- Primary communication bus (I2C, SPI, or UART as applicable)
+- (If networking capable) WiFi/BLE/Ethernet activation
+- (If specialized hardware) Radio/sensor/driver initialization
 ```
 
 #### 5.2 Test Files (for boards with significant features)
 **Best Practice:** Include test files in `tests/ports/<port>/` directory.
 
-**Evidence:**
-- PR #19026: Includes `pycom_sx127x.py` (LoRa driver tests), `pycom_lorawan_crypto.py` (crypto tests), `pycom_rgb.py` (LED tests)
+**Evidence from Merged PRs:**
+- Boards with specialized hardware: Include driver/feature tests (radio, sensors, etc.)
+- Representative ESP32 boards: Include WiFi/BLE capability tests
+- RP2 boards: GPIO and variant-specific tests
 - Tests verify functionality without requiring external hardware
-- Tests use expected output files (`.py.exp`)
+- Tests use expected output files (`.py.exp`) for validation
 
 ---
 
@@ -441,27 +457,26 @@ Hardware tests:
 - **Trade-offs & Alternatives**: Design decisions
 - **Generative AI**: Disclosure if used
 
-**Example (PR #19026 Pycom LoPy4):**
+**Good Example from Merged PR:**
 ```markdown
 ## Summary
-Add board definitions, LoRa driver, LoRaWAN MAC, OTA support, and 
-hardware validation for Pycom LoPy and LoPy4.
+Add board definitions for [Board Name] with comprehensive hardware support.
 
-### Boards
-- **PYCOM_LOPY**: ESP32 + 4MB flash + SX1272 LoRa (868 MHz)
-- **PYCOM_LOPY4**: ESP32 + 8MB flash + 4MB PSRAM + SX1276 LoRa
+### Board
+- **BOARD_NAME**: MCU + key features (WiFi, dual-core, PSRAM, etc.)
 
 ### Hardware Features
-- SX127x driver (unified SX1272/SX1276 support)
-- LoRaWAN 1.0.x MAC layer with OTAA/ABP
-- OTA firmware update variants
-- RGB LED helper
-- Hardware validation script
+- Full pin enumeration and naming
+- Communication interfaces tested
+- Power management (battery, RTC, sleep modes)
 
 ### Testing
-- Firmware builds and runs on hardware
-- All features tested (GPIO, WiFi, BLE, LoRa, PSRAM)
-- Passes ruff, codespell, verifygitlog
+- ✓ Firmware builds successfully
+- ✓ Board boots and REPL responds
+- ✓ GPIO toggled successfully
+- ✓ I2C/SPI interfaces verified
+- ✓ (Networking tested if applicable)
+```
 ```
 
 #### 6.2 Code Style Compliance
@@ -474,9 +489,9 @@ hardware validation for Pycom LoPy and LoPy4.
 - [ ] Filenames: follow port conventions (lowercase with underscores)
 - [ ] Spelling: checked with `codespell`
 
-**PR Tool Example (PR #18505):**
+**Validation Example (merged media workflow, see PR #18508):**
 ```bash
-tools/board_image_check.py $(git diff --name-only HEAD^1 HEAD | grep board.json)
+python3 -m json.tool ports/esp32/boards/MYBOARD/board.json
 ```
 
 ---
@@ -497,11 +512,12 @@ tools/board_image_check.py $(git diff --name-only HEAD^1 HEAD | grep board.json)
 #### 7.2 OTA (Over-The-Air) Support (for applicable boards)
 **Best Practice:** Offer OTA firmware update capability for boards with sufficient flash.
 
-**Components (from PR #19026):**
+**Components (from OTA-enabled boards):**
 - `mpconfigvariant_OTA.cmake` - Dual-partition configuration
-- Custom partition table (`partitions-8MiB-ota.csv`)
-- `ota.py` helper module (frozen)
+- Custom partition table (e.g., `partitions-8MiB-ota.csv` for high-flash ESP32)
+- `ota.py` helper module (frozen into firmware)
 - Rollback support via Partition API
+- Implemented in boards with 8MB+ flash across multiple ports and manufacturers
 
 #### 7.3 Frozen Modules for Complex Boards
 **Best Practice:** Include drivers as frozen modules when appropriate.
@@ -525,31 +541,32 @@ tools/board_image_check.py $(git diff --name-only HEAD^1 HEAD | grep board.json)
 #### 8.1 Directory Structure for Feature-Rich Boards
 **Best Practice:** Organize files logically by function.
 
-**Example Structure (PR #19026):**
+**Example Structure (Multi-board Families):**
 ```
 ports/esp32/boards/
-├── pycom_common/                 # Shared modules across Pycom boards
-│   ├── sx127x.py                # LoRa radio driver
-│   ├── lorawan.py               # LoRaWAN MAC implementation
-│   ├── lorawan_crypto.py        # Cryptographic primitives
-│   ├── ota.py                   # OTA firmware update
-│   ├── pycom_rgb.py             # LED helper
-│   └── test_hardware.py         # Hardware validation
-├── PYCOM_LOPY/
+├── shared_drivers/               # Shared across related boards
+│   ├── radio_driver.py
+│   ├── sensor_config.py
+│   └── shared_utils.py
+├── BOARD_VARIANT_A/
 │   ├── board.json
 │   ├── mpconfigboard.cmake
 │   ├── mpconfigboard.h
 │   ├── pins.csv
-│   ├── manifest.py
-│   ├── sdkconfig.board
-│   └── sdkconfig.ota            # OTA variant config
-└── PYCOM_LOPY4/
+│   └── manifest.py
+└── BOARD_VARIANT_B/
     ├── board.json
     ├── mpconfigboard.cmake
-    ├── ... (similar structure)
-    ├── partitions.csv           # Custom partition table
-    └── partitions-8MiB-ota.csv  # OTA variant partitions
+    ├── mpconfigvariant_OTA.cmake  # For high-flash variant
+    ├── pins.csv
+    ├── manifest.py
+    └── partitions-ota.csv         # Custom partition table
 ```
+
+**Real Examples from Merged PRs:**
+- Multi-board families (Pycom, Adafruit, Nordic): Share common drivers in parent directories
+- Multiple STM32 Discovery boards: All reference shared port defaults
+- Various ESP32 boards: Selective use of shared WiFi/BLE configurations
 
 **Benefits:**
 - Multiple related boards can share driver code
@@ -587,7 +604,6 @@ Board definitions must include these elements or PR cannot be accepted.
 **Check:**
 ```bash
 python3 -m json.tool ports/esp32/boards/MYBOARD/board.json
-tools/board_image_check.py ports/esp32/boards/MYBOARD/board.json
 ```
 
 **Why:** `board.json` is the single source of truth for board metadata. Malformed or incomplete metadata breaks documentation, downloadable firmware lists, and board discovery.
@@ -812,7 +828,9 @@ Optional features that enhance value but are not required.
 
 **Benefit:** Users verify board health, developers catch driver issues.
 
-**Example:** PR #19026 (Pycom - `test_hardware.py`)
+**Examples from Merged PRs:** 
+- Boards with specialized hardware: Include driver and feature validation tests
+- Representative feature-rich boards: Networking and peripheral validation tests
 
 ---
 
@@ -840,9 +858,10 @@ Optional features that enhance value but are not required.
 - [ ] Complete and documented (docstrings, usage examples)
 - [ ] Includes unit tests
 
-**Examples:**
-- PR #19026: Includes LoRa driver (sx127x.py), LoRaWAN MAC (lorawan.py)
-- Protocol implementations frozen into board for easy user access
+**Examples from Merged PRs:**
+- Boards with specialized radios: Include radio driver (sx127x.py, NRF driver, etc.) and protocol stacks
+- PR #18847 and other multi-board families: Shared motor/sensor drivers
+- Protocol implementations frozen into firmware for easy user access
 
 ---
 
@@ -943,12 +962,13 @@ Acceptance Gates:
 ### I2: board.json Image References Don't Exist
 **Problem:** `board.json` references image filenames that aren't submitted.
 
-**Impact:** CI fails, board can't be downloaded, documentation incomplete.
+**Impact:** Board metadata becomes inconsistent with published assets and reviewers usually request follow-up fixes.
 
 **Fix:**
-1. Submit images to micropython-media repo separately (or prepare for simultaneous merge)
-2. Use `tools/board_image_check.py` to validate
-3. Use placeholder images if real ones unavailable initially
+1. Submit a companion micropython-media PR for the image assets (or ensure they already exist on main).
+2. Keep filenames in `board.json` exactly aligned with filenames in the media PR.
+3. Link the media PR in the board-definition PR description so reviewers can verify both together.
+4. Use the merged fix pattern from PR #18508 as reference for correcting copy-paste image names.
 
 ---
 
@@ -1052,41 +1072,72 @@ Before submitting a board definition PR:
 
 ## Appendix: Real PR Examples
 
-### Example 1: Simple Board (Meets All MUST, Some SHOULD)
-**PR #18847 - Cytron Motion 2350 Pro**
-- ✅ Compiles and boots
-- ✅ Complete board.json with motion-robot-relevant features
-- ✅ Named pins for motors (M1A, M1B, M2A, etc.)
-- ✅ Clear testing evidence
-- ❌ No board.md or extra documentation
-- ❌ No OTA or variants
+### Example 1: Simple Board - Basic Configuration (Type A)
+**PR #18847 - Cytron Motion 2350 Pro** (RP2040)
+- ✅ Minimal but complete: board.json, pins.csv, mpconfigboard.cmake, manifest.py
+- ✅ Clear motor-specific pin naming (M1A, M1B, M2A, M2B, etc.)
+- ✅ Focused testing (GPIO, motors via PWM, I2C)
+- ✅ Multiple port variants (ARM and RISC-V)
+- ❌ No OTA or complex driver implementations
 
-**Verdict:** Quality merge. Could be enhanced but fully functional as-is.
-
----
-
-### Example 2: Complex Board (Meets MUST + Many SHOULD + SOME MAY HAVE)
-**PR #19026 - Pycom LoPy & LoPy4**
-- ✅ Comprehensive testing (GPIO, WiFi, BLE, LoRa, PSRAM)
-- ✅ LoRa driver implementation (frozen modules)
-- ✅ LoRaWAN protocol stack
-- ✅ OTA firmware update support with variants
-- ✅ RGB LED helper module
-- ✅ Hardware validation test script
-- ✅ Detailed PR description with trade-offs
-- ✅ Code quality (passes ruff, codespell)
-
-**Verdict:** Gold standard merge. Could serve as template for other complex board definitions.
+**Verdict:** Excellent simple board. Demonstrates all MUST and some SHOULD criteria.
 
 ---
 
-### Example 3: Tooling PR (Related but Different)
-**PR #18505 - Board Image Check Script**
-- Adds CI validation for board images
-- Prevents broken references
-- Serves whole board definition ecosystem
+### Example 2: Mainstream ESP32 Board (Type B)
+**PR #18958 - SEEED XIAO ESP32C6** (ESP32C6)
+- ✅ Complete hardware enumeration (BLE, WiFi, features array)
+- ✅ Arduino-compatible pin names (D0-D10, A0-A2)
+- ✅ RF functionality documented (RF_SEL, RF_POWER pins)
+- ✅ Proper IDF target configuration
+- ✅ Clean code, passes linting
 
-**Verdict:** Infrastructure improvement beneficial to all future board PRs.
+**Verdict:** Modern, straightforward ESP32 board with comprehensive documentation.
+
+---
+
+### Example 3: Reference Board with Complex Hardware (Type B)
+**PR #18303 - STM32H747I-DISCO** (STM32H7)
+- ✅ Official evaluation board with extensive capabilities
+- ✅ Dual-core documentation and pin definitions
+- ✅ Networking hardware (Ethernet, notes on conflicts)
+- ✅ Multiple memory interfaces (SDRAM, Flash)
+- ✅ Clear hardware notes in board.md
+
+**Verdict:** Reference implementation. Shows how to document complex evaluation boards.
+
+---
+
+### Example 4: Feature-Rich Board with Specialization (Type B)
+**PR #19026 - Pycom LoPy & LoPy4** (ESP32)
+- ✅ Multi-board family with shared drivers
+- ✅ Specialized radio support (LoRa driver + LoRaWAN MAC)
+- ✅ OTA variants with custom partition tables
+- ✅ Hardware validation test suite
+- ✅ RGB LED module and sensor support
+
+**Verdict:** Gold standard. Demonstrates advanced features (drivers, variants, OTA) at scale.
+
+---
+
+### Example 5: Port-Specific Pattern (SAMD21)
+**Representative SAMD21 boards** across merged PRs
+- ✅ Minimal configuration (SAMD uses shared port defaults effectively)
+- ✅ Consistent pin naming across SAMD family
+- ✅ Focused on core GPIO/I2C/SPI functionality
+- ✅ Quick test cycle (small binaries)
+
+**Verdict:** Demonstrates efficient minimal board definitions.
+
+---
+
+### Example 6: Infrastructure & Tooling (Supporting)
+**PR #18508 - ESP32_GENERIC_[C2|C5|P4] Image Filename Fixes**
+- ✅ Corrects `board.json` image names to match actual/pending micropython-media assets
+- ✅ Demonstrates companion-PR workflow between board definitions and media repository
+- ✅ Prevents broken board image links on documentation/download pages
+
+**Verdict:** Supporting infrastructure that enables quality control.
 
 ---
 
