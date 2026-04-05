@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
+import argparse
 import json
 import re
 import socket
+import subprocess
 import time
 import urllib.error
 import urllib.request
@@ -16,6 +18,11 @@ SEARCH_URL = (
     "?q=repo:micropython/micropython+is:pr+is:open+label:board-definition"
     "&per_page=100&page={page}"
 )
+
+
+def run_git(args: list[str]) -> str:
+    result = subprocess.run(["git", *args], check=True, capture_output=True, text=True)
+    return result.stdout.strip()
 
 
 def fetch_text(url: str, *, timeout: int = 60, retries: int = 3) -> str:
@@ -53,6 +60,14 @@ def fetch_json(url: str) -> dict:
     return json.loads(fetch_text(url))
 
 
+def is_draft_pr(pr: dict) -> bool:
+    pull_meta_url = pr.get("pull_request", {}).get("url")
+    if not pull_meta_url:
+        return False
+    data = fetch_json(pull_meta_url)
+    return bool(data.get("draft", False))
+
+
 def iter_open_board_prs() -> list[dict]:
     items = []
     for page in range(1, 3):
@@ -66,6 +81,8 @@ def iter_open_board_prs() -> list[dict]:
     prs = []
     for item in items:
         if "pull_request" not in item:
+            continue
+        if is_draft_pr(item):
             continue
         number = item["number"]
         if number in seen:
@@ -157,6 +174,14 @@ def detect_port(pr: dict, title: str) -> str:
     return "unknown"
 
 
+def detect_port_from_filenames(filenames: list[str]) -> str:
+    for name in filenames:
+        match = re.match(r"^ports/([^/]+)/boards/[^/]+/", name)
+        if match:
+            return match.group(1)
+    return "unknown"
+
+
 def has_testing_section(body: str) -> bool:
     return bool(
         re.search(r"(^|\n)\s*#{1,3}\s*Testing\b", body, flags=re.IGNORECASE)
@@ -164,14 +189,75 @@ def has_testing_section(body: str) -> bool:
     )
 
 
+def patch_has_board_json_variants(patch_text: str) -> bool:
+    return bool(re.search(r'^\+\s*"variants"\s*:', patch_text, flags=re.MULTILINE))
+
+
+def patch_has_variant_specific_pins(filenames: list[str]) -> bool:
+    return any(
+        re.match(r"^ports/[^/]+/boards/[^/]+/pins[^/]*\.csv$", name) and not name.endswith("/pins.csv")
+        for name in filenames
+    )
+
+
+def has_build_workflow_evidence(body: str) -> bool:
+    return bool(
+        re.search(r"\bmake\s+submodules\b", body)
+        or re.search(r"\bmake\s+test_full\b", body)
+        or re.search(r"\bBOARD_VARIANT=", body)
+    )
+
+
+def has_signoff_evidence(body: str, patch_text: str) -> bool:
+    return bool(
+        re.search(r"\bSigned-off-by:\b", body, flags=re.IGNORECASE)
+        or re.search(r"\bSigned-off-by:\b", patch_text, flags=re.IGNORECASE)
+    )
+
+
+def build_current_checkout_pr(base_ref: str) -> dict:
+    branch = run_git(["rev-parse", "--abbrev-ref", "HEAD"])
+    patch_text = run_git(["diff", "--no-color", f"{base_ref}...HEAD"])
+    filenames_text = run_git(["diff", "--name-only", f"{base_ref}...HEAD"])
+    filenames = [line for line in filenames_text.splitlines() if line.strip()]
+
+    # Prefer a concise summary from commits on the branch, fallback to branch name.
+    title = run_git(["log", "--format=%s", "-n", "1", f"{base_ref}..HEAD"]) or f"local checkout: {branch}"
+    body = run_git(["log", "--format=%B", f"{base_ref}..HEAD"])
+
+    return {
+        "number": 0,
+        "title": title,
+        "html_url": "",
+        "body": body,
+        "labels": [],
+        "_local": True,
+        "_branch": branch,
+        "_patch_text": patch_text,
+        "_filenames": filenames,
+    }
+
+
+def format_pr_ref(pr: dict) -> str:
+    number = pr.get("number", 0)
+    url = pr.get("html_url", "")
+    if number and url:
+        return f"[#{number}]({url})"
+    return "LOCAL"
+
+
 def score_pr(pr: dict) -> tuple[str, str]:
     number = pr["number"]
     title = (pr.get("title") or "").replace("|", "\\|")
-    url = pr["html_url"]
+    url = pr.get("html_url", "")
     body = pr.get("body") or ""
-    patch_url = pr["pull_request"]["patch_url"]
-    patch_text = fetch_text(patch_url)
-    filenames = extract_filenames_from_patch(patch_text)
+    if pr.get("_local"):
+        patch_text = pr.get("_patch_text", "")
+        filenames = pr.get("_filenames", [])
+    else:
+        patch_url = pr["pull_request"]["patch_url"]
+        patch_text = fetch_text(patch_url)
+        filenames = extract_filenames_from_patch(patch_text)
     board_dirs = extract_board_dirs(filenames)
 
     has_board_json = any(re.match(r"^ports/[^/]+/boards/[^/]+/board\.json$", name) for name in filenames)
@@ -194,15 +280,31 @@ def score_pr(pr: dict) -> tuple[str, str]:
     bonus_tests = any(re.match(r"^tests/ports/[^/]+/", name) for name in filenames)
     bonus_detail = len(body) > 700
     bonus_score = sum((bonus_manifest, bonus_docs, bonus_variants, bonus_tests, bonus_detail))
-    total_score = must_score + bonus_score
+
+    wiki_variant_discoverability = (not bonus_variants) or patch_has_board_json_variants(patch_text)
+    wiki_variant_pin_rule = (not bonus_variants) or (not patch_has_variant_specific_pins(filenames))
+    wiki_workflow_evidence = has_build_workflow_evidence(body)
+    wiki_signoff_evidence = has_signoff_evidence(body, patch_text)
+    wiki_score = sum(
+        (
+            wiki_variant_discoverability,
+            wiki_variant_pin_rule,
+            wiki_workflow_evidence,
+            wiki_signoff_evidence,
+        )
+    )
+    total_score = must_score + bonus_score + wiki_score
 
     must_pass = all((m1, m2, m3, m4, m5))
     port = detect_port(pr, title)
+    if port == "unknown":
+        port = detect_port_from_filenames(filenames)
 
+    pr_ref = format_pr_ref(pr)
     summary_row = (
-        f"| [#{number}]({url}) | {port} | {title} | "
+        f"| {pr_ref} | {port} | {title} | "
         f"{'Y' if m1 else 'N'} | {'Y' if m2 else 'N'} | {'Y' if m3 else 'N'} | "
-        f"{'Y' if m4 else 'N'} | {'Y' if m5 else 'N'} | {'Yes' if must_pass else 'No'} | {total_score} |"
+        f"{'Y' if m4 else 'N'} | {'Y' if m5 else 'N'} | {'Yes' if must_pass else 'No'} | {wiki_score} | {total_score} |"
     )
 
     missing = []
@@ -216,6 +318,10 @@ def score_pr(pr: dict) -> tuple[str, str]:
         missing.append("testing evidence in PR body")
     if not m5:
         missing.append("board-path file changes")
+    if bonus_variants and not wiki_variant_discoverability:
+        missing.append("board.json variants metadata for variant builds")
+    if bonus_variants and not wiki_variant_pin_rule:
+        missing.append("variant pin-layout rule (pins should not vary by variant)")
 
     strengths = []
     if bonus_manifest:
@@ -228,6 +334,14 @@ def score_pr(pr: dict) -> tuple[str, str]:
         strengths.append("tests added under tests/ports")
     if bonus_detail:
         strengths.append("detailed PR description")
+    if wiki_variant_discoverability and bonus_variants:
+        strengths.append("variants appear discoverable in board.json")
+    if wiki_variant_pin_rule and bonus_variants:
+        strengths.append("variant pin-layout rule respected")
+    if wiki_workflow_evidence:
+        strengths.append("wiki build workflow evidence present")
+    if wiki_signoff_evidence:
+        strengths.append("sign-off evidence detected")
 
     key_files = summarize_key_files(filenames)
     body_summary = extract_body_summary(body)
@@ -235,7 +349,11 @@ def score_pr(pr: dict) -> tuple[str, str]:
     if len(board_dirs) > 3:
         board_scope += f", and {len(board_dirs) - 3} more"
 
-    note = f"### [#{number}]({url}) - {title}\n\n"
+    if number and url:
+        note = f"### [#{number}]({url}) - {title}\n\n"
+    else:
+        branch = pr.get("_branch", "current branch")
+        note = f"### LOCAL ({branch}) - {title}\n\n"
     note += f"Scope: {board_scope}."
     if key_files:
         note += f" Key files detected: {key_files}."
@@ -254,8 +372,46 @@ def score_pr(pr: dict) -> tuple[str, str]:
 
 
 def main() -> None:
-    report_path = Path("OPEN_BOARD_PR_BEST_PRACTICES_ASSESSMENT.md")
-    prs = iter_open_board_prs()
+    parser = argparse.ArgumentParser(
+        description=(
+            "Score board-definition PRs against best-practice criteria. "
+            "Modes: open (all open, non-draft labeled PRs) or current (currently checked-out branch)."
+        )
+    )
+    parser.add_argument(
+        "--mode",
+        choices=("open", "current"),
+        default="open",
+        help="Scoring mode: 'open' for all open non-draft board PRs, 'current' for local checkout branch.",
+    )
+    parser.add_argument(
+        "--base-ref",
+        default="master",
+        help="Git base ref used by --mode current (default: master).",
+    )
+    parser.add_argument(
+        "--output",
+        default="",
+        help="Output markdown path. Defaults depend on mode.",
+    )
+    args = parser.parse_args()
+
+    if args.mode == "current":
+        default_output = "CURRENT_BOARD_PR_BEST_PRACTICES_ASSESSMENT.md"
+        prs = [build_current_checkout_pr(args.base_ref)]
+        generated_from = (
+            "Generated from the currently checked-out branch relative to "
+            f"`{args.base_ref}`."
+        )
+    else:
+        default_output = "OPEN_BOARD_PR_BEST_PRACTICES_ASSESSMENT.md"
+        prs = iter_open_board_prs()
+        generated_from = (
+            "Generated from currently open non-draft PRs labeled "
+            "`board-definition` in `micropython/micropython`."
+        )
+
+    report_path = Path(args.output or default_output)
 
     rows = []
     notes = []
@@ -267,12 +423,13 @@ def main() -> None:
     lines = [
         "# Open Board PR Assessment Against Best Practices",
         "",
-        "Generated from currently open PRs labeled `board-definition` in `micropython/micropython`.",
+        generated_from,
         "",
         "Scoring model:",
         "- MUST score: 5 checks (M1-M5), each 2 points, total 10",
         "- Best-practice bonus: 5 checks, each 1 point, total 5",
-        "- Total: /15",
+        "- Wiki-aligned bonus: 4 checks, each 1 point, total 4",
+        "- Total: /19",
         "",
         "**MUST criteria (M1–M5):**",
         "",
@@ -284,10 +441,19 @@ def main() -> None:
         "| M4 | Testing evidence | PR description includes hardware test results or flash/run evidence |",
         "| M5 | Correct directory | Board files placed under the correct `ports/<port>/boards/<BOARD_NAME>/` path |",
         "",
+        "**Wiki-aligned bonus criteria (W1-W4):**",
+        "",
+        "| | Criterion | Description |",
+        "|---|---|---|",
+        "| W1 | Variant discoverability | If variant config files exist, board.json includes a variants map |",
+        "| W2 | Variant pin rule | Variant builds keep one pins.csv layout (pin changes imply a new board) |",
+        "| W3 | Build workflow evidence | PR body includes wiki-style workflow evidence (submodules, BOARD_VARIANT, or test_full) |",
+        "| W4 | Sign-off evidence | Signed-off-by evidence found in PR body or patch metadata |",
+        "",
         "## Summary Table",
         "",
-        "| PR | Port | Board/Title | M1 | M2 | M3 | M4 | M5 | MUST Pass | Score (/15) |",
-        "|---|---|---|---|---|---|---|---|---|---|",
+        "| PR | Port | Board/Title | M1 | M2 | M3 | M4 | M5 | MUST Pass | Wiki (/4) | Score (/19) |",
+        "|---|---|---|---|---|---|---|---|---|---|---|",
         *rows,
         "",
         "## Per-PR Notes",
@@ -299,7 +465,7 @@ def main() -> None:
         lines.append("")
 
     report_path.write_text("\n".join(lines), encoding="utf-8")
-    print(f"ASSESSED={len(prs)}")
+    print(f"MODE={args.mode} ASSESSED={len(prs)} OUTPUT={report_path}")
 
 
 if __name__ == "__main__":

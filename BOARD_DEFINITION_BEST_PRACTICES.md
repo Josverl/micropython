@@ -1,14 +1,14 @@
 # MicroPython Board Definition Best Practices & Assessment Criteria
 
-## Executive Summary
+## Summary
 
-This document synthesizes best practices derived from comprehensive analysis of **100+ merged board definition PRs** across the MicroPython repository (spanning 2018-2024). It provides guidance for creating high-quality board definitions and a structured assessment framework for evaluating future board PRs.
+This document is an AI assisted synthesis of best practices derived from comprehensive analysis of **100+ merged board definition PRs** across the MicroPython repository (spanning 2018-2024). It provides guidance for creating high-quality board definitions and a structured assessment framework for evaluating future board PRs.
 
 ### Scope & Methodology
 
 **PR Sample:** 100+ successfully merged board definition PRs  
 **Port Coverage:** ESP32 (~40%), RP2 (~25%), STM32 (~20%), SAMD (~7%), Zephyr (~5%), mimxrt (~3%)  
-**Time Span:** 2018-2024 (6 years of evolution)  
+**Time Span:** 2018-2025 (~7 years of evolution)  
 **Analysis Method:** Pattern identification from metadata, config files, testing evidence, and reviewer comments across all merged PRs
 
 ### Key Findings
@@ -157,17 +157,17 @@ LED,GPIO15                    # Simple LED
 LED_R,GPIO14                  # RGB components  
 LED_G,GPIO13
 LED_B,GPIO12
-BUTTON_0,GPIO35              # Multiple buttons
+BUTTON_0,GPIO35               # Multiple buttons
 BUTTON_1,GPIO0
 D0,GPIO32                     # Digital pins D0-D10 (Arduino style)
 A0,GPIO26                     # Analog pins A0-A3
-I2C_SCL,GPIO23               # I2C bus designation
+I2C_SCL,GPIO23                # I2C bus designation
 I2C_SDA,GPIO22
-SPI_MOSI,GPIO18              # SPI bus pins (if non-default)
+SPI_MOSI,GPIO18               # SPI bus pins (if non-default)
 SPI_MISO,GPIO19
 SPI_SCLK,GPIO5
-NEOPIXEL,GPIO8               # Smart LED
-LORA_MOSI,GPIO27             # Dedicated radio pins
+NEOPIXEL,GPIO8                # Smart LED
+LORA_MOSI,GPIO27              # Dedicated radio pins
 LORA_MISO,GPIO19
 LORA_SCLK,GPIO5
 LORA_CS,GPIO17
@@ -345,6 +345,35 @@ set(PICO_BOARD "waveshare_rp2350b_core")
 - PR #18847 (Cytron Motion 2350 Pro): Includes both ARM and RISC-V variants
 - Various ESP32 boards with 8MB+ flash: OTA variant with custom partition tables
 
+#### 3.4 Variant Decision Rules & Discoverability
+**Best Practice:** Use variants only for small hardware-option deltas; create a new board for material hardware differences.
+
+**Use a variant when:**
+- Same PCB and same MCU, with small BOM/config differences (xtal frequency, flash size, optional features)
+- Pin mapping in `pins.csv` remains unchanged
+
+**Create a new board when:**
+- MCU changes
+- Pinout or `pins.csv` changes
+- Board layout differs enough to require board-specific pin naming/config
+
+**Port-specific variant files:**
+- STM32/SAMD: `mpconfigvariant.mk` or `mpconfigvariant_<VARIANT>.mk`
+- RP2: `mpconfigvariant.cmake` or `mpconfigvariant_<VARIANT>.cmake`
+
+**Discoverability requirement:**
+- If variants are supported, add a `variants` map in `board.json` with short human-readable descriptions.
+
+#### 3.5 Port-Required Companion Files
+**Best Practice:** Ensure all port-required companion files are present, not just the generic board files.
+
+**Examples:**
+- STM32 boards often need a board-specific HAL config header (for example, `stm32f4xx_hal_conf.h`) in addition to `mpconfigboard.h/.mk` and `pins.csv`.
+- Boards introducing new STM32 MCU variants may also require new AF CSV and linker-script support in the port-level `boards/` area.
+
+**Reviewer expectation:**
+- If your board depends on new MCU-family support, include the required port-level changes in the same PR series and clearly describe them.
+
 ---
 
 ### 4. Build & Manifest Configuration
@@ -396,6 +425,7 @@ Ethernet, the MEMS microphone must be disconnected from PC1.
 - [ ] Board boots and REPL responds
 - [ ] GPIO operations (LED toggles, button reads)
 - [ ] Primary communication bus tested (UART/I2C/SPI)
+- [ ] Build command(s) shown explicitly (including `BOARD_VARIANT` where used)
 
 **Extended Testing (for feature-rich boards):**
 - [ ] Each documented feature tested
@@ -433,6 +463,19 @@ Hardware tests:
 - (If specialized hardware) Radio/sensor/driver initialization
 ```
 
+**Recommended command pattern (from wiki workflow):**
+```bash
+cd ports/<port>
+make submodules   # first build in a fresh checkout
+make BOARD=<BOARD> V=1
+# If variants exist:
+make BOARD=<BOARD> BOARD_VARIANT=<VARIANT>
+# If feasible on hardware:
+make test_full BOARD=<BOARD>
+```
+
+If `test_full` or a hardware test is not feasible, document why.
+
 #### 5.2 Test Files (for boards with significant features)
 **Best Practice:** Include test files in `tests/ports/<port>/` directory.
 
@@ -452,10 +495,10 @@ Hardware tests:
 
 **Required Sections:**
 - **Summary**: One-sentence board name and purpose
+- State whether this is an existing-MCU board profile or includes new MCU-family support.
 - **Hardware Features**: Bullet list of key specs
-- **Testing**: What was tested
+- **Testing**: What was tested and how
 - **Trade-offs & Alternatives**: Design decisions
-- **Generative AI**: Disclosure if used
 
 **Good Example from Merged PR:**
 ```markdown
@@ -615,6 +658,7 @@ python3 -m json.tool ports/esp32/boards/MYBOARD/board.json
 **Criteria:**
 - [ ] `mpconfigboard.h` with `MICROPY_HW_BOARD_NAME` defined
 - [ ] `mpconfigboard.cmake` (or `mpconfigboard.mk` for STM32) present
+- [ ] Port-required companion files present (for example, STM32 HAL config header where needed)
 - [ ] Firmware builds successfully (`make BOARD=<BOARD>`)
 - [ ] Board boots and REPL responds
 - [ ] No compilation errors/warnings specific to the board
@@ -841,6 +885,8 @@ Optional features that enhance value but are not required.
 - [ ] Variants have clear purpose (OTA, RISC-V mode, etc.)
 - [ ] Each variant documented in PR
 - [ ] Builds successfully for each variant
+- [ ] `board.json` includes a `variants` object describing each variant
+- [ ] Variants do not change `pins.csv`; pin changes use a separate board definition
 
 **Benefit:** Maximum flexibility for different use cases (OTA updates, performance vs size, etc.).
 
@@ -903,6 +949,7 @@ Acceptance Gates:
 
 **Additional Criteria:**
 - [ ] Proper IDF target specified: `set(IDF_TARGET esp32)`, `esp32s3`, `esp32c6`, etc.
+- [ ] Supported IDF version ranges documented if using newer features
 - [ ] SDKCONFIG defaults reference appropriate port defaults
 - [ ] Flash size configured if non-standard
 - [ ] PSRAM configuration if present
@@ -1015,6 +1062,18 @@ Tested on actual Cytron Motion 2350 Pro hardware:
 
 ---
 
+### I6: Variant Misuse (Should Be New Board)
+**Problem:** Variant used even though MCU or pin mapping changes.
+
+**Impact:** Confusing board behavior, broken assumptions in docs/build artifacts.
+
+**Fix:**
+1. Keep variants for same MCU + same `pins.csv` only.
+2. If MCU/pinout differs, create a separate board directory.
+3. Add `variants` entries to `board.json` for discoverability.
+
+---
+
 ## Part 5: Submission Checklist for PR Authors
 
 Before submitting a board definition PR:
@@ -1050,24 +1109,25 @@ Before submitting a board definition PR:
   - [ ] Any known limitations documented
   - [ ] Board.md created if needed
 
-- [ ] **Code Quality**
-  - [ ] Python code passes `ruff check` and `ruff format`
-  - [ ] C code compiles without warnings
-  - [ ] No spelling errors (`codespell`)
-  - [ ] No copy-paste artifacts
-
-- [ ] **Images**
-  - [ ] Board images in correct format
-  - [ ] Images referenced in board.json
-  - [ ] Filenames match board.json exactly
-  - [ ] (Will be validated during CI)
-
 - [ ] **Board.json Validation**
   - [ ] Valid JSON (test with `json.tool`)
   - [ ] All required fields present
   - [ ] Feature list appropriate and complete
   - [ ] URLs valid and accessible
 
+- [ ] **Images** (to be provided in a separate media PR)
+  - [ ] Board images in correct format
+  - [ ] Images referenced in board.json
+  - [ ] Filenames match board.json exactly
+  - [ ] (Will be validated during CI)
+
+Generic contribution checks/guidelines:
+
+- [ ] **Code Quality**
+  - [ ] Python code passes `ruff check` and `ruff format`
+  - [ ] C code compiles without warnings
+  - [ ] No spelling errors (`codespell`)
+  - [ ] No copy-paste artifacts
 ---
 
 ## Appendix: Real PR Examples
