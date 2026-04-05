@@ -64,6 +64,70 @@ This document is an AI assisted synthesis of best practices derived from compreh
 
 ---
 
+## Part 5: Submission Checklist for PR Authors
+
+When submitting a board definition PR:
+
+### PR-Submission Checklist
+
+- [ ] **Board Configuration**
+  - [ ] Board builds: `make BOARD=MYBOARD`
+  - [ ] Board boots and REPL responds
+  - [ ] All variants build (if applicable)
+
+- [ ] **Test Suite**
+  - [ ] Run MicroPython test suite against the board hardware (see [tests/README.md](tests/README.md) for instructions)
+  - [ ] Minimum: `./run-tests.py -t /dev/ttyACM0` completes without regressions
+  - [ ] Document any tests that are skipped or expected to fail (and why)
+  - [ ] All variants tested separately (if applicable)
+  - [ ] Test results confirm board functionality matches hardware capabilities
+
+- [ ] **File Organization**
+  - [ ] All files in correct directory: `ports/<PORT>/boards/<BOARDNAME>/`
+  - [ ] No extra files or temporary test files
+  - [ ] Directory name is UPPERCASE with underscores
+
+- [ ] **Core Files Present**
+  - [ ] `board.json` with complete metadata
+  - [ ] `mpconfigboard.h` with MICROPY_HW_BOARD_NAME
+  - [ ] `mpconfigboard.cmake` or `mpconfigboard.mk`
+  - [ ] `pins.csv` with meaningful pin names
+  - [ ] `manifest.py` with port defaults included
+
+- [ ] **Board.json Validation**
+  - [ ] Valid JSON (test with `json.tool`)
+  - [ ] All required fields present
+  - [ ] Feature list appropriate and complete
+  - [ ] URLs valid and accessible
+
+- [ ] **Pin Definitions**
+  - [ ] LED pin named (if board has LED)
+  - [ ] All special hardware pins named
+  - [ ] I2C/SPI pins named if multiple buses
+  - [ ] No generic "GPIO" naming only
+
+- [ ] **Documentation**
+  - [ ] PR includes comprehensive "Testing" section
+  - [ ] Hardware features documented
+  - [ ] Any known limitations documented
+  - [ ] Board.md created if needed
+
+- [ ] **Images** (to be provided in a separate media PR)
+  - [ ] Board images in correct format
+  - [ ] Images referenced in board.json
+  - [ ] Filenames match board.json exactly
+  - [ ] (Will be validated during CI)
+
+Generic contribution checks/guidelines:
+
+- [ ] **Code Quality**
+  - [ ] Python code passes `ruff check` and `ruff format`
+  - [ ] C code compiles without warnings
+  - [ ] No spelling errors (`codespell`)
+  - [ ] No copy-paste artifacts
+
+---
+
 ## Statistical Insights from 100+ Merged PRs
 
 ### Feature Prevalence Analysis
@@ -200,9 +264,9 @@ RX,GPIO3
 - **`docs`**: Documentation string (can be empty if board.md exists)
 
 **Evidence from PRs:**
-- PR #18958 (SEEED_XIAO_ESP32C6): Includes all standard fields plus thoughtful feature list
-- PR #18303 (STM32H747I-DISCO): Shows extensive feature enumeration with dual-core, networking, storage capabilities
-- PR #18508: Corrected ESP32 board image filenames to match assets pending in micropython-media
+- [PR #18958](https://github.com/micropython/micropython/pull/18958) (SEEED_XIAO_ESP32C6): Includes all standard fields plus thoughtful feature list
+- [PR #18303](https://github.com/micropython/micropython/pull/18303) (STM32H747I-DISCO): Shows extensive feature enumeration with dual-core, networking, storage capabilities
+- [PR #18508](https://github.com/micropython/micropython/pull/18508): Corrected ESP32 board image filenames to match assets pending in micropython-media
 
 #### 1.2 Hardware Features Enumeration
 **Best Practice:** Systematically document all on-board hardware in the features array.
@@ -250,8 +314,8 @@ RX,GPIO3
   - Audio: `SAI_MCLK`, `SAI_BCLK`, `SAI_DATA`
 
 **Evidence from Merged PRs:**
-- PR #18958 (SEEED_XIAO_ESP32C6): Arduino-compatible naming (D0-D10, A0-A2)
-- PR #18847 (Cytron Motion 2350 Pro): Specialized motor pins (M1A/M1B/M2A/M2B, ADC0-3)
+- [PR #18958](https://github.com/micropython/micropython/pull/18958) (SEEED_XIAO_ESP32C6): Arduino-compatible naming (D0-D10, A0-A2)
+- [PR #18847](https://github.com/micropython/micropython/pull/18847) (Cytron Motion 2350 Pro): Specialized motor pins (M1A/M1B/M2A/M2B, ADC0-3)
 - Boards with radios/specialized hardware: Domain-specific naming (LORA_*, AUDIO_*, RF_*)
 - Naming shows clear intent so users can write `Pin.board.LED` instead of GPIO numbers
 
@@ -342,7 +406,7 @@ set(PICO_BOARD "waveshare_rp2350b_core")
 - Different SPI/Flash configurations
 
 **PR Evidence:**
-- PR #18847 (Cytron Motion 2350 Pro): Includes both ARM and RISC-V variants
+- [PR #18847](https://github.com/micropython/micropython/pull/18847) (Cytron Motion 2350 Pro): Includes both ARM and RISC-V variants
 - Various ESP32 boards with 8MB+ flash: OTA variant with custom partition tables
 
 #### 3.4 Variant Decision Rules & Discoverability
@@ -404,7 +468,7 @@ require("logging")
 - Debug/programming notes
 - Setup instructions
 
-**Example from PR #18303:**
+**Example from [PR #18303](https://github.com/micropython/micropython/pull/18303):**
 ```markdown
 The Ethernet interface requires a hardware modification due to a pin conflict
 between ETH_MDC (PC1) and the SAI4_D1 digital MEMS microphone. To enable
@@ -434,7 +498,7 @@ Ethernet, the MEMS microphone must be disconnected from PC1.
 - [ ] Specialized hardware validated (camera, audio codec, LoRa)
 - [ ] Variants tested separately
 
-**Example from PR #18303 (STM32H747I-DISCO):**
+**Example from [PR #18303](https://github.com/micropython/micropython/pull/18303) (STM32H747I-DISCO):**
 ```
 Build verification:
 - make BOARD=STM32H747I_DISCO
@@ -532,7 +596,7 @@ Add board definitions for [Board Name] with comprehensive hardware support.
 - [ ] Filenames: follow port conventions (lowercase with underscores)
 - [ ] Spelling: checked with `codespell`
 
-**Validation Example (merged media workflow, see PR #18508):**
+**Validation Example (merged media workflow, see [PR #18508](https://github.com/micropython/micropython/pull/18508)):**
 ```bash
 python3 -m json.tool ports/esp32/boards/MYBOARD/board.json
 ```
@@ -544,7 +608,7 @@ python3 -m json.tool ports/esp32/boards/MYBOARD/board.json
 #### 7.1 Board Pinout Diagram (OPTIONAL - Nice to Have)
 **Best Practice:** Provide visual pinout diagrams for user reference.
 
-**Evidence:** PR #17187 (WeAct RP2350B CORE)
+**Evidence:** [PR #17187](https://github.com/micropython/micropython/pull/17187) (WeAct RP2350B CORE)
 - Generates ANSI-colored pinout diagram
 - Compressed with zlib and frozen into firmware
 - Accessible via `board.pinout()` command
@@ -848,37 +912,7 @@ codespell ports/esp32/boards/MYBOARD/
 
 Optional features that enhance value but are not required.
 
-#### O1. Pinout Diagram (board.pinout())
-**Merged PR Compliance:** 8% of merged boards include pinout diagrams (emerging pattern, most common in RP2 boards)  
-**Criteria:**
-- [ ] ANSI-colored visual pinout representation
-- [ ] Compressed for firmware inclusion
-- [ ] Callable via `board.pinout()` command
-- [ ] Tools provided for generation/update
-
-**Benefit:** Users see pinout without external resources or internet.
-
-**Example:** PR #17187 (WeAct RP2350B CORE)
-
----
-
-#### O2. Hardware Validation Script
-**Merged PR Compliance:** 12% of merged boards include hardware validation test files (more common in feature-rich boards)  
-**Criteria:**
-- [ ] Test file in `tests/ports/<port>/` validating all hardware
-- [ ] Must be runnable on actual board
-- [ ] Clear PASS/FAIL output for each component
-- [ ] Can be skipped on unsupported boards gracefully
-
-**Benefit:** Users verify board health, developers catch driver issues.
-
-**Examples from Merged PRs:** 
-- Boards with specialized hardware: Include driver and feature validation tests
-- Representative feature-rich boards: Networking and peripheral validation tests
-
----
-
-#### O3. Variant Configurations
+#### O1. Variant Configurations
 **Merged PR Compliance:** 18% of merged boards include variants (growing pattern; most common: OTA variants for high-flash boards, RISC-V mode for RP2350)  
 **Criteria:**
 - [ ] `mpconfigvariant_<NAME>.cmake` files for meaningful variants
@@ -896,7 +930,7 @@ Optional features that enhance value but are not required.
 
 ---
 
-#### O4. Protocol/Driver Implementation (for specialized hardware)
+#### O2. Protocol/Driver Implementation (for specialized hardware)
 **Merged PR Compliance:** 15% of merged boards include custom protocol/driver implementations (common in boards with specialized radios or interfaces)  
 **Criteria:**
 - [ ] Drivers included as frozen modules if board-specific
@@ -906,8 +940,38 @@ Optional features that enhance value but are not required.
 
 **Examples from Merged PRs:**
 - Boards with specialized radios: Include radio driver (sx127x.py, NRF driver, etc.) and protocol stacks
-- PR #18847 and other multi-board families: Shared motor/sensor drivers
+- [PR #18847](https://github.com/micropython/micropython/pull/18847) and other multi-board families: Shared motor/sensor drivers
 - Protocol implementations frozen into firmware for easy user access
+
+---
+
+#### O3. Hardware Validation Script
+**Merged PR Compliance:** 12% of merged boards include hardware validation test files (more common in feature-rich boards)  
+**Criteria:**
+- [ ] Test file in `tests/ports/<port>/` validating all hardware
+- [ ] Must be runnable on actual board
+- [ ] Clear PASS/FAIL output for each component
+- [ ] Can be skipped on unsupported boards gracefully
+
+**Benefit:** Users verify board health, developers catch driver issues.
+
+**Examples from Merged PRs:** 
+- Boards with specialized hardware: Include driver and feature validation tests
+- Representative feature-rich boards: Networking and peripheral validation tests
+
+---
+
+#### O4. Pinout Diagram (board.pinout())
+**Merged PR Compliance:** 8% of merged boards include pinout diagrams (emerging pattern, most common in RP2 boards)  
+**Criteria:**
+- [ ] ANSI-colored visual pinout representation
+- [ ] Compressed for firmware inclusion
+- [ ] Callable via `board.pinout()` command
+- [ ] Tools provided for generation/update
+
+**Benefit:** Users see pinout without external resources or internet.
+
+**Example:** [PR #17187](https://github.com/micropython/micropython/pull/17187) (WeAct RP2350B CORE)
 
 ---
 
@@ -1015,7 +1079,7 @@ Acceptance Gates:
 1. Submit a companion micropython-media PR for the image assets (or ensure they already exist on main).
 2. Keep filenames in `board.json` exactly aligned with filenames in the media PR.
 3. Link the media PR in the board-definition PR description so reviewers can verify both together.
-4. Use the merged fix pattern from PR #18508 as reference for correcting copy-paste image names.
+4. Use the merged fix pattern from [PR #18508](https://github.com/micropython/micropython/pull/18508) as reference for correcting copy-paste image names.
 
 ---
 
@@ -1074,109 +1138,53 @@ Tested on actual Cytron Motion 2350 Pro hardware:
 
 ---
 
-## Part 5: Submission Checklist for PR Authors
-
-Before submitting a board definition PR:
-
-### Pre-Submission Checklist
-
-- [ ] **Board Configuration**
-  - [ ] Board builds: `make BOARD=MYBOARD`
-  - [ ] Board boots and REPL responds
-  - [ ] All variants build (if applicable)
-
-- [ ] **File Organization**
-  - [ ] All files in correct directory: `ports/<PORT>/boards/<BOARDNAME>/`
-  - [ ] No extra files or temporary test files
-  - [ ] Directory name is UPPERCASE with underscores
-
-- [ ] **Core Files Present**
-  - [ ] `board.json` with complete metadata
-  - [ ] `mpconfigboard.h` with MICROPY_HW_BOARD_NAME
-  - [ ] `mpconfigboard.cmake` or `mpconfigboard.mk`
-  - [ ] `pins.csv` with meaningful pin names
-  - [ ] `manifest.py` with port defaults included
-
-- [ ] **Pin Definitions**
-  - [ ] LED pin named (if board has LED)
-  - [ ] All special hardware pins named
-  - [ ] I2C/SPI pins named if multiple buses
-  - [ ] No generic "GPIO" naming only
-
-- [ ] **Documentation**
-  - [ ] PR includes comprehensive "Testing" section
-  - [ ] Hardware features documented
-  - [ ] Any known limitations documented
-  - [ ] Board.md created if needed
-
-- [ ] **Board.json Validation**
-  - [ ] Valid JSON (test with `json.tool`)
-  - [ ] All required fields present
-  - [ ] Feature list appropriate and complete
-  - [ ] URLs valid and accessible
-
-- [ ] **Images** (to be provided in a separate media PR)
-  - [ ] Board images in correct format
-  - [ ] Images referenced in board.json
-  - [ ] Filenames match board.json exactly
-  - [ ] (Will be validated during CI)
-
-Generic contribution checks/guidelines:
-
-- [ ] **Code Quality**
-  - [ ] Python code passes `ruff check` and `ruff format`
-  - [ ] C code compiles without warnings
-  - [ ] No spelling errors (`codespell`)
-  - [ ] No copy-paste artifacts
----
-
 ## Appendix: Real PR Examples
 
 ### Example 1: Simple Board - Basic Configuration (Type A)
-**PR #18847 - Cytron Motion 2350 Pro** (RP2040)
+**[PR #18847](https://github.com/micropython/micropython/pull/18847) - Cytron Motion 2350 Pro** (RP2040)
 - ✅ Minimal but complete: board.json, pins.csv, mpconfigboard.cmake, manifest.py
 - ✅ Clear motor-specific pin naming (M1A, M1B, M2A, M2B, etc.)
 - ✅ Focused testing (GPIO, motors via PWM, I2C)
 - ✅ Multiple port variants (ARM and RISC-V)
 - ❌ No OTA or complex driver implementations
 
-**Verdict:** Excellent simple board. Demonstrates all MUST and some SHOULD criteria.
+**Summary:** Excellent simple board. Demonstrates all MUST and some SHOULD criteria.
 
 ---
 
 ### Example 2: Mainstream ESP32 Board (Type B)
-**PR #18958 - SEEED XIAO ESP32C6** (ESP32C6)
+**[PR #18958](https://github.com/micropython/micropython/pull/18958) - SEEED XIAO ESP32C6** (ESP32C6)
 - ✅ Complete hardware enumeration (BLE, WiFi, features array)
 - ✅ Arduino-compatible pin names (D0-D10, A0-A2)
 - ✅ RF functionality documented (RF_SEL, RF_POWER pins)
 - ✅ Proper IDF target configuration
 - ✅ Clean code, passes linting
 
-**Verdict:** Modern, straightforward ESP32 board with comprehensive documentation.
+**Summary:** Modern, straightforward ESP32 board with comprehensive documentation.
 
 ---
 
 ### Example 3: Reference Board with Complex Hardware (Type B)
-**PR #18303 - STM32H747I-DISCO** (STM32H7)
+**[PR #18303](https://github.com/micropython/micropython/pull/18303) - STM32H747I-DISCO** (STM32H7)
 - ✅ Official evaluation board with extensive capabilities
 - ✅ Dual-core documentation and pin definitions
 - ✅ Networking hardware (Ethernet, notes on conflicts)
 - ✅ Multiple memory interfaces (SDRAM, Flash)
 - ✅ Clear hardware notes in board.md
 
-**Verdict:** Reference implementation. Shows how to document complex evaluation boards.
+**Summary:** Reference implementation. Shows how to document complex evaluation boards.
 
 ---
 
 ### Example 4: Feature-Rich Board with Specialization (Type B)
-**PR #19026 - Pycom LoPy & LoPy4** (ESP32)
+**[PR #19026](https://github.com/micropython/micropython/pull/19026) - Pycom LoPy & LoPy4** (ESP32)
 - ✅ Multi-board family with shared drivers
 - ✅ Specialized radio support (LoRa driver + LoRaWAN MAC)
 - ✅ OTA variants with custom partition tables
 - ✅ Hardware validation test suite
 - ✅ RGB LED module and sensor support
 
-**Verdict:** Gold standard. Demonstrates advanced features (drivers, variants, OTA) at scale.
+**Summary:** Gold standard. Demonstrates advanced features (drivers, variants, OTA) at scale.
 
 ---
 
@@ -1187,17 +1195,17 @@ Generic contribution checks/guidelines:
 - ✅ Focused on core GPIO/I2C/SPI functionality
 - ✅ Quick test cycle (small binaries)
 
-**Verdict:** Demonstrates efficient minimal board definitions.
+**Summary:** Demonstrates efficient minimal board definitions.
 
 ---
 
 ### Example 6: Infrastructure & Tooling (Supporting)
-**PR #18508 - ESP32_GENERIC_[C2|C5|P4] Image Filename Fixes**
+**[PR #18508](https://github.com/micropython/micropython/pull/18508) - ESP32_GENERIC_[C2|C5|P4] Image Filename Fixes**
 - ✅ Corrects `board.json` image names to match actual/pending micropython-media assets
 - ✅ Demonstrates companion-PR workflow between board definitions and media repository
 - ✅ Prevents broken board image links on documentation/download pages
 
-**Verdict:** Supporting infrastructure that enables quality control.
+**Summary:** Supporting infrastructure that enables quality control.
 
 ---
 
@@ -1209,8 +1217,6 @@ High-quality board definitions share common characteristics:
 2. **Meaningful pin names** in pins.csv
 3. **Thorough testing** documented in PR
 4. **Clear hardware documentation**
-5. **No compiler warnings**
-6. **Consistent code style**
 
 Following these practices ensures boards are:
 - **User-friendly**: Meaningful pin names, complete documentation
