@@ -48,3 +48,17 @@ $MPREMOTE mount ${TMP} run "${TEST_DIR}/_test_mount_write_array.py"
 # Test readinto() with array returns byte count and fills correctly.
 echo -----
 $MPREMOTE mount ${TMP} run "${TEST_DIR}/_test_mount_readinto_array.py"
+
+# todo REMOTE ACTIONS
+# file.seek()
+# file read() # content= bytes
+# file.fd
+# file.close()
+
+# fs.rename()
+# fs.remove()
+# fs.mkdir()
+# fs.rmdir()
+
+# access unsafe links ?
+# remount on Ctrl-D ? - perhaps with soft reboot ?
