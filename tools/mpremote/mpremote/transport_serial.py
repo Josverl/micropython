@@ -443,6 +443,8 @@ import os, io, struct, micropython
 SEEK_SET = 0
 
 class RemoteCommand:
+    HAS_MV_IS = False
+
     def __init__(self):
         import select, sys
         self.buf4 = bytearray(4)
@@ -536,12 +538,30 @@ class RemoteCommand:
         self.fout.write(self.buf4)
 
     def wr_bytes(self, b):
-        self.wr_s32(len(b))
+        self.wr_s32(self.buffer_nbytes(b))
         self.fout.write(b)
 
     # str and bytes act the same in MicroPython
     wr_str = wr_bytes
 
+    @classmethod
+    def buffer_nbytes(cls, obj):
+        if type(obj) is str:
+            return len(obj)
+        if type(obj) is bytes or type(obj) is bytearray:
+            return len(obj)
+        mv = memoryview(obj)
+        if cls.HAS_MV_IS:
+            return len(mv) * mv.itemsize
+        # try typecode on the source object.
+        tc = getattr(obj, "typecode", None)
+        if tc is not None:
+            return len(mv) * struct.calcsize(tc)
+        # Fallback for uncommon buffer providers.
+        return len(bytes(obj))
+
+# set once
+RemoteCommand.HAS_MV_IS = hasattr(memoryview(b""), "itemsize")
 
 class RemoteFile(io.IOBase):
     def __init__(self, cmd, fd, is_text):
@@ -611,7 +631,7 @@ class RemoteFile(io.IOBase):
         c = self.cmd
         c.begin(CMD_READ)
         c.wr_s8(self.fd)
-        c.wr_s32(len(buf))
+        c.wr_s32(RemoteCommand.buffer_nbytes(buf))
         n = c.rd_bytes(buf)
         c.end()
         return n
