@@ -79,13 +79,16 @@ jobs:
               }
             );
 
-            comments.reverse();
+            const marker = '<!-- add-status-comment:code-size -->';
 
             const previousComment = comments.find(comment =>
               comment.user.login === 'github-actions[bot]'
+              && comment.body.startsWith(marker)
             )
 
-            // if github-actions[bot] already made a comment, update it,
+            const body = `${marker}\n${codeSizeReport}`;
+
+            // if github-actions[bot] already made a code-size comment, update it,
             // otherwise create a new comment.
 
             if (previousComment) {
@@ -93,13 +96,13 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 comment_id: previousComment.id,
-                body: codeSizeReport,
+                body,
               });
             } else {
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: prNumber,
-                body: codeSizeReport,
+                body,
               });
             }
