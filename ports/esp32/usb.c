@@ -268,7 +268,7 @@ static int esp32_usb_host_control_transfer(uint8_t bmRequestType, uint8_t bReque
     transfer->bEndpointAddress = 0;
     transfer->timeout_ms = timeout_ms;
 
-    // Use a semaphore to synchronise with the transfer callback
+    // Use a semaphore to synchronize with the transfer callback
     SemaphoreHandle_t xfer_done = xSemaphoreCreateBinary();
     transfer->context = xfer_done;
     transfer->callback = usb_host_xfer_done_cb;
@@ -329,6 +329,9 @@ static void esp32_usb_host_close_endpoint(uint8_t ep_addr) {
     (void)ep_addr;
 }
 
+// Default timeout for non-control transfers
+#define ESP32_USB_HOST_XFER_TIMEOUT_MS 5000
+
 static int esp32_usb_host_submit_xfer(uint8_t ep_addr, uint8_t *buf, uint16_t len) {
     if (usb_host_dev_addr == 0 || usb_host_client_hdl == NULL) {
         return -1;
@@ -354,21 +357,42 @@ static int esp32_usb_host_submit_xfer(uint8_t ep_addr, uint8_t *buf, uint16_t le
     transfer->num_bytes = len;
     transfer->device_handle = dev_hdl;
     transfer->bEndpointAddress = ep_addr;
-    transfer->timeout_ms = 1000;
+    transfer->timeout_ms = ESP32_USB_HOST_XFER_TIMEOUT_MS;
 
-    // Set up callback to notify MicroPython layer
-    transfer->callback = NULL; // Simplified; full impl uses async callback
-    transfer->context = buf;
+    // Use a semaphore for synchronous completion. The xfer_cb in the
+    // Python layer is scheduled after this returns.
+    SemaphoreHandle_t xfer_done = xSemaphoreCreateBinary();
+    transfer->context = xfer_done;
+    transfer->callback = usb_host_xfer_done_cb;
 
     err = usb_host_transfer_submit(transfer);
     if (err != ESP_OK) {
         usb_host_transfer_free(transfer);
         usb_host_device_close(usb_host_client_hdl, dev_hdl);
+        vSemaphoreDelete(xfer_done);
         return -1;
     }
 
+    // Wait for completion
+    bool success = false;
+    uint16_t xferred = 0;
+    if (xSemaphoreTake(xfer_done, pdMS_TO_TICKS(ESP32_USB_HOST_XFER_TIMEOUT_MS + 100)) == pdTRUE) {
+        success = (transfer->status == USB_TRANSFER_STATUS_COMPLETED);
+        xferred = transfer->actual_num_bytes;
+        if (success && (ep_addr & 0x80) && buf != NULL) {
+            // IN transfer: copy received data back
+            uint16_t copy_len = (xferred > len) ? len : xferred;
+            memcpy(buf, transfer->data_buffer, copy_len);
+        }
+    }
+    vSemaphoreDelete(xfer_done);
+
+    // Notify the Python xfer_cb
+    mp_usb_host_xfer_complete_cb(ep_addr, success, xferred);
+
+    usb_host_transfer_free(transfer);
     usb_host_device_close(usb_host_client_hdl, dev_hdl);
-    return 0;
+    return success ? 0 : -1;
 }
 
 static void usb_host_client_event_cb(const usb_host_client_event_msg_t *event_msg, void *arg) {

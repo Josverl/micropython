@@ -220,7 +220,7 @@ static mp_obj_t usb_host_control_transfer(size_t n_args, const mp_obj_t *pos_arg
         return mp_obj_new_int(ret);
     }
 }
-static MP_DEFINE_CONST_FUN_OBJ_KW(usb_host_control_transfer_obj, 6, usb_host_control_transfer);
+static MP_DEFINE_CONST_FUN_OBJ_KW(usb_host_control_transfer_obj, 1, usb_host_control_transfer);
 
 // USBHost.open_endpoint(ep_addr, ep_type, max_pkt_size)
 static mp_obj_t usb_host_open_endpoint(size_t n_args, const mp_obj_t *args) {
