@@ -274,6 +274,11 @@
 
 #endif // MICROPY_HW_ENABLE_USBDEV
 
+// Enable USB host mode support (requires USB OTG hardware)
+#ifndef MICROPY_PY_MACHINE_USB_HOST
+#define MICROPY_PY_MACHINE_USB_HOST         (SOC_USB_OTG_SUPPORTED)
+#endif
+
 // Enable stdio over native USB peripheral CDC via TinyUSB
 #ifndef MICROPY_HW_USB_CDC
 #define MICROPY_HW_USB_CDC                  (MICROPY_HW_ENABLE_USBDEV)

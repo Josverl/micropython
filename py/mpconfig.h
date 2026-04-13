@@ -2100,6 +2100,11 @@ typedef time_t mp_timestamp_t;
 #define MICROPY_PY_MACHINE_TIMER (0)
 #endif
 
+// Whether to provide the machine.USBHost class for USB host mode support
+#ifndef MICROPY_PY_MACHINE_USB_HOST
+#define MICROPY_PY_MACHINE_USB_HOST (0)
+#endif
+
 // The default backlog value for socket.listen(backlog)
 #ifndef MICROPY_PY_SOCKET_LISTEN_BACKLOG_DEFAULT
 #define MICROPY_PY_SOCKET_LISTEN_BACKLOG_DEFAULT (2)
