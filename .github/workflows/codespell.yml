@@ -5,6 +5,9 @@ on: [push, pull_request]
 jobs:
   codespell:
     runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
     steps:
     - uses: actions/checkout@v6
     # codespell version should be kept in sync with .pre-commit-config.yml
@@ -16,3 +19,18 @@ jobs:
             echo "Please correct capitalisation of MicroPython on the above lines"
             exit 1
         fi
+    - name: Report failure
+      if: failure() && github.event_name == 'pull_request'
+      uses: ./.github/actions/add-status-comment
+      with:
+        status: error
+        category: codespell
+        description: |
+          Spell checking failed. Run `codespell` locally and fix the reported issues.
+          [View run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+    - name: Report success
+      if: success() && github.event_name == 'pull_request'
+      uses: ./.github/actions/add-status-comment
+      with:
+        status: passed
+        category: codespell
