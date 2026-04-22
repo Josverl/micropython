@@ -1,0 +1,36 @@
+-1---
+Building romfs filesystem, source directory: assets/romfs_source/
+/
+|-- bar.py -> .mpy
+|-- foo.py -> .mpy
+\-- vector-text.svg
+Writing 13584 bytes to output file ${TMP}/image.romfs
+-2---
+Image size is 13584 bytes
+ROMFS0 partition has size 65536 bytes
+Preparing ROMFS0 partition for writing
+Writing at offset 0Writing at offset 4096Writing at offset 8192Writing at offset 12288
+ROMFS image deployed
+ls :/rom
+         140 bar.mpy
+         211 foo.mpy
+       13178 vector-text.svg
+-3---
+Building romfs filesystem, source directory: ${TMP}/bigdata/
+/
+|-- file21.bin
+|-- file22.bin
+|-- file23.bin
+|-- file24.bin
+\-- file25.bin
+Writing 3500102 bytes to output file ${TMP}/bigdata.romfs
+Image size is 3500102 bytes
+ROMFS0 partition has size 65536 bytes
+ROMFS image is too big for the target partition
+expect error: 1
+-4---
+Image size is 5000 bytes
+ROMFS0 partition has size 65536 bytes
+Invalid ROMFS image
+expect error: 1
+-----

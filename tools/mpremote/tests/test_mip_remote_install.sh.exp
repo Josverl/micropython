@@ -1,0 +1,31 @@
+-1---
+Install __future__
+Installing __future__ (latest) from https://micropython.org/pi/v2 to /sd/lib
+Exists: /sd/lib/__future__.mpy
+Done
+Install __future__
+Installing __future__ (0.1.0) from https://micropython.org/pi/v2 to /sd/lib
+Exists: /sd/lib/__future__.mpy
+Done
+-2---
+Install github:micropython/micropython-lib/python-stdlib/__future__/__future__.py
+Downloading github:micropython/micropython-lib/python-stdlib/__future__/__future__.py to /sd/lib
+Installing: /sd/lib/__future__.py
+Done
+Install github:micropython/micropython-lib/python-stdlib/__future__/__future__.py
+Downloading github:micropython/micropython-lib/python-stdlib/__future__/__future__.py to /sd/lib
+Installing: /sd/lib/__future__.py
+Done
+Install github:micropython/micropython-lib/python-stdlib/__future__/__future__.py
+Downloading github:micropython/micropython-lib/python-stdlib/__future__/__future__.py to /sd/lib
+Installing: /sd/lib/__future__.py
+Done
+-3---
+Install github:josverl/micropython-stubs/mip/typing_mpy.json
+Installing github:josverl/micropython-stubs/mip/typing_mpy.json to /sd/lib
+Installing: /sd/lib/typing.mpy
+Installing: /sd/lib/typing_extensions.mpy
+Installing __future__ (latest) from https://micropython.org/pi/v2 to /sd/lib
+Exists: /sd/lib/__future__.mpy
+Done
+-----

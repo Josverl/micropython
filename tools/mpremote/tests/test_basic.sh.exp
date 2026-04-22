@@ -1,0 +1,16 @@
+-1---
+connect <port>
+-2---
+connect port:<port>
+-3---
+connect id:
+-4---
+mpremote: failed to access /dev/tty/ACM1234dead (it may be in use by another program)
+expect error: 1
+-5---
+mpremote: no device with serial number 1234deadbeef
+expect error: 1
+-6---
+set time success 0
+get time success 0
+-----
