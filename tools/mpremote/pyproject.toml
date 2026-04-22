@@ -32,7 +32,9 @@ dynamic = ["dependencies", "version"]
 
 [project.optional-dependencies]
 test = [
+    "pytest",
     "coverage",
+    "pytest-cov",
 ]
 
 [project.scripts]
@@ -56,6 +58,19 @@ packages = ["mpremote"]
 
 [tool.hatch.build.targets.sdist.force-include]
 "requirements.txt" = "requirements.txt"
+
+
+[tool.pytest.ini_options]
+# https://docs.pytest.org/en/stable/reference/reference.html#ini-options-ref
+# --cov: enable coverage (source is set in [tool.coverage.run])
+# --cov-context=test: each test gets its own context for scenario tracking
+# --cov-append: append to existing coverage data (for combining with bash tests)
+addopts = "--cov-context=test --cov-append --cov-report=term"
+testpaths = [
+    "tests",
+]
+
+
 
 [tool.coverage.run]
 # parallel = true enables collection of coverage from subprocesses

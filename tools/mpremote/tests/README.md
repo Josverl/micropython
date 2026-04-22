@@ -91,9 +91,16 @@ coverage report          # Terminal summary
 coverage html            # HTML report in htmlcov/
 ```
 
+**Important:** Run bash tests first, then `coverage combine`, then pytest. The pytest
+configuration includes `--cov-append` which adds to existing coverage data rather than
+replacing it.
+
+The HTML report shows which tests covered each line, including scenario contexts
+(e.g., `[socket]`, `[rfc2217]`) for device-specific coverage tracking.
 
 ### Coverage Options
 
+- Pytest automatically collects coverage with append mode (configured in `pyproject.toml`)
 - Bash tests: use `-c` flag to enable coverage
 - Device shortcuts work with coverage: `./tests/run-mpremote-tests.sh -t a0 -c`
 
@@ -109,5 +116,15 @@ being tested), not just from the test harness code. They use the same approach:
 MPREMOTE="coverage run --context=${TEST_NAME} ${TEST_DIR}/../mpremote.py"
 ```
 
-Each test should print "OK" if it passed.  Otherwise it will print "CRASH", or "FAIL"
-and a diff of the expected and actual test output.
+**Pytest tests:** The `get_spawn_command()` helper detects when coverage is active
+(via `COVERAGE_PROCESS_START` env var set by conftest.py) and wraps commands:
+```python
+# Returns: ("coverage", ["run", "--context=...", "mpremote.py", ...])
+cmd, args = get_spawn_command(mpremote, ["connect", device], request.node.nodeid)
+child = pexpect.spawn(cmd, args, ...)
+```
+
+Both approaches create parallel coverage data files (`.coverage.<hostname>.<pid>.*`)
+that are combined with `coverage combine`. The `parallel = true` setting in
+`pyproject.toml` enables this.
+
