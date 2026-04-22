@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/ports_zephyr.yml'
       - 'tools/**'
+      - '!tools/mpremote/**'
       - 'py/**'
       - 'extmod/**'
       - 'shared/**'

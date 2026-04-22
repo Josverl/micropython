@@ -6,7 +6,8 @@ on:
     paths:
       - '.github/workflows/*.yml'
       - 'tools/**'
-      - ports/**
+      - '!tools/mpremote/**'
+      - 'ports/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
