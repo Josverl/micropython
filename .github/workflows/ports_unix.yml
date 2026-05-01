@@ -251,6 +251,42 @@ jobs:
       if: failure()
       run: tests/run-tests.py --print-failures
 
+  unicode_no_decode_errors:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v6
+    - name: Build
+      run: tools/ci.sh unix_unicode_no_decode_errors_build
+    - name: Run main test suite
+      run: tools/ci.sh unix_unicode_no_decode_errors_run_tests
+    - name: Print failures
+      if: failure()
+      run: tests/run-tests.py --print-failures
+
+  unicode_no_check:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v6
+    - name: Build
+      run: tools/ci.sh unix_unicode_no_check_build
+    - name: Run main test suite
+      run: tools/ci.sh unix_unicode_no_check_run_tests
+    - name: Print failures
+      if: failure()
+      run: tests/run-tests.py --print-failures
+
+  unicode_forced_on_minimal:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v6
+    - name: Build
+      run: tools/ci.sh unix_unicode_forced_on_minimal_build
+    - name: Run main test suite
+      run: tools/ci.sh unix_unicode_forced_on_minimal_run_tests
+    - name: Print failures
+      if: failure()
+      run: tests/run-tests.py --print-failures
+
   macos:
     runs-on: macos-26
     steps:

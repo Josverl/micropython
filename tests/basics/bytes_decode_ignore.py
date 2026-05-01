@@ -7,14 +7,20 @@ except AttributeError:
     print("SKIP")
     raise SystemExit
 
+# Check if unicode validation is enabled (requires MICROPY_PY_BUILTINS_STR_UNICODE_CHECK)
+try:
+    b'\xff'.decode()
+except UnicodeError:
+    pass
+else:
+    # No validation = error handlers are meaningless
+    print("SKIP")
+    raise SystemExit
+
 # Check if error handlers are available (requires MICROPY_PY_BUILTINS_BYTES_DECODE_ERRORS)
-# When feature is disabled, invalid UTF-8 raises LookupError even with 'ignore'
-# When feature is enabled, invalid UTF-8 with 'ignore' returns a string
 try:
     result = b'\xff'.decode('utf-8', 'ignore')
-    # If we get here, feature is available
 except (UnicodeError, LookupError):
-    # Feature not available - 'ignore' was ignored, strict mode was used
     print("SKIP")
     raise SystemExit
 

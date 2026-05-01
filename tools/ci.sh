@@ -982,6 +982,38 @@ function ci_unix_repr_b_run_tests {
     ci_unix_run_tests_helper "${CI_UNIX_OPTS_REPR_B[@]}"
 }
 
+function ci_unix_unicode_no_decode_errors_build {
+    # Build with STR_UNICODE=1 but BYTES_DECODE_ERRORS=0 to test the OFF branch
+    ci_unix_build_helper VARIANT=standard CFLAGS_EXTRA="-DMICROPY_PY_BUILTINS_BYTES_DECODE_ERRORS=0"
+}
+
+function ci_unix_unicode_no_decode_errors_run_tests {
+    ci_unix_run_tests_helper VARIANT=standard CFLAGS_EXTRA="-DMICROPY_PY_BUILTINS_BYTES_DECODE_ERRORS=0"
+}
+
+function ci_unix_unicode_no_check_build {
+    # Build with STR_UNICODE=1 but STR_UNICODE_CHECK=0 to test disabled validation
+    ci_unix_build_helper VARIANT=standard CFLAGS_EXTRA="-DMICROPY_PY_BUILTINS_STR_UNICODE_CHECK=0"
+}
+
+function ci_unix_unicode_no_check_run_tests {
+    # Some unicode tests rely on UTF-8 validation which is disabled in this config.
+    # Exclude tests that specifically test UnicodeError on invalid UTF-8 input.
+    (cd tests && MICROPY_MICROPYTHON=../ports/unix/build-standard/micropython ./run-tests.py -e unicode/unicode -e unicode/file_invalid)
+}
+
+function ci_unix_unicode_forced_on_minimal_build {
+    # Build minimal with all unicode options forced ON to test on low ROM level
+    ci_unix_build_helper VARIANT=minimal CFLAGS_EXTRA="-DMICROPY_PY_BUILTINS_STR_UNICODE=1 -DMICROPY_PY_BUILTINS_STR_UNICODE_CHECK=1 -DMICROPY_PY_BUILTINS_BYTES_DECODE_ERRORS=1"
+}
+
+function ci_unix_unicode_forced_on_minimal_run_tests {
+    # The minimal variant lacks many features (open with encoding, .decode(), etc.)
+    # so unicode-specific tests won't pass. Run the default minimal test subset which
+    # validates the forced-ON code paths compile and basic operations work correctly.
+    (cd tests && MICROPY_MICROPYTHON=../ports/unix/build-minimal/micropython ./run-tests.py -e unicode/)
+}
+
 ########################################################################################
 # ports/windows
 
