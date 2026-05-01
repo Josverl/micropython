@@ -13,120 +13,124 @@ try:
 except UnicodeError:
     pass
 else:
-    # No validation = error handlers are meaningless
     print("SKIP")
     raise SystemExit
 
 # Check if error handlers are available (requires MICROPY_PY_BUILTINS_BYTES_DECODE_ERRORS)
 try:
-    result = b'\xff'.decode('utf-8', 'replace')
+    b'\xff'.decode('utf-8', 'replace')
 except (UnicodeError, LookupError):
     print("SKIP")
     raise SystemExit
 
-# Test replace mode with invalid UTF-8
-print(repr(b'\xff\xfe'.decode('utf-8', 'replace')))
+import unittest
 
-# Test strict mode (default) with invalid UTF-8
-try:
-    b'\xff\xfe'.decode('utf-8')
-    print('UNEXPECTED')
-except UnicodeError:
-    print('UnicodeError')
 
-# Test strict mode (explicit) with invalid UTF-8
-try:
-    b'\xff\xfe'.decode('utf-8', 'strict')
-    print('UNEXPECTED')
-except UnicodeError:
-    print('UnicodeError')
+class TestBytesDecodeReplace(unittest.TestCase):
+    # Test replace mode with invalid UTF-8: each invalid byte/sequence becomes U+FFFD
+    def test_invalid_bytes_replaced(self):
+        self.assertEqual(b'\xff\xfe'.decode('utf-8', 'replace'), '\ufffd\ufffd')
 
-# Test with valid UTF-8
-print(repr(b'hello'.decode('utf-8', 'replace')))
+    # Test strict mode (default) still raises on invalid UTF-8
+    def test_strict_raises_on_invalid(self):
+        with self.assertRaises(UnicodeError):
+            b'\xff\xfe'.decode('utf-8')
 
-# Test valid UTF-8 with default mode
-print(repr(b'hello'.decode('utf-8')))
+    # Test strict mode (explicit) raises on invalid UTF-8
+    def test_strict_explicit_raises(self):
+        with self.assertRaises(UnicodeError):
+            b'\xff\xfe'.decode('utf-8', 'strict')
 
-# Test mixed valid and invalid UTF-8
-print(repr(b'hello\xffworld'.decode('utf-8', 'replace')))
+    # Test with valid UTF-8 - should pass through unchanged
+    def test_valid_utf8(self):
+        self.assertEqual(b'hello'.decode('utf-8', 'replace'), 'hello')
 
-# Test multiple invalid bytes
-print(repr(b'\x80\x81\x82'.decode('utf-8', 'replace')))
+    # Test valid UTF-8 with default mode
+    def test_valid_utf8_default(self):
+        self.assertEqual(b'hello'.decode('utf-8'), 'hello')
 
-# Test invalid continuation byte
-print(repr(b'\xc0\x20'.decode('utf-8', 'replace')))
+    # Test mixed valid and invalid UTF-8
+    def test_mixed_valid_invalid(self):
+        self.assertEqual(b'hello\xffworld'.decode('utf-8', 'replace'), 'hello\ufffdworld')
 
-# Test incomplete sequence at end
-print(repr(b'hello\xc0'.decode('utf-8', 'replace')))
+    # Test multiple invalid continuation bytes (0x80-0xBF without leading byte)
+    def test_multiple_invalid_bytes(self):
+        self.assertEqual(b'\x80\x81\x82'.decode('utf-8', 'replace'), '\ufffd\ufffd\ufffd')
 
-# Test valid multi-byte UTF-8 (© symbol)
-print(repr(b'\xc2\xa9'.decode('utf-8', 'replace')))
+    # Test invalid 2-byte sequence start (0xC0) followed by non-continuation byte
+    def test_invalid_continuation_byte(self):
+        self.assertEqual(b'\xc0\x20'.decode('utf-8', 'replace'), '\ufffd ')
 
-# Test bytearray support
-print(repr(bytearray(b'\xff\xfe').decode('utf-8', 'replace')))
+    # Test incomplete 2-byte sequence at end of input
+    def test_incomplete_sequence_at_end(self):
+        self.assertEqual(b'hello\xc0'.decode('utf-8', 'replace'), 'hello\ufffd')
 
-# Test replace mode - should either work or raise NotImplementedError
-try:
-    result = b'\xff\xfe'.decode('utf-8', 'replace')
-    print(repr(result))
-except LookupError:
-    print('LookupError')
+    # Test valid 2-byte UTF-8 sequence (© = U+00A9)
+    def test_valid_multibyte_copyright(self):
+        self.assertEqual(b'\xc2\xa9'.decode('utf-8', 'replace'), '\u00a9')
 
-# Test replace with valid UTF-8
-try:
-    result = b'hello'.decode('utf-8', 'replace')
-    print(repr(result))
-except LookupError:
-    print('LookupError')
+    # Test bytearray input (not just bytes)
+    def test_bytearray_support(self):
+        self.assertEqual(bytearray(b'\xff\xfe').decode('utf-8', 'replace'), '\ufffd\ufffd')
 
-# Test replace with mixed content
-try:
-    result = b'hello\xffworld'.decode('utf-8', 'replace')
-    print(repr(result))
-except LookupError:
-    print('LookupError')
+    # Test valid 3-byte UTF-8 sequence (一 = U+4E00)
+    def test_valid_3byte_sequence(self):
+        self.assertEqual(b'\xe4\xb8\x80'.decode('utf-8', 'replace'), '\u4e00')
 
-# Additional tests for continuation byte validation and incomplete sequences
+    # Test valid 4-byte UTF-8 sequence (😀 = U+1F600)
+    def test_valid_4byte_sequence(self):
+        self.assertEqual(b'\xf0\x9f\x98\x80'.decode('utf-8', 'replace'), '\U0001f600')
 
-# Test 3-byte UTF-8 sequence - valid (e.g., U+4E00 - 一)
-print(repr(b'\xe4\xb8\x80'.decode('utf-8', 'replace')))
+    # Test valid multi-byte sequence after an invalid byte (exercises got==need path)
+    def test_invalid_then_valid_multibyte(self):
+        # \ufffd + © after invalid \xff
+        self.assertEqual(b'\xff\xc2\xa9'.decode('utf-8', 'replace'), '\ufffd\u00a9')
+        # \ufffd + 一 after invalid \xff
+        self.assertEqual(b'\xff\xe4\xb8\x80'.decode('utf-8', 'replace'), '\ufffd\u4e00')
 
-# Test 4-byte UTF-8 sequence - valid (e.g., U+1F600 - 😀)
-print(repr(b'\xf0\x9f\x98\x80'.decode('utf-8', 'replace')))
+    # Test incomplete 3-byte sequence (missing 2 continuation bytes)
+    def test_incomplete_3byte_missing_2(self):
+        self.assertEqual(b'\xe4'.decode('utf-8', 'replace'), '\ufffd')
 
-# Test valid multi-byte sequence mixed with invalid bytes (exercises got==need path)
-print(repr(b'\xff\xc2\xa9'.decode('utf-8', 'replace')))    # \ufffd + © after invalid \xff
-print(repr(b'\xff\xe4\xb8\x80'.decode('utf-8', 'replace')))  # \ufffd + 一 after invalid \xff
+    # Test incomplete 3-byte sequence (missing 1 continuation byte)
+    def test_incomplete_3byte_missing_1(self):
+        self.assertEqual(b'\xe4\xb8'.decode('utf-8', 'replace'), '\ufffd')
 
-# Test incomplete 3-byte sequence (missing 2 continuation bytes)
-print(repr(b'\xe4'.decode('utf-8', 'replace')))
+    # Test incomplete 4-byte sequence (missing 3 continuation bytes)
+    def test_incomplete_4byte_missing_3(self):
+        self.assertEqual(b'\xf0'.decode('utf-8', 'replace'), '\ufffd')
 
-# Test incomplete 3-byte sequence (missing 1 continuation byte)
-print(repr(b'\xe4\xb8'.decode('utf-8', 'replace')))
+    # Test incomplete 4-byte sequence (missing 2 continuation bytes)
+    def test_incomplete_4byte_missing_2(self):
+        self.assertEqual(b'\xf0\x9f'.decode('utf-8', 'replace'), '\ufffd')
 
-# Test incomplete 4-byte sequence (missing 3 continuation bytes)
-print(repr(b'\xf0'.decode('utf-8', 'replace')))
+    # Test incomplete 4-byte sequence (missing 1 continuation byte)
+    def test_incomplete_4byte_missing_1(self):
+        self.assertEqual(b'\xf0\x9f\x98'.decode('utf-8', 'replace'), '\ufffd')
 
-# Test incomplete 4-byte sequence (missing 2 continuation bytes)
-print(repr(b'\xf0\x9f'.decode('utf-8', 'replace')))
+    # Test 3-byte sequence with invalid first continuation byte
+    def test_3byte_invalid_first_continuation(self):
+        self.assertEqual(b'\xe4\x20\x80'.decode('utf-8', 'replace'), '\ufffd \ufffd')
 
-# Test incomplete 4-byte sequence (missing 1 continuation byte)
-print(repr(b'\xf0\x9f\x98'.decode('utf-8', 'replace')))
+    # Test 3-byte sequence with invalid second continuation byte
+    def test_3byte_invalid_second_continuation(self):
+        self.assertEqual(b'\xe4\xb8\x20'.decode('utf-8', 'replace'), '\ufffd ')
 
-# Test 3-byte sequence with invalid continuation byte (first byte invalid)
-print(repr(b'\xe4\x20\x80'.decode('utf-8', 'replace')))
+    # Test 4-byte sequence with invalid continuation bytes at various positions
+    def test_4byte_invalid_continuations(self):
+        self.assertEqual(b'\xf0\x20\x98\x80'.decode('utf-8', 'replace'), '\ufffd \ufffd\ufffd')
+        self.assertEqual(b'\xf0\x9f\x20\x80'.decode('utf-8', 'replace'), '\ufffd \ufffd')
+        self.assertEqual(b'\xf0\x9f\x98\x20'.decode('utf-8', 'replace'), '\ufffd ')
 
-# Test 3-byte sequence with invalid continuation byte (second byte invalid)
-print(repr(b'\xe4\xb8\x20'.decode('utf-8', 'replace')))
+    # Test mixed valid ASCII and incomplete multi-byte sequences
+    def test_mixed_valid_and_incomplete(self):
+        self.assertEqual(b'hello\xe4world'.decode('utf-8', 'replace'), 'hello\ufffdworld')
+        self.assertEqual(b'hello\xf0world'.decode('utf-8', 'replace'), 'hello\ufffdworld')
 
-# Test 4-byte sequence with invalid continuation bytes
-print(repr(b'\xf0\x20\x98\x80'.decode('utf-8', 'replace')))
-print(repr(b'\xf0\x9f\x20\x80'.decode('utf-8', 'replace')))
-print(repr(b'\xf0\x9f\x98\x20'.decode('utf-8', 'replace')))
+    # Test multiple incomplete sequences in a row
+    def test_multiple_incomplete_sequences(self):
+        self.assertEqual(b'\xe4\xf0\xe4'.decode('utf-8', 'replace'), '\ufffd\ufffd\ufffd')
 
-# Test mixed valid and incomplete sequences
-print(repr(b'hello\xe4world'.decode('utf-8', 'replace')))
-print(repr(b'hello\xf0world'.decode('utf-8', 'replace')))
 
-# Test multiple incomplete sequences in a row
-print(repr(b'\xe4\xf0\xe4'.decode('utf-8', 'replace')))
+if __name__ == "__main__":
+    unittest.main()

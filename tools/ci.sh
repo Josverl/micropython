@@ -997,9 +997,8 @@ function ci_unix_unicode_no_check_build {
 }
 
 function ci_unix_unicode_no_check_run_tests {
-    # Some unicode tests rely on UTF-8 validation which is disabled in this config.
-    # Exclude tests that specifically test UnicodeError on invalid UTF-8 input.
-    (cd tests && MICROPY_MICROPYTHON=../ports/unix/build-standard/micropython ./run-tests.py -e unicode/unicode -e unicode/file_invalid)
+    # unicode/unicode.py relies on UTF-8 validation which is disabled in this config.
+    (cd tests && MICROPY_MICROPYTHON=../ports/unix/build-standard/micropython ./run-tests.py -e unicode/unicode)
 }
 
 function ci_unix_unicode_forced_on_minimal_build {

@@ -7,8 +7,15 @@ else:
     print("SKIP")
     raise SystemExit
 
-try:
-    f = open("data/utf-8_invalid.txt", encoding="utf-8")
-    f.read()
-except UnicodeError:
-    print("UnicodeError")
+import unittest
+
+
+class TestFileInvalidUtf8(unittest.TestCase):
+    def test_read_invalid_utf8_raises(self):
+        f = open("data/utf-8_invalid.txt", encoding="utf-8")
+        with self.assertRaises(UnicodeError):
+            f.read()
+
+
+if __name__ == "__main__":
+    unittest.main()
