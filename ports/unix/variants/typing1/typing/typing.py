@@ -121,16 +121,24 @@ class TextIO:
 class Protocol:
     pass
 
+# CHECK
+class Reversible:
+    pass
 
-AnyStr = str
+class NotRequired:
+    pass
+
+
+LiteralString = AnyStr = str
 TypedDict = dict
 
 # Deprecated
-# Text = str
+Text = str
 # Pattern = str
 # Match = str
 
 AbstractSet = _Subscriptable
+Annotated = _Subscriptable
 AsyncContextManager = _Subscriptable
 AsyncGenerator = _Subscriptable
 AsyncIterable = _Subscriptable
@@ -160,6 +168,7 @@ MutableSet = _Subscriptable
 NamedTuple = _Subscriptable
 Optional = _Subscriptable
 OrderedDict = _Subscriptable
+ReadOnly = _Subscriptable
 Self = _Subscriptable
 Sequence = _Subscriptable
 Set = _Subscriptable
