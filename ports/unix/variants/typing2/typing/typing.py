@@ -15,7 +15,6 @@ def get_args(type):
 def no_type_check(func):
     return func
 
-final = no_type_check # PEP 591 final decorator is a no-op in MicroPython runtime.
 
 def overload(func):
     return None
@@ -46,8 +45,6 @@ class _SubscriptableType:
 
 _Subscriptable = _SubscriptableType()
 
-class Any:
-    pass
 
 def TypeVar(name, *types, bound: Any | None = None, covariant=False, contravariant=False, infer_variance=False):
     return None
@@ -55,6 +52,10 @@ def TypeVar(name, *types, bound: Any | None = None, covariant=False, contravaria
 
 def NewType(name, type):
     return type
+
+
+class Any:
+    pass
 
 
 class BinaryIO:
@@ -174,6 +175,5 @@ Set = _Subscriptable
 Tuple = _Subscriptable
 Type = _Subscriptable
 Union = _Subscriptable
-reveal_type = _Subscriptable
 
 TYPE_CHECKING = False
