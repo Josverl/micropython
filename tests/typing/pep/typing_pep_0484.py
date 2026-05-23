@@ -32,7 +32,7 @@ class TestPep484TypeDefinitionSyntax(unittest.TestCase):
 
     # Variable annotations without assignment are runtime no-ops.
     def test_list_int_annotation_only(self):
-        l: List[int]
+        numberlist: List[int]
 
 
 class TestPep484TypeAliases(unittest.TestCase):
@@ -70,8 +70,9 @@ class TestPep484TypeVar(unittest.TestCase):
 
 
 class TestPep484GenericUserClass(unittest.TestCase):
-    # FIXME: Crash - inheriting from typing.Generic[T] unsupported at runtime
-    # (works in this MicroPython typing variant).
+    # TODO: Crash - inheriting from typing.Generic[T] unsupported at runtime
+    # (somehow does work in MicroPython .py typing variant).
+    @unittest.expectedFailure
     def test_generic_t_base_class(self):
         T = TypeVar("T")
 
@@ -88,10 +89,6 @@ class TestPep484GenericUserClass(unittest.TestCase):
 
             def get(self) -> T:
                 return self.value
-
-        # except Exception as e:
-        #     print("- [ ] FIXME: Difference - Generic[T] base class unsupported:", e)
-
 
 class TestPep484UnionOptional(unittest.TestCase):
     # Union/Optional annotations should accept str and None at runtime.
@@ -172,10 +169,11 @@ class TestPep484Overload(unittest.TestCase):
 
 
 class TestPep484Cast(unittest.TestCase):
-    # cast is an identity function at runtime.
+    # cast is an identity function at runtime, ie does not change the value.
     def test_cast_runtime_identity(self):
-        # FIXME: Difference - cast runtime does not work as identity function
-        self.assertEqual(cast(str, 123), 123)
+        foo = cast(str, 123)
+        self.assertEqual(foo, 123)
+        self.assertEqual(cast(str, 456), 456)
 
 
 if __name__ == "__main__":

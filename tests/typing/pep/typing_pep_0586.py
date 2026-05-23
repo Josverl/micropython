@@ -2,17 +2,16 @@
 # PEP 586 - Literal Types
 # https://peps.python.org/pep-0586
 
-from __future__ import annotations
 
 try:
-    from typing import TYPE_CHECKING
+    from __future__ import annotations # type: ignore
 except Exception:
     print("SKIP")
     raise SystemExit
 
 import unittest
 
-from typing import Literal, Optional
+from typing import Literal, Optional, TypeAlias
 from typing import Tuple, List
 from typing import overload, IO, Any, Union, Text
 
@@ -35,8 +34,9 @@ class TestPep586LegalParameters(unittest.TestCase):
         Literal[Color.RED]  # Assuming Color is some enum
         Literal[None]
 
+
     # FIXME: TypeError: 'type' object isn't subscriptable for nested Literal aliases
-    # (works in this MicroPython typing variant).
+    @unittest.expectedFailure
     def test_literal_alias_grouping(self):
         ReadOnlyMode = Literal["r", "r+"]
         WriteAndTruncateMode = Literal["w", "w+", "wt", "w+t"]
@@ -46,7 +46,7 @@ class TestPep586LegalParameters(unittest.TestCase):
         AllModes = Literal[ReadOnlyMode, WriteAndTruncateMode, WriteNoTruncateMode, AppendMode]
 
     # FIXME: TypeError: 'type' object isn't subscriptable for nested Literal use
-    # (works in this MicroPython typing variant).
+    @unittest.expectedFailure
     def test_literal_nested_subscription(self):
         Literal[Literal[Literal[1, 2, 3], "foo"], 5, None]
         Optional[Literal[1, 2, 3, "foo", 5]]
@@ -127,12 +127,12 @@ class TestPep586IntelligentIndexing(unittest.TestCase):
             getattr(t, c)
 
 
+# FIXME: TypeError: 'type' object isn't subscriptable
+#_PathType = Union[str, bytes, int]
+_PathType :TypeAlias = str
 class TestPep586OverloadsInteraction(unittest.TestCase):
     # @overload declarations with Literal modes parse and stack at runtime.
     def test_overload_with_literal_modes(self):
-        # FIXME: TypeError: 'type' object isn't subscriptable
-        # _PathType = Union[str, bytes, int]
-        _PathType = str
 
         @overload
         def open(

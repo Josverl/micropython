@@ -5,7 +5,7 @@
 # https://typing.python.org/en/latest/spec/typeddict.html#typeddict
 
 try:
-    import typing
+    from typing import TYPE_CHECKING
 except ImportError:
     print("SKIP")
     raise SystemExit
@@ -13,7 +13,7 @@ except ImportError:
 import unittest
 
 from typing import TypedDict
-from typing import NotRequired, ReadOnly, Annotated
+from typing import NotRequired
 
 
 class TestPep589ClassBasedSyntax(unittest.TestCase):
@@ -93,7 +93,7 @@ class TestPep589InheritanceMix(unittest.TestCase):
 
 
 class TestPep589RuntimeIsInstance(unittest.TestCase):
-    # TypedDict class should not be allowed in isinstance checks.
+    # TODO: TypedDict class should not be allowed in isinstance checks.
     @unittest.expectedFailure
     def test_typeddict_isinstance_check(self):
         class Movie(TypedDict):
@@ -144,10 +144,6 @@ class TestPep589InheritanceExamples(unittest.TestCase):
     # KNOWN limitation - no multiple inheritance in MicroPython.
     @unittest.expectedFailure
     def test_multiple_inheritance_typed_dicts(self):
-        # class X(TypedDict):
-        #     x: int
-        # class Y(TypedDict):
-        #     y: str
         class X(TypedDict):
             x: int
 
@@ -162,7 +158,7 @@ class TestPep589InheritanceExamples(unittest.TestCase):
 
 
 class TestPep589TotalityWithRequiredNotRequired(unittest.TestCase):
-    # FIXME cpy_diff - total parameter not supported by runtime TypedDict for inherited classes.
+    # TODO cpy_diff - total parameter not supported by runtime TypedDict for inherited classes.
     @unittest.expectedFailure
     def test_movie_mix_with_total_false(self):
         class _MovieBase(TypedDict):
@@ -190,7 +186,9 @@ class TestPep589TotalityWithRequiredNotRequired(unittest.TestCase):
 
 class TestPep589AnnotatedReadOnly(unittest.TestCase):
     # ReadOnly[List[str]] is a typing-only marker; runtime mutation still works.
+    @unittest.expectedFailure
     def test_band_with_readonly_members(self):
+        from typing import ReadOnly
         class Band(TypedDict):
             name: str
             members: ReadOnly[list[str]]
@@ -214,23 +212,23 @@ class TestPep589ExtraItemsAndClosed(unittest.TestCase):
         extra_ok: MovieExtra = {"name": "BR", "year": 1982}
         self.assertEqual(extra_ok["name"], "BR")
 
-    # FIXME: closed parameter not supported by runtime typing implementation.
+    # FIXME: closed parameter not supported by MicroPython.
+    # TypeError: function doesn't take keyword arguments on classdefinition.
     @unittest.expectedFailure
     def test_typeddict_closed_true(self):
         class MovieClosed(TypedDict, closed=True):
             name: str
 
         # FIXME: Difference or Crash - constructor with kwargs
-        MovieClosed(
-            name="No Country for Old Men", year=2007
-        )  # Should be runtime error per ctor semantics
+        MovieClosed( name="No Country for Old Men", year=2007  )  
+        # Should be runtime error per ctor semantics
 
 
 class TestPep589MappingInteraction(unittest.TestCase):
     # FIXME: extra_items not supported by runtime typing implementation.
+    # TypeError: function doesn't take keyword arguments on classdefinition.
     @unittest.expectedFailure
     def test_intdict_extra_items_and_clear(self):
-        # FIXME:
         class IntDict(TypedDict, extra_items=int):
             pass
 

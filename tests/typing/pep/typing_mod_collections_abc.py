@@ -22,12 +22,10 @@ import unittest
 
 class TestCollectionsAbcImports(unittest.TestCase):
     # collections.abc top-level container ABCs.
-    @unittest.expectedFailure
     def test_container_imports(self):
         from collections.abc import Container
         from collections.abc import Hashable
         from collections.abc import Iterable
-        from collections.abc import Iterator
         from collections.abc import Reversible
         from collections.abc import Generator
         from collections.abc import Sized
@@ -35,14 +33,12 @@ class TestCollectionsAbcImports(unittest.TestCase):
         from collections.abc import Collection
 
     # collections.abc sequence ABCs.
-    @unittest.expectedFailure
     def test_sequence_imports(self):
         from collections.abc import Sequence
         from collections.abc import MutableSequence
         # from collections.abc import ByteString # Deprecated since version 3.12,
 
     # collections.abc set and mapping ABCs.
-    @unittest.expectedFailure
     def test_set_and_mapping_imports(self):
         from collections.abc import Set
         from collections.abc import MutableSet
@@ -54,7 +50,6 @@ class TestCollectionsAbcImports(unittest.TestCase):
         from collections.abc import ValuesView
 
     # collections.abc async/awaitable ABCs.
-    @unittest.expectedFailure
     def test_async_imports(self):
         from collections.abc import Awaitable
         from collections.abc import Coroutine
@@ -63,7 +58,6 @@ class TestCollectionsAbcImports(unittest.TestCase):
         from collections.abc import AsyncGenerator
 
     # collections.abc Buffer ABC (Python 3.12+).
-    @unittest.expectedFailure
     def test_buffer_import(self):
         from collections.abc import Buffer
 

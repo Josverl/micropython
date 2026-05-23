@@ -7,6 +7,7 @@
 
 try:
     from typing import TYPE_CHECKING
+    from abc import abstractmethod
 except Exception:
     print("SKIP")
     raise SystemExit
@@ -17,7 +18,7 @@ from typing import Protocol, Iterable
 from typing import List
 from typing import Tuple
 from typing import Sized
-from typing import Generic, TypeVar
+from typing import TypeVar
 from typing import Optional
 from typing import Union
 from typing import Hashable
@@ -25,12 +26,10 @@ from typing import Type
 from typing import Any
 from typing import NewType, Iterator
 from typing import Reversible
-# FIXME: typing.runtime_checkable not available in MicroPython; use no-op fallback.
-try:
-    from typing import runtime_checkable
-except ImportError:
-    def runtime_checkable(cls):
-        return cls
+
+
+
+
 from typing import (
     SupportsInt,
     SupportsBytes,
@@ -40,8 +39,6 @@ from typing import (
     SupportsAbs,
     SupportsIndex,
 )
-from abc import abstractmethod
-
 
 class TestPep544DefiningAProtocol(unittest.TestCase):
     # A simple Protocol with a close() method should declare and execute.
@@ -366,6 +363,8 @@ class TestPep544RuntimeCheckable(unittest.TestCase):
     # FIXME: cpy_diff : NotImplementedError: @runtime_checkable decorator unsupported.
     @unittest.expectedFailure
     def test_runtime_checkable_supports_close(self):
+        from typing import runtime_checkable
+
         @runtime_checkable
         class SupportsCloseRC(Protocol):
             def close(self):

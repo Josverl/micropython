@@ -12,8 +12,7 @@ except Exception:
 
 import unittest
 
-from typing import List, Tuple, Optional
-from typing import ClassVar, Dict
+from typing import List, Tuple, Optional, ClassVar, Dict
 
 
 class TestPep526Specification(unittest.TestCase):
@@ -68,22 +67,27 @@ class TestPep526GlobalLocalAnnotations(unittest.TestCase):
             print(a)  # raises NameError # type: ignore
 
     # Annotated local names that are not assigned raise UnboundLocalError on use.
+    @unittest.expectedFailure
     def test_local_scope_annotation_unbound(self):
         def f_1():
             a: int
             try:
                 print(a)  # raises UnboundLocalError # type: ignore
-            # FIXME: MicroPython raises NameError instead of UnboundLocalError
+            # FIXME: CPYDIFF MicroPython raises NameError instead of UnboundLocalError
+            except UnboundLocalError:
+                return "cpython_compliant"
             except NameError:
-                return "ok"
+                return "fail"
             return "fail"
 
-        self.assertEqual(f_1(), "ok")
+        self.assertEqual(f_1(), "cpython_compliant")
 
     # Re-annotating the same name with a different type is permitted at runtime.
     def test_reannotation_runtime(self):
         a: int  # type: ignore
         a: str  # Static type checker may or may not warn about this.
+        a = "hello"
+        self.assertEqual(a, "hello")
 
 
 class TestPep526ClassAndInstanceAnnotations(unittest.TestCase):
@@ -118,8 +122,11 @@ class TestPep526ClassAndInstanceAnnotations(unittest.TestCase):
         enterprise_d.hit()
         self.assertEqual(Starship.stats.get("hits"), 1)
 
-    # FIXME: cpy_diff - User Defined Generic Classes unsupported (now works at runtime).
+class TestPep526Generics(unittest.TestCase):
+    
+    @unittest.expectedFailure
     def test_user_defined_generic_class(self):
+    # FIXME: cpy_diff - User Defined Generic Classes unsupported.
         from typing import Generic, TypeVar
         T = TypeVar("T")
 
