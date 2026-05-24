@@ -1,9 +1,13 @@
 # Tests for the MicroPython __future__ module runtime flags.
 
+try:
+    import __future__ as future_mod
+except ImportError:
+    print("SKIP")
+    raise SystemExit
+
+
 import unittest
-
-import __future__ as future_mod
-
 
 class TestFutureModule(unittest.TestCase):
     # __future__ exports known feature-switch names as module attributes.
