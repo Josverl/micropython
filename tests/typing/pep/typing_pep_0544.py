@@ -40,6 +40,18 @@ from typing import (
     SupportsIndex,
 )
 
+
+def xfail_on_error(func):
+    """Report test as skipped ("xfail: ...") if it raises, or as ok if it
+    passes. Use instead of @unittest.expectedFailure when an unexpected pass
+    should NOT be reported as a failure (xpass)."""
+    def wrapper(self):
+        try:
+            func(self)
+        except Exception as e:
+            raise unittest.SkipTest("xfail: {}".format(e))
+    return wrapper
+
 class TestPep544DefiningAProtocol(unittest.TestCase):
     # A simple Protocol with a close() method should declare and execute.
     def test_supports_close_protocol(self):
@@ -151,32 +163,40 @@ class TestPep544MergingAndExtending(unittest.TestCase):
     # FIXME: TypeError: multiple bases have instance lay-out conflict - CRASH
     # (now succeeds in this MicroPython typing variant).
     def test_sized_and_closable_with_protocol(self):
-        class SizedAndClosable_1(Sized, Protocol):
-            def close(self) -> None:
-                ...
+        try:
+            class SizedAndClosable_1(Sized, Protocol):
+                def close(self) -> None:
+                    ...
+        except Exception:
+            assert False, "Sized Protocols unsupported"
 
     # FIXME: TypeError: multiple bases have instance lay-out conflict - CRASH
     # (now succeeds in this MicroPython typing variant).
     def test_sized_and_closable_inheriting_protocols(self):
-        class SupportsClose_2(Protocol):
-            def close(self) -> None:
-                ...
+        try:
+            class SupportsClose_2(Protocol):
+                def close(self) -> None:
+                    ...
 
-        class SizedAndClosable_2(Sized, SupportsClose_2, Protocol):
-            pass
+            class SizedAndClosable_2(Sized, SupportsClose_2, Protocol):
+                pass
+        except Exception:
+            assert False, "inheriting Protocolsunsupported"
 
 
 class TestPep544GenericProtocols(unittest.TestCase):
     # FIXME: Micropython does not support User Defined Generic Classes.
     # TypeError: 'type' object isn't subscriptable.
-    @unittest.expectedFailure
     def test_generic_protocol(self):
-        T = TypeVar("T")
+        try:
+            T = TypeVar("T")
 
-        class IterableP(Protocol[T]):
-            @abstractmethod
-            def __iter__(self) -> Iterator[T]:
-                ...
+            class IterableP(Protocol[T]):
+                @abstractmethod
+                def __iter__(self) -> Iterator[T]:
+                    ...
+        except Exception:
+            assert False, "User Defined Generic Classes unsupported"
 
 
 class TestPep544RecursiveProtocols(unittest.TestCase):
@@ -276,8 +296,11 @@ class TestPep544UnionsAndIntersections(unittest.TestCase):
     def test_hashable_floats_intersection(self):
         # # class HashableFloats(Iterable[float], Hashable, Protocol):
         # FIXME: TypeError: multiple bases have instance lay-out conflict
-        class HashableFloats(Iterable, Hashable, Protocol):
-            pass
+        try:
+            class HashableFloats(Iterable, Hashable, Protocol):
+                pass
+        except TypeError:
+            assert False, "multiple bases have instance lay-out conflict"
 
         def cached_func(args: HashableFloats) -> float:
             ...

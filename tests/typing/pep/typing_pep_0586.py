@@ -35,8 +35,6 @@ class TestPep586LegalParameters(unittest.TestCase):
         Literal[None]
 
 
-    # FIXME: TypeError: 'type' object isn't subscriptable for nested Literal aliases
-    @unittest.expectedFailure
     def test_literal_alias_grouping(self):
         ReadOnlyMode = Literal["r", "r+"]
         WriteAndTruncateMode = Literal["w", "w+", "wt", "w+t"]
@@ -45,11 +43,13 @@ class TestPep586LegalParameters(unittest.TestCase):
 
         AllModes = Literal[ReadOnlyMode, WriteAndTruncateMode, WriteNoTruncateMode, AppendMode]
 
-    # FIXME: TypeError: 'type' object isn't subscriptable for nested Literal use
-    @unittest.expectedFailure
     def test_literal_nested_subscription(self):
-        Literal[Literal[Literal[1, 2, 3], "foo"], 5, None]
-        Optional[Literal[1, 2, 3, "foo", 5]]
+        try:
+            Literal[Literal[Literal[1, 2, 3], "foo"], 5, None]
+            Optional[Literal[1, 2, 3, "foo", 5]]
+        except TypeError:
+            #  TypeError: 'type' object isn't subscriptable for nested Literal use
+            assert False, "nested Literal subscription should be supported"
 
 
 class TestPep586ParametersAtRuntime(unittest.TestCase):

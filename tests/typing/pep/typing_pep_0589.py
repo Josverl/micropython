@@ -112,13 +112,15 @@ class TestPep589RuntimeIsInstance(unittest.TestCase):
 
 class TestPep589FunctionalSyntax(unittest.TestCase):
     # Functional syntax MovieAlt = TypedDict("MovieAlt", {...}) is not supported.
-    @unittest.expectedFailure
     def test_functional_typeddict_construction(self):
-        MovieAlt = TypedDict("MovieAlt", {"name": str, "year": int})
-        MovieAlt2 = TypedDict("MovieAlt2", {"name": str, "year": int}, total=False)
+        try:
+            MovieAlt = TypedDict("MovieAlt", {"name": str, "year": int})
+            MovieAlt2 = TypedDict("MovieAlt2", {"name": str, "year": int}, total=False)
 
-        m_alt: MovieAlt = {"name": "Blade Runner", "year": 1982}
-        self.assertEqual(m_alt["name"], "Blade Runner")
+            m_alt: MovieAlt = {"name": "Blade Runner", "year": 1982}
+            self.assertEqual(m_alt["name"], "Blade Runner")
+        except Exception:
+            assert False, "Functional syntax for TypedDict construction should be supported"
 
     # FIXME: Difference or Crash - calling the functional TypedDict constructor with kwargs.
     @unittest.expectedFailure
@@ -186,7 +188,6 @@ class TestPep589TotalityWithRequiredNotRequired(unittest.TestCase):
 
 class TestPep589AnnotatedReadOnly(unittest.TestCase):
     # ReadOnly[List[str]] is a typing-only marker; runtime mutation still works.
-    @unittest.expectedFailure
     def test_band_with_readonly_members(self):
         from typing import ReadOnly
         class Band(TypedDict):

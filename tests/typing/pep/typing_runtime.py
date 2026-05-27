@@ -10,7 +10,7 @@ except ImportError:
 
 import unittest
 
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Union, Unpack, get_args
 from typing import Callable, Self
 from typing import no_type_check
 from typing import Protocol
@@ -22,34 +22,15 @@ from typing import NotRequired, TypedDict
 from typing import TypeVar
 from typing import Generator
 from typing import NoReturn
-from typing import Final
-from typing import get_origin, get_args
+# from typing import Final
+# from typing import get_origin
+# from typing import get_args
+# from typing import Required
+# from typing import ParamSpec
 
-# FIXME: typing.Required not available in MicroPython.
-try:
-    from typing import Required
-except ImportError:
-    Required = None  # type: ignore
-
-# FIXME: typing.final not available in MicroPython; use no-op fallback.
-try:
-    from typing import final
-except ImportError:
-    def final(obj):
-        return obj
-
-# FIXME: typing.TypeVarTuple / Unpack / ParamSpec not available in MicroPython.
-try:
-    from typing import TypeVarTuple, Unpack
-except ImportError:
-    TypeVarTuple = None  # type: ignore
-    Unpack = None  # type: ignore
-
-try:
-    from typing import ParamSpec
-except ImportError:
-    ParamSpec = None  # type: ignore
-
+# from typing import TypeVarTuple
+# from typing import Unpack
+# from typing import final
 
 class TestTypingTypeCheckingFlag(unittest.TestCase):
     # TYPE_CHECKING-guarded import is False at runtime in MicroPython.

@@ -1,5 +1,5 @@
 # probe module availability
-# import only
+# test import only
 
 import collections
 import sys
@@ -23,25 +23,35 @@ class TestModuleIncluded(unittest.TestCase):
             import typing_extensions
             self.assertIsNotNone(typing_extensions)
         except ImportError:
-            unittest.skip("module not available")
+            self.skipTest("module not available")
 
     def test_future(self):
         try:
             import __future__
             self.assertIsNotNone(__future__)
         except ImportError:
-            unittest.skip("module not available")
+            self.skipTest("module not available")
+
+    def test_abc(self):
+        try:
+            import abc
+            self.assertIsNotNone(abc)
+        except ImportError:
+            self.skipTest("module not available")
 
     def test_collections(self):
         try:
             import collections
             self.assertIsNotNone(collections)
         except ImportError:
-            unittest.skip("module not available")
+            self.skipTest("module not available")
 
     def test_collections_abc(self):
-        import collections.abc
-        self.assertIsNotNone(collections.abc)
+        try:
+            import collections.abc
+            self.assertIsNotNone(collections.abc)
+        except ImportError:
+            self.skipTest("module not available")
 
 
 if __name__ == "__main__":
