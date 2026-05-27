@@ -2,12 +2,8 @@ include("$(PORT_DIR)/variants/manifest.py")
 
 include("$(MPY_DIR)/extmod/asyncio")
 
-freeze_as_mpy("typing")
-
-require("__future__")
-
-# belt and suspenders - collections is already included 
-require("collections")
-
-# does not exist yet
-# require("collections.abc")
+require("collections", opt_level=3)
+# to reduce code size:
+#  - default optimization level is 3
+#  - extensions are disabled by default
+require("bundle-typing", extensions=True)

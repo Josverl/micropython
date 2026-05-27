@@ -3,7 +3,7 @@
 # https://peps.python.org/topic/typing/
 # https://peps.python.org/pep-0544/
 #
-# Currently excludes tests using `Generic[T]` due to MicroPython runtime limitations
+# Currently xfails tests using `Generic[T]` due to MicroPython runtime limitations
 
 try:
     from typing import TYPE_CHECKING

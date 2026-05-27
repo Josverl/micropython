@@ -15,8 +15,6 @@ def get_args(type):
 def no_type_check(func):
     return func
 
-final = no_type_check # PEP 591 final decorator is a no-op in MicroPython runtime.
-
 def overload(func):
     return None
 
@@ -130,6 +128,8 @@ class NotRequired:
 
 LiteralString = AnyStr = str
 TypedDict = dict
+final = no_type_check # PEP 591 final decorator is a no-op in MicroPython runtime.
+TypeAlias = Any
 
 # Deprecated
 Text = str
@@ -174,6 +174,5 @@ Set = _Subscriptable
 Tuple = _Subscriptable
 Type = _Subscriptable
 Union = _Subscriptable
-reveal_type = _Subscriptable
 
 TYPE_CHECKING = False

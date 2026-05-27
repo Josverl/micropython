@@ -13,14 +13,12 @@ import unittest
 
 
 class TestTypingUnsupportedRuntime(unittest.TestCase):
-    # typing spec features that are intentionally not implemented in this runtime variant.
+    # typing spec features that are intentionally not implemented in MicroPython
     def test_missing_advanced_spec_symbols(self):
         unsupported = (
             "ParamSpec",
             "TypeVarTuple",
-            "TypeAlias",
             "runtime_checkable",
-            "final",
             "Never",
             "TypeGuard",
             "TypeIs",

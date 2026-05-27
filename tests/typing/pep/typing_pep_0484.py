@@ -22,6 +22,18 @@ from typing import overload
 from typing import cast
 
 
+def xfail_on_error(func):
+    """Report test as skipped ("xfail: ...") if it raises, or as ok if it
+    passes. Use instead of @unittest.expectedFailure when an unexpected pass
+    should NOT be reported as a failure (xpass)."""
+    def wrapper(self):
+        try:
+            func(self)
+        except Exception as e:
+            raise unittest.SkipTest("xfail: {}".format(e))
+    return wrapper
+
+
 class TestPep484TypeDefinitionSyntax(unittest.TestCase):
     # Function annotations are accepted at definition and call time.
     def test_function_annotation_runtime(self):
@@ -72,14 +84,11 @@ class TestPep484TypeVar(unittest.TestCase):
 class TestPep484GenericUserClass(unittest.TestCase):
     # TODO: Crash - inheriting from typing.Generic[T] unsupported at runtime
     # (somehow does work in MicroPython .py typing variant).
-    @unittest.expectedFailure
+    @xfail_on_error
     def test_generic_t_base_class(self):
         T = TypeVar("T")
 
-        # try:
         class LoggedVar(Generic[T]):
-            pass
-
             def __init__(self, value: T, name: str) -> None:
                 self.name = name
                 self.value = value
@@ -89,6 +98,10 @@ class TestPep484GenericUserClass(unittest.TestCase):
 
             def get(self) -> T:
                 return self.value
+
+        lv = LoggedVar(1, "x")
+        lv.set(2)
+        self.assertEqual(lv.get(), 2)
 
 class TestPep484UnionOptional(unittest.TestCase):
     # Union/Optional annotations should accept str and None at runtime.

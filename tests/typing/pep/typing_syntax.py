@@ -2,66 +2,36 @@
 # which for MicroPython means everything typing-related should be ignored.
 
 try:
-    import typing
+    from typing import TYPE_CHECKING
 except ImportError:
     print("SKIP")
     raise SystemExit
 
 import unittest
 
-from typing import List, Tuple, Iterable, NewType, TypeVar, Union, Generic
-from typing import Any
-
-# Available with MICROPY_PY_TYPING_EXTRA_MODULES.
-try:
-    import typing_extensions
-except ImportError:
-    typing_extensions = None
-
-# Available with MICROPY_PY_TYPING_EXTRA_MODULES and MICROPY_MODULE_BUILTIN_SUBPACKAGES.
-try:
-    import collections.abc
-
-    collections.abc.Sequence
-except ImportError:
-    pass
-
+from typing import List, NewType, TypeAlias, TypeVar, Union, Any
+import typing
 import sys
 
+MyAlias :TypeAlias = str
 
 class TestTypingSyntax(unittest.TestCase):
-    # typing_extensions and __future__ access should work when available.
-    def test_typing_extensions_and_future(self):
-        # If this is available verify it works, and try the other modules as well.
-        if typing_extensions is not None:
-            import __future__
-            from abc import abstractmethod
 
-            getattr(__future__, "annotations")
-
+    @unittest.expectedFailure
     # FIXME: MicroPython should reject attribute assignment / subscription on typing/List.
-    # if "micropython" in sys.implementation.name:
-    #     # Verify assignment is not possible.
-    #     try:
-    #         typing.a = None
-    #         raise Exception()
-    #     except AttributeError:
-    #         pass
-    #     try:
-    #         typing[0] = None
-    #         raise Exception()
-    #     except TypeError:
-    #         pass
-    #     try:
-    #         List.a = None
-    #         raise Exception()
-    #     except AttributeError:
-    #         pass
+    def test_typing_assigment_rejected(self):
+        if "micropython" not in sys.implementation.name:
+            self.skipTest("MicroPython-specific behaviour")
+        with self.assertRaises(AttributeError):
+            typing.a = None
+        with self.assertRaises(TypeError):
+            typing[0] = None
+        with self.assertRaises(AttributeError):
+            List.a = None
 
     # Module-level annotations and function with annotations should parse and run.
     def test_module_level_annotations_and_function(self):
-        MyAlias = str
-        Vector: typing.List[float]
+        Vector: List[float]
         UserId = NewType("UserId", int)
         T = TypeVar("T", int, float, complex)
 

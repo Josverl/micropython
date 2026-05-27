@@ -1,4 +1,5 @@
-# collections.abc runtime parity checks from notebook scenarios.
+# module: collections.abc 
+# runtime parity checks.
 
 import unittest
 
