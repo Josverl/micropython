@@ -13,7 +13,7 @@ import unittest
 
 from typing import Literal, Optional, TypeAlias
 from typing import Tuple, List
-from typing import overload, IO, Any, Union, Text
+from typing import overload, IO, Any, Union
 
 
 class TestPep586LegalParameters(unittest.TestCase):
@@ -138,7 +138,7 @@ class TestPep586OverloadsInteraction(unittest.TestCase):
         def open(
             path: _PathType,
             mode: Literal["r", "w", "a", "x", "r+", "w+", "a+", "x+"],
-        ) -> IO[Text]:
+        ) -> IO[str]:
             ...
 
         @overload

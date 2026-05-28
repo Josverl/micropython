@@ -10,27 +10,21 @@ except ImportError:
 
 import unittest
 
-from typing import Any, Dict, List, Union, Unpack, get_args
-from typing import Callable, Self
-from typing import no_type_check
-from typing import Protocol
-from typing import NewType
-from typing import AnyStr
-from typing import LiteralString
-from typing import overload
-from typing import NotRequired, TypedDict
-from typing import TypeVar
-from typing import Generator
-from typing import NoReturn
+# from typing import Any, Dict, List, Union
+# from typing import Callable, Self
+# from typing import no_type_check
+# from typing import Protocol
+# from typing import NewType
+# from typing import AnyStr
+# from typing import overload
+# from typing import NotRequired, TypedDict
+# from typing import TypeVar
+# from typing import Generator
+# from typing import NoReturn
 # from typing import Final
 # from typing import get_origin
 # from typing import get_args
-# from typing import Required
-# from typing import ParamSpec
 
-# from typing import TypeVarTuple
-# from typing import Unpack
-# from typing import final
 
 class TestTypingTypeCheckingFlag(unittest.TestCase):
     # TYPE_CHECKING-guarded import is False at runtime in MicroPython.
@@ -42,6 +36,7 @@ class TestTypingTypeCheckingFlag(unittest.TestCase):
 class TestTypingParameterAnnotations(unittest.TestCase):
     # Parameter and return annotations are accepted and runnable.
     def test_simple_annotated_functions(self):
+        from typing import Any, Dict, List
         def add_numbers(a: int, b: int) -> int:
             return a + b
 
@@ -66,6 +61,7 @@ class TestTypingParameterAnnotations(unittest.TestCase):
 class TestTypingSelfPython311(unittest.TestCase):
     # typing.Self is importable and usable in annotations at runtime.
     def test_self_in_callback(self):
+        from typing import Callable, Self
         class BaseClass:
             def register(self, callback: Callable[[Self], None]) -> None:
                 ...
@@ -80,6 +76,8 @@ class TestTypingSelfPython311(unittest.TestCase):
 class TestTypingNoTypeCheck(unittest.TestCase):
     # @no_type_check decorator should be a runtime no-op.
     def test_no_type_check_decorator(self):
+        from typing import no_type_check
+
         @no_type_check
         def quad(r0):
             return r0 * 4
@@ -90,6 +88,7 @@ class TestTypingNoTypeCheck(unittest.TestCase):
 class TestTypingProtocolRuntime(unittest.TestCase):
     # Runtime use of Protocol-typed callables is duck-typed.
     def test_adder_protocol_runtime(self):
+        from typing import Protocol
         class Adder(Protocol):
             def add(self, x, y):
                 ...
@@ -115,6 +114,7 @@ class TestTypingProtocolRuntime(unittest.TestCase):
 class TestTypingNewType(unittest.TestCase):
     # NewType returns an int that is an instance of int at runtime.
     def test_user_id_newtype(self):
+        from typing import NewType
         UserId = NewType("UserId", int)
         some_id = UserId(524313)
         self.assertEqual(some_id, 524313)
@@ -124,6 +124,7 @@ class TestTypingNewType(unittest.TestCase):
 class TestTypingAny(unittest.TestCase):
     # Any annotation accepts any value at runtime.
     def test_any_assignments(self):
+        from typing import Any
         a: Any = None
         a = []  # OK
         a = 2  # OK
@@ -133,6 +134,8 @@ class TestTypingAny(unittest.TestCase):
 
     # foo() / hash_b() runtime semantics with AttributeError fallback.
     def test_hash_b_runtime(self):
+        from typing import Any
+
         def foo(item: Any) -> int:
             # Passes type checking; 'item' could be any type,
             # and that type might have a 'bar' method
@@ -157,6 +160,7 @@ class TestTypingAny(unittest.TestCase):
 class TestTypingAnyStr(unittest.TestCase):
     # AnyStr-typed concat works for str+str and bytes+bytes.
     def test_concat_homogeneous(self):
+        from typing import AnyStr
         def concat(a: AnyStr, b: AnyStr) -> AnyStr:
             return a + b
 
@@ -165,6 +169,7 @@ class TestTypingAnyStr(unittest.TestCase):
 
     # Mixed str+bytes raises TypeError at runtime.
     def test_concat_mixed_types_raises(self):
+        from typing import AnyStr
         def concat(a: AnyStr, b: AnyStr) -> AnyStr:
             return a + b
 
@@ -175,6 +180,8 @@ class TestTypingAnyStr(unittest.TestCase):
 class TestTypingLiteralString(unittest.TestCase):
     # LiteralString annotation is runtime-permissive.
     def test_caller_uses_literal_and_runtime_str(self):
+        from typing import LiteralString
+
         def run_query(sql: LiteralString) -> None:
             ...
 
@@ -196,6 +203,8 @@ class TestTypingLiteralString(unittest.TestCase):
 class TestTypingOverload(unittest.TestCase):
     # @overload stacks declarations and final implementation is called at runtime.
     def test_bar_overload_runtime(self):
+        from typing import overload
+
         @overload
         def bar(x: int) -> str:
             ...
@@ -214,6 +223,8 @@ class TestTypingTypedDictRequired(unittest.TestCase):
     # https://typing.readthedocs.io/en/latest/spec/typeddict.html#required-and-notrequired
     # TypedDict with Required/NotRequired markers should run at runtime.
     def test_movie_required_notrequired(self):
+        from typing import NotRequired, Required, TypedDict
+
         class Movie(TypedDict):
             title: Required[str]
             year: int
@@ -226,6 +237,8 @@ class TestTypingTypedDictRequired(unittest.TestCase):
 class TestTypingTypeVar(unittest.TestCase):
     # TypeVar-based generic helper function works at runtime.
     def test_first_helper(self):
+        from typing import List, TypeVar
+
         T = TypeVar("T")
 
         def first(container: List[T]) -> T:
@@ -240,6 +253,7 @@ class TestTypingTypeVar(unittest.TestCase):
 class TestTypingGenerator(unittest.TestCase):
     # Annotated Generator runs and yields values.
     def test_echo_generator(self):
+        from typing import Generator
         def echo(a: float) -> Generator[int, float, str]:
             yield int(a)
             return "Done"
@@ -252,6 +266,8 @@ class TestTypingGenerator(unittest.TestCase):
 class TestTypingNoReturn(unittest.TestCase):
     # NoReturn-typed function raises as expected.
     def test_stop_no_return(self):
+        from typing import NoReturn
+
         def stop() -> NoReturn:
             raise RuntimeError("no way")
 
@@ -262,15 +278,18 @@ class TestTypingNoReturn(unittest.TestCase):
 class TestTypingFinalAnnotation(unittest.TestCase):
     # Final-marked constants are normal values at runtime.
     def test_final_constant(self):
+        from typing import Final
+
         CONST: Final = 42
         self.assertEqual(CONST, 42)
 
 
 class TestTypingFinalDecorator(unittest.TestCase):
     # @final decorator and subclassing semantics at runtime.
-    # FIXME: MicroPython does not enforce @final at runtime; subclassing is silently allowed.
+    # FIXME CPY-DIFF: MicroPython does not enforce @final at runtime; subclassing is silently allowed.
     @unittest.expectedFailure
     def test_final_method_and_class(self):
+        from typing import final
         class Base:
             @final
             def done(self) -> None:
@@ -292,9 +311,11 @@ class TestTypingFinalDecorator(unittest.TestCase):
 
 
 class TestTypingTypeVarTuple(unittest.TestCase):
-    # FIXME: TypeVarTuple/Unpack runtime support is incomplete.
+    # FIXME CPY-DIFF: TypeVarTuple/Unpack runtime support is incomplete.
     @unittest.expectedFailure
     def test_typevar_tuple_unpack(self):
+        from typing import TypeVarTuple, Unpack
+
         Ts = TypeVarTuple("Ts")
         tup: tuple[Unpack[Ts]]  # Semantically equivalent, and backwards-compatible # type: ignore
         raise AssertionError("TypeVarTuple/Unpack not enforced at runtime")
@@ -303,9 +324,11 @@ class TestTypingTypeVarTuple(unittest.TestCase):
 class TestTypingParamSpec(unittest.TestCase):
     # ParamSpec, 3.11 notation
     # https://docs.python.org/3/library/typing.html#typing.ParamSpec
-    # FIXME: ParamSpec / collections.abc.Callable may not be available in MicroPython.
+    # FIXME CPY-DIFF: ParamSpec / collections.abc.Callable may not be available in MicroPython.
     @unittest.expectedFailure
     def test_add_logging_with_paramspec(self):
+        from typing import Callable, ParamSpec, TypeVar
+
         try:
             from collections.abc import Callable as ABCCallable
         except ImportError:
@@ -334,9 +357,10 @@ class TestTypingParamSpec(unittest.TestCase):
 
 class TestTypingGetOrigin(unittest.TestCase):
     # https://docs.python.org/3/library/typing.html#typing.get_origin
-    # FIXME: cpy_diff - get_origin() unsupported, or always returns None.
+    # FIXME CPY-DIFF: get_origin() unsupported, or always returns None.
     @unittest.expectedFailure
     def test_get_origin_non_none(self):
+        from typing import Dict, Union, get_origin
         # if not get_origin(str) is None:
         #     print("- [ ] FIXME: document cpy_diff - get_origin(str) should be None")
         assert get_origin(Dict[str, int]) is dict
@@ -345,9 +369,11 @@ class TestTypingGetOrigin(unittest.TestCase):
 
 class TestTypingGetArgs(unittest.TestCase):
     # https://docs.python.org/3/library/typing.html#typing.get_args
-    # FIXME: cpy_diff - get_args() unsupported, or always returns ().
+    # FIXME CPY-DIFF: get_args() unsupported, or always returns ().
     @unittest.expectedFailure
     def test_get_args_non_empty(self):
+        from typing import Dict, Union, get_args
+
         # if not get_args(int) == ():
         #     print("- [ ] FIXME: document cpy_diff - get_args(int) should be ()")
         assert get_args(Dict[int, str]) == (int, str), "get_args(Dict[int, str]) should be (int, str)"
@@ -396,7 +422,7 @@ class TestTypingSubscriptables(unittest.TestCase):
             OrderedDict,
             Self,
         )
-        from typing import Sequence, Set, Tuple, Type, Union
+        from typing import Sequence, Set, Tuple, Type, Union, Any
 
         t_01: AbstractSet[Any]
         t_02: AsyncContextManager[Any]

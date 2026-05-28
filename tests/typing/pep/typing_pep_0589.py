@@ -112,23 +112,21 @@ class TestPep589RuntimeIsInstance(unittest.TestCase):
 
 class TestPep589FunctionalSyntax(unittest.TestCase):
     # Functional syntax MovieAlt = TypedDict("MovieAlt", {...}) is not supported.
+    @unittest.expectedFailure
     def test_functional_typeddict_construction(self):
-        try:
-            MovieAlt = TypedDict("MovieAlt", {"name": str, "year": int})
-            MovieAlt2 = TypedDict("MovieAlt2", {"name": str, "year": int}, total=False)
+        # CPY-DIFF: cannot construct a TypedDict with the functional syntax in MicroPython
+        MovieAlt = TypedDict("MovieAlt", {"name": str, "year": int})
 
-            m_alt: MovieAlt = {"name": "Blade Runner", "year": 1982}
-            self.assertEqual(m_alt["name"], "Blade Runner")
-        except Exception:
-            assert False, "Functional syntax for TypedDict construction should be supported"
+        m_alt: MovieAlt = {"name": "Blade Runner", "year": 1982}
+        self.assertEqual(m_alt["name"], "Blade Runner")
 
-    # FIXME: Difference or Crash - calling the functional TypedDict constructor with kwargs.
+
     @unittest.expectedFailure
     def test_functional_typeddict_constructor_kwargs(self):
-        MovieAlt = TypedDict("MovieAlt", {"name": str, "year": int})
-        ma = MovieAlt(name="Blade Runner", year=1982)
+        # CPY-DIFF: cannot construct a TypedDict with keyword arguments in MicroPython
+        MovieAlt2 = TypedDict("MovieAlt2", {"name": str, "year": int}, total=False)
+        ma = MovieAlt2(name="Blade Runner", year=1982)
         self.assertTrue(isinstance(ma, dict))
-
 
 class TestPep589InheritanceExamples(unittest.TestCase):
     # Subclassing a TypedDict with additional fields should not raise at runtime.
