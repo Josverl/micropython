@@ -1,4 +1,4 @@
-# module abc 
+# module abc
 # runtime parity checks .
 
 import sys
@@ -11,16 +11,17 @@ except Exception:
     print("SKIP")
     raise SystemExit
 
+
 class TestAbcRuntime(unittest.TestCase):
     # Basic abc helpers should be callable.
 
     @unittest.expectedFailure
     def test_abc_helper_functions(self):
         token = abc.get_cache_token()
+
         class C(abc.ABC):
             @abc.abstractmethod
-            def f(self):
-                ...
+            def f(self): ...
 
         cls = abc.update_abstractmethods(C)
         self.assertTrue(type(token) is int)
@@ -31,8 +32,7 @@ class TestAbcRuntime(unittest.TestCase):
 
         class Shape(abc.ABC):
             @abc.abstractmethod
-            def get_area(self):
-                ...
+            def get_area(self): ...
 
         class Square(Shape):
             def __init__(self, side):

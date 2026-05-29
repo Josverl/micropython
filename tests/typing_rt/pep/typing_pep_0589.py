@@ -37,8 +37,7 @@ class TestPep589UsingTypedDictTypes(unittest.TestCase):
             name: str
             year: int
 
-        def record_movie(movie: Movie) -> None:
-            ...
+        def record_movie(movie: Movie) -> None: ...
 
         record_movie({"name": "Blade Runner", "year": 1982})
 
@@ -120,13 +119,13 @@ class TestPep589FunctionalSyntax(unittest.TestCase):
         m_alt: MovieAlt = {"name": "Blade Runner", "year": 1982}
         self.assertEqual(m_alt["name"], "Blade Runner")
 
-
     @unittest.expectedFailure
     def test_functional_typeddict_constructor_kwargs(self):
         # cpydiff: cannot construct a TypedDict with keyword arguments in MicroPython
         MovieAlt2 = TypedDict("MovieAlt2", {"name": str, "year": int}, total=False)
         ma = MovieAlt2(name="Blade Runner", year=1982)
         self.assertTrue(isinstance(ma, dict))
+
 
 class TestPep589InheritanceExamples(unittest.TestCase):
     # Subclassing a TypedDict with additional fields should not raise at runtime.
@@ -136,6 +135,7 @@ class TestPep589InheritanceExamples(unittest.TestCase):
             year: int
 
         try:
+
             class BookBasedMovie(Movie):
                 based_on: str
         except TypeError as e:
@@ -188,6 +188,7 @@ class TestPep589AnnotatedReadOnly(unittest.TestCase):
     # ReadOnly[List[str]] is a typing-only marker; runtime mutation still works.
     def test_band_with_readonly_members(self):
         from typing import ReadOnly
+
         class Band(TypedDict):
             name: str
             members: ReadOnly[list[str]]
@@ -219,7 +220,7 @@ class TestPep589ExtraItemsAndClosed(unittest.TestCase):
             name: str
 
         # FIXME: Difference or Crash - constructor with kwargs
-        MovieClosed( name="No Country for Old Men", year=2007  )  
+        MovieClosed(name="No Country for Old Men", year=2007)
         # Should be runtime error per ctor semantics
 
 

@@ -64,8 +64,7 @@ class TestPep560MroEntries(unittest.TestCase):
 
         # FIXME: Difference or Crash - __class_getitem__ not supported
         # TypeError: 'type' object isn't subscriptable
-        class Tokens(NewList[int]):
-            ...
+        class Tokens(NewList[int]): ...
 
         # Not sure these make sense to test
         # self.assertEqual(Tokens.__bases__, (NewList,))

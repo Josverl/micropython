@@ -10,9 +10,10 @@ import sys
 import unittest
 
 try:
-    from collections import MutableMapping as collections_py # type: ignore
+    from collections import MutableMapping as collections_py  # type: ignore
 except ImportError:
     collections_py = None
+
 
 class TestCollectionsRuntime(unittest.TestCase):
     def test_collections_C_module_symbols_exist(self):

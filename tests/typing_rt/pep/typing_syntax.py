@@ -13,10 +13,10 @@ from typing import List, NewType, TypeAlias, TypeVar, Union, Any
 import typing
 import sys
 
-MyAlias :TypeAlias = str
+MyAlias: TypeAlias = str
+
 
 class TestTypingSyntax(unittest.TestCase):
-
     # Module-level annotations and function with annotations should parse and run.
     def test_module_level_annotations_and_function(self):
         Vector: List[float]
@@ -25,7 +25,9 @@ class TestTypingSyntax(unittest.TestCase):
 
         hintedGlobal: Any = None
 
-        def func_with_hints(c: int, b: MyAlias, a: Union[int, None], lst: List[float] = [0.0]) -> Any:
+        def func_with_hints(
+            c: int, b: MyAlias, a: Union[int, None], lst: List[float] = [0.0]
+        ) -> Any:
             pass
 
         func_with_hints(1, "alias", None)

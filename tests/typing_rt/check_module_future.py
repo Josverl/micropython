@@ -9,6 +9,7 @@ except ImportError:
 
 import unittest
 
+
 class TestFutureModule(unittest.TestCase):
     # __future__ exports known feature-switch names as module attributes.
     def test_expected_feature_flags_exist(self):

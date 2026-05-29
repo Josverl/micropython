@@ -28,8 +28,6 @@ from typing import NewType, Iterator
 from typing import Reversible
 
 
-
-
 from typing import (
     SupportsInt,
     SupportsBytes,
@@ -45,19 +43,21 @@ def xfail_on_error(func):
     """Report test as skipped ("xfail: ...") if it raises, or as ok if it
     passes. Use instead of @unittest.expectedFailure when an unexpected pass
     should NOT be reported as a failure (xpass)."""
+
     def wrapper(self):
         try:
             func(self)
         except Exception as e:
             raise unittest.SkipTest("xfail: {}".format(e))
+
     return wrapper
+
 
 class TestPep544DefiningAProtocol(unittest.TestCase):
     # A simple Protocol with a close() method should declare and execute.
     def test_supports_close_protocol(self):
         class SupportsClose(Protocol):
-            def close(self) -> None:
-                ...
+            def close(self) -> None: ...
 
         class Resource:
             ...
@@ -116,8 +116,7 @@ class TestPep544ExplicitlyDeclaringImplementation(unittest.TestCase):
     def test_explicit_protocol_subclass(self):
         class PColor(Protocol):
             @abstractmethod
-            def draw(self) -> str:
-                ...
+            def draw(self) -> str: ...
 
             def complex_method(self) -> int:
                 # some complex code here
@@ -164,9 +163,9 @@ class TestPep544MergingAndExtending(unittest.TestCase):
     # (now succeeds in this MicroPython typing variant).
     def test_sized_and_closable_with_protocol(self):
         try:
+
             class SizedAndClosable_1(Sized, Protocol):
-                def close(self) -> None:
-                    ...
+                def close(self) -> None: ...
         except Exception:
             assert False, "Sized Protocols unsupported"
 
@@ -174,9 +173,9 @@ class TestPep544MergingAndExtending(unittest.TestCase):
     # (now succeeds in this MicroPython typing variant).
     def test_sized_and_closable_inheriting_protocols(self):
         try:
+
             class SupportsClose_2(Protocol):
-                def close(self) -> None:
-                    ...
+                def close(self) -> None: ...
 
             class SizedAndClosable_2(Sized, SupportsClose_2, Protocol):
                 pass
@@ -193,8 +192,7 @@ class TestPep544GenericProtocols(unittest.TestCase):
 
             class IterableP(Protocol[T]):
                 @abstractmethod
-                def __iter__(self) -> Iterator[T]:
-                    ...
+                def __iter__(self) -> Iterator[T]: ...
         except Exception:
             assert False, "User Defined Generic Classes unsupported"
 
@@ -205,12 +203,10 @@ class TestPep544RecursiveProtocols(unittest.TestCase):
         T = TypeVar("T")
 
         class Traversable(Protocol):
-            def leaves(self) -> Iterable["Traversable"]:
-                ...
+            def leaves(self) -> Iterable["Traversable"]: ...
 
         class SimpleTree:
-            def leaves(self) -> List["SimpleTree"]:
-                ...
+            def leaves(self) -> List["SimpleTree"]: ...
 
         root: Traversable = SimpleTree()  # OK
         self.assertTrue(isinstance(root, SimpleTree))
@@ -233,18 +229,15 @@ class TestPep544SelfTypesInProtocols(unittest.TestCase):
         C = TypeVar("C", bound="Copyable")  # type: ignore
 
         class Copyable(Protocol):
-            def copy(self: C) -> C:
-                ...
+            def copy(self: C) -> C: ...
 
         class One:
-            def copy(self) -> "One":
-                ...
+            def copy(self) -> "One": ...
 
         T = TypeVar("T", bound="Other")
 
         class Other:
-            def copy(self: T) -> T:
-                ...
+            def copy(self: T) -> T: ...
 
         c: Copyable
         c = One()  # OK # type: ignore
@@ -255,14 +248,11 @@ class TestPep544CallbackProtocols(unittest.TestCase):
     # Protocol with __call__ signature accepts compatible callables.
     def test_combiner_callback_protocol(self):
         class Combiner(Protocol):
-            def __call__(self, *vals: bytes, maxlen: Optional[int] = None) -> List[bytes]:
-                ...
+            def __call__(self, *vals: bytes, maxlen: Optional[int] = None) -> List[bytes]: ...
 
-        def good_cb(*vals: bytes, maxlen: Optional[int] = None) -> List[bytes]:
-            ...
+        def good_cb(*vals: bytes, maxlen: Optional[int] = None) -> List[bytes]: ...
 
-        def bad_cb(*vals: bytes, maxitems: Optional[int]) -> List[bytes]:
-            ...
+        def bad_cb(*vals: bytes, maxitems: Optional[int]) -> List[bytes]: ...
 
         comb: Combiner = good_cb  # OK
         comb = bad_cb  # Static Typecheck Error! # type: ignore
@@ -273,15 +263,12 @@ class TestPep544UnionsAndIntersections(unittest.TestCase):
     # Union of two protocols accepts a class satisfying one of them.
     def test_finish_union_of_protocols(self):
         class Exitable(Protocol):
-            def exit(self) -> int:
-                ...
+            def exit(self) -> int: ...
 
         class Quittable(Protocol):
-            def quit(self) -> Optional[int]:
-                ...
+            def quit(self) -> Optional[int]: ...
 
-        def finish(task: Union[Exitable, Quittable]) -> int:
-            ...
+        def finish(task: Union[Exitable, Quittable]) -> int: ...
 
         class DefaultJob:
             ...
@@ -297,13 +284,13 @@ class TestPep544UnionsAndIntersections(unittest.TestCase):
         # # class HashableFloats(Iterable[float], Hashable, Protocol):
         # FIXME: TypeError: multiple bases have instance lay-out conflict
         try:
+
             class HashableFloats(Iterable, Hashable, Protocol):
                 pass
         except TypeError:
             assert False, "multiple bases have instance lay-out conflict"
 
-        def cached_func(args: HashableFloats) -> float:
-            ...
+        def cached_func(args: HashableFloats) -> float: ...
 
         cached_func((1, 2, 3))  # OK, tuple is both hashable and iterable
 
@@ -313,8 +300,7 @@ class TestPep544TypeAndClassObjectsVsProtocols(unittest.TestCase):
     def test_type_of_protocol_with_concrete(self):
         class Proto(Protocol):
             @abstractmethod
-            def meth(self) -> int:
-                ...
+            def meth(self) -> int: ...
 
         class Concrete:
             def meth(self) -> int:
@@ -330,8 +316,7 @@ class TestPep544TypeAndClassObjectsVsProtocols(unittest.TestCase):
     def test_instantiate_abstract_protocol_raises(self):
         class Proto(Protocol):
             @abstractmethod
-            def meth(self) -> int:
-                ...
+            def meth(self) -> int: ...
 
         def fun(cls: Type[Proto]) -> int:
             return cls().meth()
@@ -346,16 +331,13 @@ class TestPep544TypeAndClassObjectsVsProtocols(unittest.TestCase):
     # Class object vs protocol assignments parse at runtime.
     def test_class_object_vs_protocol_assignment(self):
         class ProtoA(Protocol):
-            def meth(self, x: int) -> int:
-                ...
+            def meth(self, x: int) -> int: ...
 
         class ProtoB(Protocol):
-            def meth(self, obj: Any, x: int) -> int:
-                ...
+            def meth(self, obj: Any, x: int) -> int: ...
 
         class C:
-            def meth(self, x: int) -> int:
-                ...
+            def meth(self, x: int) -> int: ...
 
         a: ProtoA = C  # Type check error, signatures don't match! # type: ignore
         b: ProtoB = C  # OK # type: ignore
@@ -372,8 +354,10 @@ class TestPep544NewTypeAndAliases(unittest.TestCase):
 
     def test_sized_iterable_generic_protocol(self):
         T = TypeVar("T", covariant=True)
+
         class SizedIterable_3(Iterable[T], Sized, Protocol):
             pass
+
         CompatReversible = Union[Reversible[T], SizedIterable_3[T]]
 
 
@@ -385,8 +369,7 @@ class TestPep544RuntimeCheckable(unittest.TestCase):
 
         @runtime_checkable
         class SupportsCloseRC(Protocol):
-            def close(self):
-                ...
+            def close(self): ...
 
         assert isinstance(open(__file__), SupportsCloseRC)
 

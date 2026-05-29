@@ -1,4 +1,4 @@
-# module: collections.abc 
+# module: collections.abc
 # runtime parity checks.
 
 try:
@@ -12,6 +12,7 @@ import unittest
 
 from typing import Protocol
 from collections.abc import Iterable, Callable, Awaitable, Sequence, Mapping
+
 
 class TestCollectionsAbcRuntime(unittest.TestCase):
     # Mapping and Sequence annotation signatures should execute.
@@ -42,8 +43,7 @@ class TestCollectionsAbcRuntime(unittest.TestCase):
     # Iterable and Protocol callback pattern should execute.
     def test_iterable_protocol_callback_path(self):
         class Combiner(Protocol):
-            def __call__(self, *vals: bytes, maxlen=None):
-                ...
+            def __call__(self, *vals: bytes, maxlen=None): ...
 
         def batch_proc(data: Iterable[bytes], cb_results: Combiner) -> bytes:
             for item in data:

@@ -26,11 +26,13 @@ def xfail_on_error(func):
     """Report test as skipped ("xfail: ...") if it raises, or as ok if it
     passes. Use instead of @unittest.expectedFailure when an unexpected pass
     should NOT be reported as a failure (xpass)."""
+
     def wrapper(self):
         try:
             func(self)
         except Exception as e:
             raise unittest.SkipTest("xfail: {}".format(e))
+
     return wrapper
 
 
@@ -103,6 +105,7 @@ class TestPep484GenericUserClass(unittest.TestCase):
         lv.set(2)
         self.assertEqual(lv.get(), 2)
 
+
 class TestPep484UnionOptional(unittest.TestCase):
     # Union/Optional annotations should accept str and None at runtime.
     def test_union_str_none_runtime(self):
@@ -168,12 +171,10 @@ class TestPep484Overload(unittest.TestCase):
     # @overload declarations are typing-only; the concrete implementation runs.
     def test_overload_runtime_dispatch_to_impl(self):
         @overload
-        def func(x: int) -> int:
-            ...
+        def func(x: int) -> int: ...
 
         @overload
-        def func(x: str) -> str:
-            ...
+        def func(x: str) -> str: ...
 
         def func(x):
             return x

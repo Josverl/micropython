@@ -11,21 +11,18 @@ import sys
 import unittest
 
 
-
 class TestTypingUnsupportedRuntime(unittest.TestCase):
-
     # TODO: cpydiff: NewType has class-like runtime behavior in MicroPython vs callable object in CPython.
     @unittest.expectedFailure
     def test_newtype_class_semantics_runtime_difference(self):
         UserId = typing.NewType("UserId", int)
         value = UserId(7)
-        self.assertFalse(type(UserId) is type) 
+        self.assertFalse(type(UserId) is type)
         # CPython : type(UserId) -> <class 'typing.NewType'>
         # MicroPython : type(UserId) -> <class 'type'>
 
 
 class TestPython312Syntax(unittest.TestCase):
-
     # Python 3.12 type statement not supported in MicroPython
     @unittest.expectedFailure
     def test_type_statement(self):
@@ -44,6 +41,7 @@ class TestPython312Syntax(unittest.TestCase):
         ns = {}
         exec(code, ns, ns)
         self.assertEqual(ns["first"]([1, 2, 3]), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

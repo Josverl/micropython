@@ -8,23 +8,27 @@ except ImportError:
 
 import unittest
 
+
 def xfail_on_error(func):
     """Report test as skipped ("xfail: ...") if it raises, or as ok if it
     passes. Use instead of @unittest.expectedFailure when an unexpected pass
     should NOT be reported as a failure (xpass)."""
+
     def wrapper(self):
         try:
             func(self)
         except Exception as e:
             raise unittest.SkipTest("xfail: {}".format(e))
+
     return wrapper
 
+
 class TestTypingRuntime(unittest.TestCase):
-    # This failes for the 'Mocked' typing modules 
+    # This failes for the 'Mocked' typing modules
     # Check star import and private symbol presence when available.
     # def test_star_import_and_private_symbol(self):
     #     ns = {}
-    #     exec("from typing import *", {}, ns)  
+    #     exec("from typing import *", {}, ns)
     #     self.assertTrue("List" in ns)
     #     self.assertTrue(hasattr(typing, "_AnyCall"))
 
@@ -127,12 +131,10 @@ class TestTypingRuntime(unittest.TestCase):
     # Overload declaration pattern should be runtime-safe with a concrete implementation.
     def test_overload_declaration_pattern(self):
         @typing.overload
-        def bar(x: int) -> str:
-            ...
+        def bar(x: int) -> str: ...
 
         @typing.overload
-        def bar(x: str) -> int:
-            ...
+        def bar(x: str) -> int: ...
 
         def bar(x):
             return x

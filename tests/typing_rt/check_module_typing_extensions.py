@@ -2,12 +2,14 @@
 
 import sys
 import unittest
+
 try:
     import typing
     import typing_extensions
 except ImportError:
     print("SKIP")
     raise SystemExit
+
 
 class TestTypingExtensionsRuntime(unittest.TestCase):
     # TYPE_CHECKING should be present and boolean.

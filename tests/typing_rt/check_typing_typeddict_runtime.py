@@ -8,12 +8,15 @@ except ImportError:
 
 import unittest
 from typing import TypedDict, TypeVar
+
+
 class TestTypingTypedDictRuntime(unittest.TestCase):
     # Basic TypedDict-like construction path.
     def test_typed_dict_construction_and_access(self):
         class Movie(TypedDict):
             name: str
             year: int
+
         movie = Movie(name="Blade Runner", year=1982)
         self.assertEqual(movie["name"], "Blade Runner")
         self.assertEqual(movie["year"], 1982)
@@ -22,6 +25,7 @@ class TestTypingTypedDictRuntime(unittest.TestCase):
         class Movie(TypedDict):
             name: str
             year: int
+
         movie = Movie(name="Blade Runner", year=1982)
         self.assertTrue(isinstance(movie, dict))
         self.assertEqual(movie["name"], "Blade Runner")
@@ -32,6 +36,7 @@ class TestTypingTypedDictRuntime(unittest.TestCase):
         class Movie(TypedDict):
             name: str
             year: int
+
         movie = {"name": "Blade Runner", "year": 1982}
         with self.assertRaises(TypeError):
             isinstance(movie, Movie)

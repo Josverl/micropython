@@ -14,16 +14,20 @@ import unittest
 
 from typing import List, Tuple, Optional, ClassVar, Dict
 
+
 def xfail_on_error(func):
     """Report test as skipped ("xfail: ...") if it raises, or as ok if it
     passes. Use instead of @unittest.expectedFailure when an unexpected pass
     should NOT be reported as a failure (xpass)."""
+
     def wrapper(self):
         try:
             func(self)
         except Exception as e:
             raise unittest.SkipTest("xfail: {}".format(e))
+
     return wrapper
+
 
 class TestPep526Specification(unittest.TestCase):
     # Basic variable annotations at function/module scope.
@@ -132,11 +136,14 @@ class TestPep526ClassAndInstanceAnnotations(unittest.TestCase):
         enterprise_d.hit()
         self.assertEqual(Starship.stats.get("hits"), 1)
 
+
 class TestPep526Generics(unittest.TestCase):
     @xfail_on_error
     def test_user_defined_generic_class(self):
         from typing import Generic, TypeVar
+
         T = TypeVar("T")
+
         class Box(Generic[T]):
             def __init__(self, content):
                 self.content: T = content
@@ -190,6 +197,7 @@ class TestPep526RuntimeEffects(unittest.TestCase):
     @unittest.expectedFailure
     def test_class_body_annotation_undefined_name_raises(self):
         with self.assertRaises(NameError):
+
             class X:
                 var: NonexistentName  # Error!  # type: ignore
 

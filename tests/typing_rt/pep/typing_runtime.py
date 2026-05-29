@@ -37,6 +37,7 @@ class TestTypingParameterAnnotations(unittest.TestCase):
     # Parameter and return annotations are accepted and runnable.
     def test_simple_annotated_functions(self):
         from typing import Any, Dict, List
+
         def add_numbers(a: int, b: int) -> int:
             return a + b
 
@@ -62,9 +63,9 @@ class TestTypingSelfPython311(unittest.TestCase):
     # typing.Self is importable and usable in annotations at runtime.
     def test_self_in_callback(self):
         from typing import Callable, Self
+
         class BaseClass:
-            def register(self, callback: Callable[[Self], None]) -> None:
-                ...
+            def register(self, callback: Callable[[Self], None]) -> None: ...
 
         def cb(x):
             pass
@@ -89,9 +90,9 @@ class TestTypingProtocolRuntime(unittest.TestCase):
     # Runtime use of Protocol-typed callables is duck-typed.
     def test_adder_protocol_runtime(self):
         from typing import Protocol
+
         class Adder(Protocol):
-            def add(self, x, y):
-                ...
+            def add(self, x, y): ...
 
         class IntAdder:
             def add(self, x, y):
@@ -115,6 +116,7 @@ class TestTypingNewType(unittest.TestCase):
     # NewType returns an int that is an instance of int at runtime.
     def test_user_id_newtype(self):
         from typing import NewType
+
         UserId = NewType("UserId", int)
         some_id = UserId(524313)
         self.assertEqual(some_id, 524313)
@@ -125,6 +127,7 @@ class TestTypingAny(unittest.TestCase):
     # Any annotation accepts any value at runtime.
     def test_any_assignments(self):
         from typing import Any
+
         a: Any = None
         a = []  # OK
         a = 2  # OK
@@ -161,6 +164,7 @@ class TestTypingAnyStr(unittest.TestCase):
     # AnyStr-typed concat works for str+str and bytes+bytes.
     def test_concat_homogeneous(self):
         from typing import AnyStr
+
         def concat(a: AnyStr, b: AnyStr) -> AnyStr:
             return a + b
 
@@ -170,6 +174,7 @@ class TestTypingAnyStr(unittest.TestCase):
     # Mixed str+bytes raises TypeError at runtime.
     def test_concat_mixed_types_raises(self):
         from typing import AnyStr
+
         def concat(a: AnyStr, b: AnyStr) -> AnyStr:
             return a + b
 
@@ -182,8 +187,7 @@ class TestTypingLiteralString(unittest.TestCase):
     def test_caller_uses_literal_and_runtime_str(self):
         from typing import LiteralString
 
-        def run_query(sql: LiteralString) -> None:
-            ...
+        def run_query(sql: LiteralString) -> None: ...
 
         def caller(arbitrary_string: str, literal_string: LiteralString) -> None:
             run_query("SELECT * FROM students")  # OK
@@ -206,12 +210,10 @@ class TestTypingOverload(unittest.TestCase):
         from typing import overload
 
         @overload
-        def bar(x: int) -> str:
-            ...
+        def bar(x: int) -> str: ...
 
         @overload
-        def bar(x: str) -> int:
-            ...
+        def bar(x: str) -> int: ...
 
         def bar(x):
             return x
@@ -254,6 +256,7 @@ class TestTypingGenerator(unittest.TestCase):
     # Annotated Generator runs and yields values.
     def test_echo_generator(self):
         from typing import Generator
+
         def echo(a: float) -> Generator[int, float, str]:
             yield int(a)
             return "Done"
@@ -290,18 +293,17 @@ class TestTypingFinalDecorator(unittest.TestCase):
     @unittest.expectedFailure
     def test_final_method_and_class(self):
         from typing import final
+
         class Base:
             @final
-            def done(self) -> None:
-                ...
+            def done(self) -> None: ...
 
         class Sub(Base):
             def done(self) -> None:  # type: ignore # Error reported by type checker
                 ...
 
         @final
-        class Leaf:
-            ...
+        class Leaf: ...
 
         class Other(Leaf):  # type: ignore # Error reported by type checker
             ...
@@ -361,6 +363,7 @@ class TestTypingGetOrigin(unittest.TestCase):
     @unittest.expectedFailure
     def test_get_origin_non_none(self):
         from typing import Dict, Union, get_origin
+
         # if not get_origin(str) is None:
         #     print("- [ ] FIXME: document cpy_diff - get_origin(str) should be None")
         assert get_origin(Dict[str, int]) is dict
@@ -376,8 +379,12 @@ class TestTypingGetArgs(unittest.TestCase):
 
         # if not get_args(int) == ():
         #     print("- [ ] FIXME: document cpy_diff - get_args(int) should be ()")
-        assert get_args(Dict[int, str]) == (int, str), "get_args(Dict[int, str]) should be (int, str)"
-        assert get_args(Union[int, str]) == (int, str), "get_args(Union[int, str]) should be (int, str)"
+        assert get_args(Dict[int, str]) == (int, str), (
+            "get_args(Dict[int, str]) should be (int, str)"
+        )
+        assert get_args(Union[int, str]) == (int, str), (
+            "get_args(Union[int, str]) should be (int, str)"
+        )
 
 
 class TestTypingSubscriptables(unittest.TestCase):

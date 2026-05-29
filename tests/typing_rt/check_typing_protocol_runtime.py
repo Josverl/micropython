@@ -13,8 +13,7 @@ class TestTypingProtocolRuntime(unittest.TestCase):
     # Protocol-typed argument should accept objects with a compatible method.
     def test_protocol_adder_usage(self):
         class Adder(Protocol):
-            def add(self, x, y):
-                ...
+            def add(self, x, y): ...
 
         class IntAdder:
             def add(self, x, y):
