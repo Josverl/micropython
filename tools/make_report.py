@@ -34,9 +34,7 @@ REPO_ROOT = os.path.abspath(os.path.join(HERE, ".."))
 TESTS_DIR = os.path.join(REPO_ROOT, "tests")
 
 # unittest line:  "test_name (qualified.Class) ... <result>"
-_LINE_RE = re.compile(
-    r"^(?P<name>\S+) \((?P<cls>[^)]+)\) \.\.\.\s*(?P<result>.+?)\s*$"
-)
+_LINE_RE = re.compile(r"^(?P<name>\S+) \((?P<cls>[^)]+)\) \.\.\.\s*(?P<result>.+?)\s*$")
 
 _RESULT_TAG = {
     "ok": "ok",
@@ -242,6 +240,7 @@ def render_markdown(variant_names, files, table, file_summary, sizes, headers):
 def bold_failures(text):
     return re.sub(r"\b(FAIL|ERROR|xpass)\b", r"**\1**", text)
 
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument(
@@ -279,9 +278,7 @@ def main():
     table = OrderedDict()  # (file, cls, name) -> {variant: tag}
     file_status = {}  # (file, variant) -> "ran" | "skip" | "crash"
     file_summary = {
-        v: dict.fromkeys(
-            ("ok", "xfail", "xpass", "skip", "FAIL", "ERROR", "total"), 0
-        )
+        v: dict.fromkeys(("ok", "xfail", "xpass", "skip", "FAIL", "ERROR", "total"), 0)
         for v in variants
     }
     sizes = {v: get_binary_size(p) for v, p in variants.items()}
