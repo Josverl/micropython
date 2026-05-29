@@ -9,11 +9,23 @@ except ImportError:
 import sys
 import unittest
 
+try:
+    from collections import MutableMapping as collections_py # type: ignore
+except ImportError:
+    collections_py = None
 
 class TestCollectionsRuntime(unittest.TestCase):
-    # collections should expose expected module-level symbols in typing1 variant.
-    def test_collections_symbols_exist(self):
-        expected = ("MutableMapping", "OrderedDict", "deque", "namedtuple")
+    def test_collections_C_module_symbols_exist(self):
+        # collections should expose expected module-level symbols.
+        expected = ("OrderedDict", "deque", "namedtuple")
+        for name in expected:
+            with self.subTest(name=name):
+                self.assertTrue(hasattr(collections, name), "missing: {}".format(name))
+
+    @unittest.skipIf(collections_py is None, "MutableMapping not implemented in this runtime")
+    def test_collections_py_module_MutableMapping(self):
+        # MutableMapping is implemented in a .py module that needs to be explicitly included in a firmware.
+        expected = ("MutableMapping",)
         for name in expected:
             with self.subTest(name=name):
                 self.assertTrue(hasattr(collections, name), "missing: {}".format(name))

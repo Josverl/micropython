@@ -368,17 +368,12 @@ class TestPep544NewTypeAndAliases(unittest.TestCase):
             code: int
             secrets: Iterator[bytes]
 
-        UserId = NewType("UserId", Id)  # Error, can't provide distinct type # type: ignore
+        UserId = NewType("UserId", Id)  # type: ignore
 
-    # FIXME: cpy_diff : User Defined Generic Classes unsupported.
-    # TypeError: 'type' object isn't subscriptable.
-    @unittest.expectedFailure
     def test_sized_iterable_generic_protocol(self):
-        T = TypeVar("T")
-
+        T = TypeVar("T", covariant=True)
         class SizedIterable_3(Iterable[T], Sized, Protocol):
             pass
-
         CompatReversible = Union[Reversible[T], SizedIterable_3[T]]
 
 

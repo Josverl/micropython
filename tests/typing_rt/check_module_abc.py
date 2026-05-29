@@ -11,7 +11,6 @@ except Exception:
     print("SKIP")
     raise SystemExit
 
-# @unittest.skip("abc module is deprecated - so lets not waste space")
 class TestAbcRuntime(unittest.TestCase):
     # Basic abc helpers should be callable.
 

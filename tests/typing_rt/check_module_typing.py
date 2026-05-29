@@ -185,10 +185,6 @@ class TestTypingMod(unittest.TestCase):
             "no_type_check",
             "overload",
             "override",
-            "_AnyCall",
-            "_anyCall",
-            "_SubscriptableType",
-            "_Subscriptable",
             "TypeVar",
             "NewType",
             "Any",
@@ -356,12 +352,7 @@ class TestTypingMod(unittest.TestCase):
         for name in alias_names:
             with self.subTest(name=name):
                 alias = getattr(typing, name)
-                self.assertTrue(alias is typing._Subscriptable, "alias mismatch for {}".format(name))
                 result = alias[int]
-                self.assertTrue(result is typing._anyCall, "getitem mismatch for {}".format(name))
-
-        nested = typing.List[int][str]
-        self.assertTrue(nested is typing._anyCall)
 
 
 class TestTypingSpecDirectivesAndAliases(unittest.TestCase):

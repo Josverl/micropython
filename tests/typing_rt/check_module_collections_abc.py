@@ -1,17 +1,14 @@
 # module: collections.abc 
 # runtime parity checks.
 
-import unittest
-
 try:
     import collections.abc as cabc
+    import typing
 except ImportError:
-    cabc = None
+    print("SKIP")
+    raise SystemExit
 
-try:
-    import typing as typing_mod
-except ImportError:
-    typing_mod = None
+import unittest
 
 
 class TestCollectionsAbcRuntime(unittest.TestCase):
@@ -42,10 +39,10 @@ class TestCollectionsAbcRuntime(unittest.TestCase):
 
     # Iterable and Protocol callback pattern should execute.
     def test_iterable_protocol_callback_path(self):
-        if cabc is None or not hasattr(typing_mod, "Protocol"):
+        if cabc is None or not hasattr(typing, "Protocol"):
             return
 
-        class Combiner(typing_mod.Protocol):
+        class Combiner(typing.Protocol):
             def __call__(self, *vals: bytes, maxlen=None):
                 ...
 
