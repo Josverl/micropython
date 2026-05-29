@@ -1,5 +1,6 @@
 # Minimal MicroPython typing module
 
+
 def cast(type, val):
     return val
 
@@ -14,6 +15,7 @@ def get_args(type):
 
 def no_type_check(func):
     return func
+
 
 def overload(func):
     return None
@@ -44,10 +46,19 @@ class _SubscriptableType:
 
 _Subscriptable = _SubscriptableType()
 
+
 class Any:
     pass
 
-def TypeVar(name, *types, bound: Any | None = None, covariant=False, contravariant=False, infer_variance=False):
+
+def TypeVar(
+    name,
+    *types,
+    bound: Any | None = None,
+    covariant=False,
+    contravariant=False,
+    infer_variance=False,
+):
     return None
 
 
@@ -118,9 +129,11 @@ class TextIO:
 class Protocol:
     pass
 
+
 # CHECK
 class Reversible:
     pass
+
 
 class NotRequired:
     pass
@@ -128,7 +141,7 @@ class NotRequired:
 
 LiteralString = AnyStr = str
 TypedDict = dict
-final = no_type_check # PEP 591 final decorator is a no-op in MicroPython runtime.
+final = no_type_check  # PEP 591 final decorator is a no-op in MicroPython runtime.
 TypeAlias = Any
 
 # Deprecated
