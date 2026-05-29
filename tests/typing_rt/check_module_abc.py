@@ -16,14 +16,7 @@ class TestAbcRuntime(unittest.TestCase):
 
     @unittest.expectedFailure
     def test_abc_helper_functions(self):
-
-        if not hasattr(abc, "get_cache_token") or not hasattr(abc, "update_abstractmethods"):
-            # Helper API is optional in this runtime implementation.
-            self.assertTrue(getattr(sys.implementation, "name", "") == "micropython")
-            return
-
         token = abc.get_cache_token()
-
         class C(abc.ABC):
             @abc.abstractmethod
             def f(self):
@@ -51,17 +44,14 @@ class TestAbcRuntime(unittest.TestCase):
         sq = Square(5)
         self.assertEqual(sq.get_area(), 25)
 
-    # cpydiff: metaclass=ABCMeta behavior differs between CPython and MicroPython.
-    def test_abcmeta_metaclass_runtime_difference(self):
+    @unittest.expectedFailure
+    # TODO: CPY-DIFF: metaclass=ABCMeta behavior differs between CPython and MicroPython.
+    def test_abcmeta_metaclass_bot_supported(self):
         code = "class MyABC(metaclass=ABCMeta):\n    pass\n"
 
-        if getattr(sys.implementation, "name", "") == "micropython":
-            with self.assertRaises(Exception):
-                exec(code, {"ABCMeta": abc.ABCMeta}, {})
-        else:
-            ns = {"ABCMeta": abc.ABCMeta}
-            exec(code, ns, ns)
-            self.assertTrue("MyABC" in ns)
+        ns = {"ABCMeta": abc.ABCMeta}
+        exec(code, ns, ns)
+        self.assertTrue("MyABC" in ns)
 
 
 if __name__ == "__main__":

@@ -276,7 +276,7 @@ class TestTypingMod(unittest.TestCase):
         self.assertTrue(typing.no_type_check(f) is f)
         self.assertTrue(typing.override(f) is f)
         self.assertTrue(typing.overload(f) is None)
-        self.assertTrue(typing.TypeVar("T") is None)
+        self.assertFalse(typing.TypeVar("T") is None)
         self.assertTrue(typing.NewType("MyInt", int) is int)
 
     # typing spec (special types/qualifiers/protocols): classes are runtime-constructible.
@@ -386,12 +386,26 @@ class TestTypingSpecDirectivesAndAliases(unittest.TestCase):
 
     # typing spec (generics): TypeVar accepts constraints and variance/bound flags.
     def test_typevar_accepts_spec_parameters(self):
-        self.assertTrue(typing.TypeVar("T") is None)
-        self.assertTrue(typing.TypeVar("TBound", bound=int) is None)
-        self.assertTrue(typing.TypeVar("TCo", covariant=True) is None)
-        self.assertTrue(typing.TypeVar("TContra", contravariant=True) is None)
-        self.assertTrue(typing.TypeVar("TInfer", infer_variance=True) is None)
-        self.assertTrue(typing.TypeVar("TConstrained", int, str) is None)
+        self.assertTrue(typing.TypeVar("T") is not None)
+        self.assertTrue(typing.TypeVar("TBound", bound=int) is not None)
+        self.assertTrue(typing.TypeVar("TCo", covariant=True) is not None)
+        self.assertTrue(typing.TypeVar("TContra", contravariant=True) is not None)
+        self.assertTrue(typing.TypeVar("TInfer", infer_variance=True) is not None)
+        self.assertTrue(typing.TypeVar("TConstrained", int, str) is not None)
+
+    def test_generic_parameterized_base(self):
+        code = (
+            "from typing import Generic, TypeVar\n"
+            "T = TypeVar('T')\n"
+            "class Foo(Generic[T]):\n"
+            "    pass\n"
+            "class Bar(Foo[int]):\n"
+            "    pass\n"
+        )
+
+        ns = {}
+        exec(code, {}, ns)
+        self.assertFalse(type(ns["Bar"]) is type)
 
     # typing spec (type aliases): NewType runtime hook in this implementation returns the wrapped type.
     def test_newtype_runtime_behavior(self):

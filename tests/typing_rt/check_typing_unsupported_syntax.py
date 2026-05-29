@@ -14,25 +14,7 @@ import unittest
 
 class TestTypingUnsupportedRuntime(unittest.TestCase):
 
-    # typing runtime gap: Generic parameterized base does not yield a real class object.
-    def test_generic_parameterized_base_is_not_a_real_class(self):
-        if getattr(sys.implementation, "name", "") != "micropython":
-            return
-
-        code = (
-            "from typing import Generic, TypeVar\n"
-            "T = TypeVar('T')\n"
-            "class Foo(Generic[T]):\n"
-            "    pass\n"
-            "class Bar(Foo[int]):\n"
-            "    pass\n"
-        )
-
-        ns = {}
-        exec(code, {}, ns)
-        self.assertFalse(type(ns["Bar"]) is type)
-
-    # cpydiff: NewType has class-like runtime behavior in MicroPython vs callable object in CPython.
+    # TODO: CPY-DIFF: NewType has class-like runtime behavior in MicroPython vs callable object in CPython.
     @unittest.expectedFailure
     def test_newtype_class_semantics_runtime_difference(self):
         UserId = typing.NewType("UserId", int)

@@ -10,6 +10,8 @@ except ImportError:
 
 import unittest
 
+from typing import Protocol
+from collections.abc import Iterable, Callable, Awaitable, Sequence, Mapping
 
 class TestCollectionsAbcRuntime(unittest.TestCase):
     # Mapping and Sequence annotation signatures should execute.
@@ -20,7 +22,7 @@ class TestCollectionsAbcRuntime(unittest.TestCase):
         class Employee:
             pass
 
-        def notify_by_email(employees: cabc.Sequence[Employee], overrides: cabc.Mapping[str, str]) -> None:
+        def notify_by_email(employees: Sequence[Employee], overrides: Mapping[str, str]) -> None:
             self.assertTrue(type(overrides) is dict)
             self.assertTrue(type(employees) is list)
 
@@ -34,19 +36,16 @@ class TestCollectionsAbcRuntime(unittest.TestCase):
         async def on_update(value: str) -> None:
             return None
 
-        callback: cabc.Callable[[str], cabc.Awaitable[None]] = on_update
+        callback: Callable[[str], Awaitable[None]] = on_update
         self.assertTrue(callback is on_update)
 
     # Iterable and Protocol callback pattern should execute.
     def test_iterable_protocol_callback_path(self):
-        if cabc is None or not hasattr(typing, "Protocol"):
-            return
-
-        class Combiner(typing.Protocol):
+        class Combiner(Protocol):
             def __call__(self, *vals: bytes, maxlen=None):
                 ...
 
-        def batch_proc(data: cabc.Iterable[bytes], cb_results: Combiner) -> bytes:
+        def batch_proc(data: Iterable[bytes], cb_results: Combiner) -> bytes:
             for item in data:
                 _ = item
             out = cb_results(b"a", b"b")

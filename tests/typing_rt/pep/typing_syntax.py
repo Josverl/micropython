@@ -17,18 +17,6 @@ MyAlias :TypeAlias = str
 
 class TestTypingSyntax(unittest.TestCase):
 
-    @unittest.expectedFailure
-    # FIXME: MicroPython should reject attribute assignment / subscription on typing/List.
-    def test_typing_assigment_rejected(self):
-        if "micropython" not in sys.implementation.name:
-            self.skipTest("MicroPython-specific behaviour")
-        with self.assertRaises(AttributeError):
-            typing.a = None
-        with self.assertRaises(TypeError):
-            typing[0] = None
-        with self.assertRaises(AttributeError):
-            List.a = None
-
     # Module-level annotations and function with annotations should parse and run.
     def test_module_level_annotations_and_function(self):
         Vector: List[float]

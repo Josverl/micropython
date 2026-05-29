@@ -3,6 +3,7 @@
 import sys
 import unittest
 try:
+    import typing
     import typing_extensions
 except ImportError:
     print("SKIP")
@@ -63,40 +64,20 @@ class TestTypingExtensionsRuntime(unittest.TestCase):
 
     # TypeVarTuple and Unpack are optional in this runtime setup.
     def test_typevar_tuple_symbols_optional(self):
-        if typing_extensions is None:
-            return
 
-        if hasattr(typing_extensions, "TypeVarTuple"):
-            ts = typing_extensions.TypeVarTuple("Ts")
-            self.assertTrue(ts is not None)
-        elif getattr(sys.implementation, "name", "") == "micropython":
-            self.assertFalse(hasattr(typing_extensions, "TypeVarTuple"))
+        Ts = typing_extensions.TypeVarTuple("Ts")
+        self.assertTrue(Ts is not None)
 
-        if hasattr(typing_extensions, "Unpack"):
-            self.assertTrue(typing_extensions.Unpack is not None)
-        elif getattr(sys.implementation, "name", "") == "micropython":
-            self.assertFalse(hasattr(typing_extensions, "Unpack"))
+        self.assertTrue(typing_extensions.Unpack is not None)
 
     # TypeVar should be importable from typing_extensions in this runtime setup.
     def test_typevar_runtime_path(self):
-        if typing_extensions is None or not hasattr(typing_extensions, "TypeVar"):
-            return
 
-        t = typing_extensions.TypeVar("T")
-        if getattr(sys.implementation, "name", "") == "micropython":
-            self.assertTrue(t is None)
-        else:
-            self.assertTrue(t is not None)
+        T = typing_extensions.TypeVar("T")
+        self.assertTrue(T is not None)
 
     # reveal_type may be absent on MicroPython and is tracked explicitly.
     def test_reveal_type_runtime_difference(self):
-        if typing_extensions is None:
-            return
-
-        if getattr(sys.implementation, "name", "") == "micropython":
-            self.assertFalse(hasattr(typing_extensions, "reveal_type"))
-            return
-
         self.assertTrue(hasattr(typing_extensions, "reveal_type"))
 
 
