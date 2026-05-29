@@ -114,7 +114,7 @@ class TestPep589FunctionalSyntax(unittest.TestCase):
     # Functional syntax MovieAlt = TypedDict("MovieAlt", {...}) is not supported.
     @unittest.expectedFailure
     def test_functional_typeddict_construction(self):
-        # CPY-DIFF: cannot construct a TypedDict with the functional syntax in MicroPython
+        # cpydiff: cannot construct a TypedDict with the functional syntax in MicroPython
         MovieAlt = TypedDict("MovieAlt", {"name": str, "year": int})
 
         m_alt: MovieAlt = {"name": "Blade Runner", "year": 1982}
@@ -123,7 +123,7 @@ class TestPep589FunctionalSyntax(unittest.TestCase):
 
     @unittest.expectedFailure
     def test_functional_typeddict_constructor_kwargs(self):
-        # CPY-DIFF: cannot construct a TypedDict with keyword arguments in MicroPython
+        # cpydiff: cannot construct a TypedDict with keyword arguments in MicroPython
         MovieAlt2 = TypedDict("MovieAlt2", {"name": str, "year": int}, total=False)
         ma = MovieAlt2(name="Blade Runner", year=1982)
         self.assertTrue(isinstance(ma, dict))

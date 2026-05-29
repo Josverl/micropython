@@ -185,7 +185,7 @@ class TestPep544MergingAndExtending(unittest.TestCase):
 
 
 class TestPep544GenericProtocols(unittest.TestCase):
-    # FIXME: Micropython does not support User Defined Generic Classes.
+    # FIXME: MicroPython does not support User Defined Generic Classes.
     # TypeError: 'type' object isn't subscriptable.
     def test_generic_protocol(self):
         try:
@@ -215,7 +215,7 @@ class TestPep544RecursiveProtocols(unittest.TestCase):
         root: Traversable = SimpleTree()  # OK
         self.assertTrue(isinstance(root, SimpleTree))
 
-        # FIXME: CPY_DIFF : Micropython does not support User Defined Generic Classes
+        # FIXME: cpydiff : MicroPython does not support User Defined Generic Classes
         # TypeError: 'type' object isn't subscriptable
         # class Tree(Generic[T]):
         #     def leaves(self) -> List["Tree[T]"]: ...

@@ -51,7 +51,7 @@ class TestCollectionsRuntime(unittest.TestCase):
         self.assertEqual(list(od.keys()), ["a", "b"])
 
     @unittest.expectedFailure
-    # TODO: CPY-DIFF namedtuple rename/defaults keyword args are not supported on MicroPython.
+    # TODO: cpydiff namedtuple rename/defaults keyword args are not supported on MicroPython.
     # TypeError: function doesn't take keyword arguments
     def test_namedtuple_keyword_arguments_runtime_difference(self):
         nt = collections.namedtuple("NT", ["a", "a"], rename=True)

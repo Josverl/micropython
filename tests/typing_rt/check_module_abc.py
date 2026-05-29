@@ -45,7 +45,7 @@ class TestAbcRuntime(unittest.TestCase):
         self.assertEqual(sq.get_area(), 25)
 
     @unittest.expectedFailure
-    # TODO: CPY-DIFF: metaclass=ABCMeta behavior differs between CPython and MicroPython.
+    # TODO: cpydiff: metaclass=ABCMeta behavior differs between CPython and MicroPython.
     def test_abcmeta_metaclass_bot_supported(self):
         code = "class MyABC(metaclass=ABCMeta):\n    pass\n"
 

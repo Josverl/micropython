@@ -286,7 +286,7 @@ class TestTypingFinalAnnotation(unittest.TestCase):
 
 class TestTypingFinalDecorator(unittest.TestCase):
     # @final decorator and subclassing semantics at runtime.
-    # FIXME CPY-DIFF: MicroPython does not enforce @final at runtime; subclassing is silently allowed.
+    # FIXME cpydiff: MicroPython does not enforce @final at runtime; subclassing is silently allowed.
     @unittest.expectedFailure
     def test_final_method_and_class(self):
         from typing import final
@@ -311,7 +311,7 @@ class TestTypingFinalDecorator(unittest.TestCase):
 
 
 class TestTypingTypeVarTuple(unittest.TestCase):
-    # FIXME CPY-DIFF: TypeVarTuple/Unpack runtime support is incomplete.
+    # FIXME cpydiff: TypeVarTuple/Unpack runtime support is incomplete.
     @unittest.expectedFailure
     def test_typevar_tuple_unpack(self):
         from typing import TypeVarTuple, Unpack
@@ -324,7 +324,7 @@ class TestTypingTypeVarTuple(unittest.TestCase):
 class TestTypingParamSpec(unittest.TestCase):
     # ParamSpec, 3.11 notation
     # https://docs.python.org/3/library/typing.html#typing.ParamSpec
-    # FIXME CPY-DIFF: ParamSpec / collections.abc.Callable may not be available in MicroPython.
+    # FIXME cpydiff: ParamSpec / collections.abc.Callable may not be available in MicroPython.
     @unittest.expectedFailure
     def test_add_logging_with_paramspec(self):
         from typing import Callable, ParamSpec, TypeVar
@@ -357,7 +357,7 @@ class TestTypingParamSpec(unittest.TestCase):
 
 class TestTypingGetOrigin(unittest.TestCase):
     # https://docs.python.org/3/library/typing.html#typing.get_origin
-    # FIXME CPY-DIFF: get_origin() unsupported, or always returns None.
+    # FIXME cpydiff: get_origin() unsupported, or always returns None.
     @unittest.expectedFailure
     def test_get_origin_non_none(self):
         from typing import Dict, Union, get_origin
@@ -369,7 +369,7 @@ class TestTypingGetOrigin(unittest.TestCase):
 
 class TestTypingGetArgs(unittest.TestCase):
     # https://docs.python.org/3/library/typing.html#typing.get_args
-    # FIXME CPY-DIFF: get_args() unsupported, or always returns ().
+    # FIXME cpydiff: get_args() unsupported, or always returns ().
     @unittest.expectedFailure
     def test_get_args_non_empty(self):
         from typing import Dict, Union, get_args

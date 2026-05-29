@@ -14,7 +14,7 @@ import unittest
 
 class TestTypingUnsupportedRuntime(unittest.TestCase):
 
-    # TODO: CPY-DIFF: NewType has class-like runtime behavior in MicroPython vs callable object in CPython.
+    # TODO: cpydiff: NewType has class-like runtime behavior in MicroPython vs callable object in CPython.
     @unittest.expectedFailure
     def test_newtype_class_semantics_runtime_difference(self):
         UserId = typing.NewType("UserId", int)
