@@ -1,7 +1,7 @@
 """
 categories: Modules,typing
 description: ``runtime_checkable()`` is not implemented.
-cause: Micropython does not implement all typing features from Python 3.8+
+cause: MicroPython does not implement all typing features from Python 3.8+
 workaround: None
 """
 

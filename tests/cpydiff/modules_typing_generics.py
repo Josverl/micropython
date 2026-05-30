@@ -1,7 +1,7 @@
 """
 categories: Modules,typing
 description: User Defined Generics
-cause: Micropython does not implement User Defined Generics
+cause: MicroPython does not implement User Defined Generics
 workaround: None
 """
 

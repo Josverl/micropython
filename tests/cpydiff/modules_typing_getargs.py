@@ -1,7 +1,7 @@
 """
 categories: Modules,typing
 description: ``get_args()`` function not fully implemented.
-cause: Micropython does not implement all typing features
+cause: MicroPython does not implement all typing features
 workaround: None
 """
 
