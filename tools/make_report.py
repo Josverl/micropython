@@ -4,6 +4,7 @@ variants and emit a per-testcase markdown comparison report.
 
 Usage (run from anywhere):
     tools/make_report.py --variant name=/path/to/micropython [--variant ...] \
+                         [--keep-path name] [--keep-path ...] \
                          [--out report.md] [paths ...]
 
 `paths` may be individual `.py` files or directories (recursed for `.py`),
@@ -15,6 +16,10 @@ Each variant gets a column. Cell values use short tags:
     skip covers both runtime `skipTest()` calls and testcases whose whole
     file SKIP'd (or crashed) on this variant; the file's tests are still
     listed if another variant ran them.
+
+`--keep-path` can be specified for individual variants by name. If specified
+for a variant, MICROPYPATH will not be overridden when running tests for
+that variant, preserving the existing environment's module search path.
 """
 
 import argparse
@@ -29,9 +34,7 @@ REPO_ROOT = os.path.abspath(os.path.join(HERE, ".."))
 TESTS_DIR = os.path.join(REPO_ROOT, "tests")
 
 # unittest line:  "test_name (qualified.Class) ... <result>"
-_LINE_RE = re.compile(
-    r"^(?P<name>\S+) \((?P<cls>[^)]+)\) \.\.\.\s*(?P<result>.+?)\s*$"
-)
+_LINE_RE = re.compile(r"^(?P<name>\S+) \((?P<cls>[^)]+)\) \.\.\.\s*(?P<result>.+?)\s*$")
 
 _RESULT_TAG = {
     "ok": "ok",
@@ -102,16 +105,17 @@ def collect_test_files(paths):
     return files
 
 
-def run_variant(binary, test_file):
+def run_variant(binary, test_file, keep_path=False):
     """Run one test file under one variant. Return (stdout, returncode)."""
     env = os.environ.copy()
-    env["MICROPYPATH"] = os.pathsep.join(
-        (
-            ".frozen",
-            os.path.join(REPO_ROOT, "extmod"),
-            os.path.join(REPO_ROOT, "lib", "micropython-lib", "python-stdlib", "unittest"),
+    if not keep_path:
+        env["MICROPYPATH"] = os.pathsep.join(
+            (
+                ".frozen",
+                os.path.join(REPO_ROOT, "extmod"),
+                os.path.join(REPO_ROOT, "lib", "micropython-lib", "python-stdlib", "unittest"),
+            )
         )
-    )
     try:
         proc = subprocess.run(
             [binary, test_file],
@@ -236,6 +240,7 @@ def render_markdown(variant_names, files, table, file_summary, sizes, headers):
 def bold_failures(text):
     return re.sub(r"\b(FAIL|ERROR|xpass)\b", r"**\1**", text)
 
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument(
@@ -243,6 +248,12 @@ def main():
         action="append",
         required=True,
         help="name=path to a micropython binary (may be repeated)",
+    )
+    ap.add_argument(
+        "--keep-path",
+        action="append",
+        default=[],
+        help="variant name for which to keep MICROPYPATH (do not override it)",
     )
     ap.add_argument("--out", default="-", help="markdown output file (default: stdout)")
     ap.add_argument(
@@ -260,20 +271,22 @@ def main():
         name, _, path = spec.partition("=")
         variants[name] = path
 
+    # Build a set of variant names for which to keep the path
+    keep_path_variants = set(args.keep_path)
+
     files = collect_test_files(args.paths)
     table = OrderedDict()  # (file, cls, name) -> {variant: tag}
     file_status = {}  # (file, variant) -> "ran" | "skip" | "crash"
     file_summary = {
-        v: dict.fromkeys(
-            ("ok", "xfail", "xpass", "skip", "FAIL", "ERROR", "total"), 0
-        )
+        v: dict.fromkeys(("ok", "xfail", "xpass", "skip", "FAIL", "ERROR", "total"), 0)
         for v in variants
     }
     sizes = {v: get_binary_size(p) for v, p in variants.items()}
 
     for f in files:
         for vname, vbin in variants.items():
-            text, rc = run_variant(vbin, f)
+            keep_path = vname in keep_path_variants
+            text, rc = run_variant(vbin, f, keep_path=keep_path)
             first_lines = text.splitlines()[:3] if text else []
             if "SKIP" in first_lines:
                 file_status[(f, vname)] = "skip"
