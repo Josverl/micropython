@@ -37,8 +37,7 @@ class TestPep589UsingTypedDictTypes(unittest.TestCase):
             name: str
             year: int
 
-        def record_movie(movie: Movie) -> None:
-            ...
+        def record_movie(movie: Movie) -> None: ...
 
         record_movie({"name": "Blade Runner", "year": 1982})
 
@@ -114,17 +113,17 @@ class TestPep589FunctionalSyntax(unittest.TestCase):
     # Functional syntax MovieAlt = TypedDict("MovieAlt", {...}) is not supported.
     @unittest.expectedFailure
     def test_functional_typeddict_construction(self):
+        # cpydiff: cannot construct a TypedDict with the functional syntax in MicroPython
         MovieAlt = TypedDict("MovieAlt", {"name": str, "year": int})
-        MovieAlt2 = TypedDict("MovieAlt2", {"name": str, "year": int}, total=False)
 
         m_alt: MovieAlt = {"name": "Blade Runner", "year": 1982}
         self.assertEqual(m_alt["name"], "Blade Runner")
 
-    # FIXME: Difference or Crash - calling the functional TypedDict constructor with kwargs.
     @unittest.expectedFailure
     def test_functional_typeddict_constructor_kwargs(self):
-        MovieAlt = TypedDict("MovieAlt", {"name": str, "year": int})
-        ma = MovieAlt(name="Blade Runner", year=1982)
+        # cpydiff: cannot construct a TypedDict with keyword arguments in MicroPython
+        MovieAlt2 = TypedDict("MovieAlt2", {"name": str, "year": int}, total=False)
+        ma = MovieAlt2(name="Blade Runner", year=1982)
         self.assertTrue(isinstance(ma, dict))
 
 
@@ -136,6 +135,7 @@ class TestPep589InheritanceExamples(unittest.TestCase):
             year: int
 
         try:
+
             class BookBasedMovie(Movie):
                 based_on: str
         except TypeError as e:
@@ -186,9 +186,9 @@ class TestPep589TotalityWithRequiredNotRequired(unittest.TestCase):
 
 class TestPep589AnnotatedReadOnly(unittest.TestCase):
     # ReadOnly[List[str]] is a typing-only marker; runtime mutation still works.
-    @unittest.expectedFailure
     def test_band_with_readonly_members(self):
         from typing import ReadOnly
+
         class Band(TypedDict):
             name: str
             members: ReadOnly[list[str]]
@@ -220,7 +220,7 @@ class TestPep589ExtraItemsAndClosed(unittest.TestCase):
             name: str
 
         # FIXME: Difference or Crash - constructor with kwargs
-        MovieClosed( name="No Country for Old Men", year=2007  )  
+        MovieClosed(name="No Country for Old Men", year=2007)
         # Should be runtime error per ctor semantics
 
 

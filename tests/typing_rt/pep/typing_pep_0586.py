@@ -4,7 +4,7 @@
 
 
 try:
-    from __future__ import annotations # type: ignore
+    from __future__ import annotations  # type: ignore
 except Exception:
     print("SKIP")
     raise SystemExit
@@ -13,7 +13,7 @@ import unittest
 
 from typing import Literal, Optional, TypeAlias
 from typing import Tuple, List
-from typing import overload, IO, Any, Union, Text
+from typing import overload, IO, Any, Union
 
 
 class TestPep586LegalParameters(unittest.TestCase):
@@ -34,9 +34,6 @@ class TestPep586LegalParameters(unittest.TestCase):
         Literal[Color.RED]  # Assuming Color is some enum
         Literal[None]
 
-
-    # FIXME: TypeError: 'type' object isn't subscriptable for nested Literal aliases
-    @unittest.expectedFailure
     def test_literal_alias_grouping(self):
         ReadOnlyMode = Literal["r", "r+"]
         WriteAndTruncateMode = Literal["w", "w+", "wt", "w+t"]
@@ -45,11 +42,13 @@ class TestPep586LegalParameters(unittest.TestCase):
 
         AllModes = Literal[ReadOnlyMode, WriteAndTruncateMode, WriteNoTruncateMode, AppendMode]
 
-    # FIXME: TypeError: 'type' object isn't subscriptable for nested Literal use
-    @unittest.expectedFailure
     def test_literal_nested_subscription(self):
-        Literal[Literal[Literal[1, 2, 3], "foo"], 5, None]
-        Optional[Literal[1, 2, 3, "foo", 5]]
+        try:
+            Literal[Literal[Literal[1, 2, 3], "foo"], 5, None]
+            Optional[Literal[1, 2, 3, "foo", 5]]
+        except TypeError:
+            #  TypeError: 'type' object isn't subscriptable for nested Literal use
+            assert False, "nested Literal subscription should be supported"
 
 
 class TestPep586ParametersAtRuntime(unittest.TestCase):
@@ -112,8 +111,7 @@ class TestPep586IntelligentIndexing(unittest.TestCase):
             def __init__(self, param: int) -> None:
                 self.myfield = param
 
-            def mymethod(self, val: int) -> str:
-                ...
+            def mymethod(self, val: int) -> str: ...
 
         a: Literal["myfield"] = "myfield"
         b: Literal["mymethod"] = "mymethod"
@@ -128,8 +126,10 @@ class TestPep586IntelligentIndexing(unittest.TestCase):
 
 
 # FIXME: TypeError: 'type' object isn't subscriptable
-#_PathType = Union[str, bytes, int]
-_PathType :TypeAlias = str
+# _PathType = Union[str, bytes, int]
+_PathType: TypeAlias = str
+
+
 class TestPep586OverloadsInteraction(unittest.TestCase):
     # @overload declarations with Literal modes parse and stack at runtime.
     def test_overload_with_literal_modes(self):
@@ -138,15 +138,13 @@ class TestPep586OverloadsInteraction(unittest.TestCase):
         def open(
             path: _PathType,
             mode: Literal["r", "w", "a", "x", "r+", "w+", "a+", "x+"],
-        ) -> IO[Text]:
-            ...
+        ) -> IO[str]: ...
 
         @overload
         def open(
             path: _PathType,
             mode: Literal["rb", "wb", "ab", "xb", "r+b", "w+b", "a+b", "x+b"],
-        ) -> IO[bytes]:
-            ...
+        ) -> IO[bytes]: ...
 
         # Fallback overload for when the user isn't using literal types
         @overload
@@ -168,14 +166,11 @@ class TestPep586GenericsInteraction(unittest.TestCase):
         # A simplified definition for Matrix[row, column]
         # TypeError: 'type' object isn't subscriptable
         class Matrix(Generic[A, B]):
-            def __add__(self, other: Matrix[A, B]) -> Matrix[A, B]:
-                ...
+            def __add__(self, other: Matrix[A, B]) -> Matrix[A, B]: ...
 
-            def __matmul__(self, other: Matrix[B, C]) -> Matrix[A, C]:
-                ...
+            def __matmul__(self, other: Matrix[B, C]) -> Matrix[A, C]: ...
 
-            def transpose(self) -> Matrix[B, A]:
-                ...
+            def transpose(self) -> Matrix[B, A]: ...
 
         foo: Matrix[Literal[2], Literal[3]] = Matrix()
         bar: Matrix[Literal[3], Literal[7]] = Matrix()

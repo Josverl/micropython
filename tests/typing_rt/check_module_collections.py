@@ -9,11 +9,24 @@ except ImportError:
 import sys
 import unittest
 
+try:
+    from collections import MutableMapping as collections_py  # type: ignore
+except ImportError:
+    collections_py = None
+
 
 class TestCollectionsRuntime(unittest.TestCase):
-    # collections should expose expected module-level symbols in typing1 variant.
-    def test_collections_symbols_exist(self):
-        expected = ("MutableMapping", "OrderedDict", "deque", "namedtuple")
+    def test_collections_C_module_symbols_exist(self):
+        # collections should expose expected module-level symbols.
+        expected = ("OrderedDict", "deque", "namedtuple")
+        for name in expected:
+            with self.subTest(name=name):
+                self.assertTrue(hasattr(collections, name), "missing: {}".format(name))
+
+    @unittest.skipIf(collections_py is None, "MutableMapping not implemented in this runtime")
+    def test_collections_py_module_MutableMapping(self):
+        # MutableMapping is implemented in a .py module that needs to be explicitly included in a firmware.
+        expected = ("MutableMapping",)
         for name in expected:
             with self.subTest(name=name):
                 self.assertTrue(hasattr(collections, name), "missing: {}".format(name))
@@ -38,15 +51,10 @@ class TestCollectionsRuntime(unittest.TestCase):
         od["b"] = 2
         self.assertEqual(list(od.keys()), ["a", "b"])
 
-    # cpydiff: namedtuple rename/defaults keyword args are not supported on MicroPython.
+    @unittest.expectedFailure
+    # TODO: cpydiff namedtuple rename/defaults keyword args are not supported on MicroPython.
+    # TypeError: function doesn't take keyword arguments
     def test_namedtuple_keyword_arguments_runtime_difference(self):
-        if getattr(sys.implementation, "name", "") == "micropython":
-            with self.assertRaises(TypeError):
-                collections.namedtuple("NT", ["a", "a"], rename=True)
-            with self.assertRaises(TypeError):
-                collections.namedtuple("NT2", "a b c", defaults=(1, 2))
-            return
-
         nt = collections.namedtuple("NT", ["a", "a"], rename=True)
         self.assertEqual(nt._fields, ("a", "_1"))
 

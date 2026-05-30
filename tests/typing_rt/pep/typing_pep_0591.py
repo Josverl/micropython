@@ -18,6 +18,7 @@ from typing import NamedTuple
 try:
     from typing import final
 except ImportError:
+
     def final(cls):
         return cls
 
@@ -26,8 +27,7 @@ class TestFinalDecorator(unittest.TestCase):
     # The final decorator can be applied to a class.
     def test_final_decorator_on_class(self):
         @final
-        class Base_1:
-            ...
+        class Base_1: ...
 
         self.assertTrue(Base_1 is not None)
 
@@ -36,10 +36,10 @@ class TestFinalDecorator(unittest.TestCase):
     # also not enforced. Test that subclassing runs.
     def test_inherit_from_final_class_runtime(self):
         @final
-        class Base_1:
-            ...
+        class Base_1: ...
 
         try:
+
             class Derived_1(Base_1):  # Error: Cannot inherit from final class "Base"
                 ...
         except Exception:
@@ -50,10 +50,10 @@ class TestFinalDecorator(unittest.TestCase):
     def test_final_decorator_on_method(self):
         class Base_2:
             @final
-            def foo(self) -> None:
-                ...
+            def foo(self) -> None: ...
 
         try:
+
             class Derived_2(Base_2):
                 def foo(self) -> None:  # Error: Cannot override final attribute "foo"
                     # (previously declared in base class "Base")
@@ -109,6 +109,7 @@ class TestFinalWithContainers(unittest.TestCase):
     # Final[List[int]] as parameter annotation should not error at runtime.
     def test_final_list_param_runtime(self):
         try:
+
             def fun(x: Final[List[int]]) -> None:  # Error!
                 ...
         except Exception:
