@@ -12,9 +12,9 @@ resolved relative to the repository's `tests/` directory.
 Defaults to `typing typing/pep`.
 
 Each variant gets a column. Cell values use short tags:
-    ok  xfail  xpass  skip  FAIL  ERROR
+    ok  xfail  false_positive  skip  FAIL  ERROR
     skip covers both runtime `skipTest()` calls and testcases whose whole
-    file SKIP'd (or crashed) on this variant; the file's tests are still
+    file SKIP'd (or crashed); the file's tests are still
     listed if another variant ran them.
 
 `--keep-path` can be specified for individual variants by name. If specified
@@ -23,6 +23,7 @@ that variant, preserving the existing environment's module search path.
 """
 
 import argparse
+import datetime
 import os
 import re
 import subprocess
@@ -36,12 +37,67 @@ TESTS_DIR = os.path.join(REPO_ROOT, "tests")
 # unittest line:  "test_name (qualified.Class) ... <result>"
 _LINE_RE = re.compile(r"^(?P<name>\S+) \((?P<cls>[^)]+)\) \.\.\.\s*(?P<result>.+?)\s*$")
 
+
+def get_git_info(repo_path):
+    """Return (branch_or_tag, commit_hash) for a given repository path.
+    Returns (None, None) if git info cannot be retrieved."""
+    try:
+        ref_name = "unknown"
+
+        # Try to get branch name first
+        proc = subprocess.run(
+            ["git", "symbolic-ref", "--short", "HEAD"],
+            cwd=repo_path,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=5,
+        )
+        if proc.returncode == 0:
+            ref_name = proc.stdout.decode("utf-8").strip()
+        else:
+            # Not on a branch (detached HEAD), try to get a tag
+            proc = subprocess.run(
+                ["git", "describe", "--tags", "--exact-match"],
+                cwd=repo_path,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                timeout=5,
+            )
+            if proc.returncode == 0:
+                ref_name = proc.stdout.decode("utf-8").strip()
+            else:
+                # No exact tag, try git describe for a meaningful ref
+                proc = subprocess.run(
+                    ["git", "describe", "--all", "--always"],
+                    cwd=repo_path,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    timeout=5,
+                )
+                if proc.returncode == 0:
+                    ref_name = proc.stdout.decode("utf-8").strip()
+
+        # Get commit hash
+        proc = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=repo_path,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=5,
+        )
+        commit = proc.stdout.decode("utf-8").strip()[:12] if proc.returncode == 0 else "unknown"
+
+        return ref_name, commit
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return None, None
+
+
 _RESULT_TAG = {
     "ok": "ok",
     "FAIL": "FAIL",
     "ERROR": "ERROR",
     "expected failure": "xfail",
-    "unexpected success": "xpass",
+    "unexpected success": "false_positive",
 }
 
 
@@ -168,18 +224,23 @@ def _fmt_kb(n):
     return "{:,}".format(n).replace(",", "_")
 
 
-def render_markdown(variant_names, files, table, file_summary, sizes, headers):
+def render_markdown(variant_names, files, table, file_summary, sizes, headers, metadata):
     out = []
     out.append("# Test report\n")
     out.append("## Summary\n")
+
+    # Add metadata section
+    if metadata:
+        out.append(f" - Generated: {metadata['timestamp']}\n")
+        out.append(f" - micropython: {metadata['main_branch']} ({metadata['main_commit']})\n")
+        if metadata.get("lib_branch") and metadata.get("lib_commit"):
+            out.append(
+                f" - micropython-lib: {metadata['lib_branch']} ({metadata['lib_commit']})\n"
+            )
+        out.append("")
+
     out.append(
-        "Legend: **ok**=passed, **xfail**=expected failure, **xpass**=unexpected "
-        "success, **skip**=test skipped (includes whole-file SKIP on this "
-        "variant), **FAIL**=test failed, **ERROR**=test errored (also used when the test module crashed). "
-        "Firmware sizes are reported in bytes from `size <binary>`.\n"
-    )
-    out.append(
-        "| Variant | OK | xfail | xpass | skip | FAIL | ERROR | total | text | data | bss | size | Δsize |"
+        "| Variant | PASS | xfail | skip | FAIL | False Positive | ERROR | total | text | data | bss | size | Δsize |"
     )
     out.append("|:---|" + "---:|" * 12)
     baseline_size = None
@@ -203,9 +264,9 @@ def render_markdown(variant_names, files, table, file_summary, sizes, headers):
                 v,
                 c["ok"],
                 c["xfail"],
-                c["xpass"],
                 c["skip"],
                 c["FAIL"],
+                c["false_positive"],
                 c["ERROR"],
                 c["total"],
                 _fmt_kb(s.get("text")),
@@ -216,6 +277,17 @@ def render_markdown(variant_names, files, table, file_summary, sizes, headers):
             )
         )
     out.append("")
+
+    out.append(
+        "\n"
+        "Legend:\n"
+        " - **ok**=passed, **xfail**=expected failure, **skip**=test skipped\n"
+        " - **FAIL**=test failed, **False Positive**=unexpected success\n"
+        " - **ERROR**=test errored (also used when the test module crashed).\n"
+        " - Firmware sizes are reported in bytes from `size <binary>`.\n"
+    )
+
+
     for f in files:
         rows = [(k, v) for k, v in table.items() if k[0] == f]
         if not rows:
@@ -234,11 +306,13 @@ def render_markdown(variant_names, files, table, file_summary, sizes, headers):
             cells = [per.get(v, "skip") for v in variant_names]
             out.append("| %s | %s | %s |" % (cls, name, " | ".join(cells)))
         out.append("")
+
+
     return "\n".join(out)
 
 
 def bold_failures(text):
-    return re.sub(r"\b(FAIL|ERROR|xpass)\b", r"**\1**", text)
+    return re.sub(r"\b(FAIL|ERROR|false_positive)\b", r"**\1**", text)
 
 
 def main():
@@ -278,7 +352,7 @@ def main():
     table = OrderedDict()  # (file, cls, name) -> {variant: tag}
     file_status = {}  # (file, variant) -> "ran" | "skip" | "crash"
     file_summary = {
-        v: dict.fromkeys(("ok", "xfail", "xpass", "skip", "FAIL", "ERROR", "total"), 0)
+        v: dict.fromkeys(("ok", "xfail", "false_positive", "skip", "FAIL", "ERROR", "total"), 0)
         for v in variants
     }
     sizes = {v: get_binary_size(p) for v, p in variants.items()}
@@ -325,7 +399,22 @@ def main():
             file_summary[vname]["total"] += 1
 
     headers = {f: read_header_comments(os.path.join(TESTS_DIR, f)) for f in files}
-    md = render_markdown(list(variants), files, table, file_summary, sizes, headers)
+
+    # Gather metadata
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    main_branch, main_commit = get_git_info(REPO_ROOT)
+    lib_path = os.path.join(REPO_ROOT, "lib", "micropython-lib")
+    lib_branch, lib_commit = get_git_info(lib_path) if os.path.isdir(lib_path) else (None, None)
+
+    metadata = {
+        "timestamp": timestamp,
+        "main_branch": main_branch or "unknown",
+        "main_commit": main_commit or "unknown",
+        "lib_branch": lib_branch,
+        "lib_commit": lib_commit,
+    }
+
+    md = render_markdown(list(variants), files, table, file_summary, sizes, headers, metadata)
     if args.out == "-":
         print(md)
     else:
