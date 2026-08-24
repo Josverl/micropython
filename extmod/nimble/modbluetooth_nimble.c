@@ -391,6 +391,17 @@ static void gatts_register_cb(struct ble_gatt_register_ctxt *ctxt, void *arg) {
     }
 }
 
+#if MICROPY_PY_BLUETOOTH_ENABLE_PHY_SELECTION
+// Events report the HCI PHY enum (1M=1, 2M=2, Coded=3), but the Python API uses
+// the HCI preference bitmask (1M=0x01, 2M=0x02, Coded=0x04).
+static uint8_t nimble_phy_to_mask(uint8_t phy) {
+    if (phy < BLE_HCI_LE_PHY_1M || phy > BLE_HCI_LE_PHY_CODED) {
+        return 0;
+    }
+    return 1 << (phy - 1);
+}
+#endif
+
 static int commmon_gap_event_cb(struct ble_gap_event *event, void *arg) {
     struct ble_gap_conn_desc desc;
 
@@ -410,6 +421,17 @@ static int commmon_gap_event_cb(struct ble_gap_event *event, void *arg) {
             }
             return 0;
         }
+
+        #if MICROPY_PY_BLUETOOTH_ENABLE_PHY_SELECTION
+        case BLE_GAP_EVENT_PHY_UPDATE_COMPLETE: {
+            DEBUG_printf("commmon_gap_event_cb: phy update: status=%d tx=%d rx=%d\n", event->phy_updated.status, event->phy_updated.tx_phy, event->phy_updated.rx_phy);
+            mp_bluetooth_gap_on_phy_update(event->phy_updated.conn_handle,
+                nimble_phy_to_mask(event->phy_updated.tx_phy),
+                nimble_phy_to_mask(event->phy_updated.rx_phy),
+                event->phy_updated.status == 0 ? 0 : 1);
+            return 0;
+        }
+        #endif
 
         case BLE_GAP_EVENT_MTU: {
             if (event->mtu.channel_id == BLE_L2CAP_CID_ATT) {
@@ -478,7 +500,7 @@ static int central_gap_event_cb(struct ble_gap_event *event, void *arg) {
 
         case BLE_GAP_EVENT_PHY_UPDATE_COMPLETE:
             DEBUG_printf("central_gap_event_cb: phy update: %d\n", event->phy_updated.tx_phy);
-            return 0;
+            break;
 
         case BLE_GAP_EVENT_REPEAT_PAIRING: {
             // We recognized this peer but the peer doesn't recognize us.
@@ -1033,6 +1055,41 @@ int mp_bluetooth_gap_disconnect(uint16_t conn_handle) {
     }
     return ble_hs_err_to_errno(ble_gap_terminate(conn_handle, BLE_ERR_REM_USER_CONN_TERM));
 }
+
+#if MICROPY_PY_BLUETOOTH_ENABLE_PHY_SELECTION
+uint8_t mp_bluetooth_get_supported_phys(void) {
+    uint8_t phys = MP_BLUETOOTH_PHY_1M;
+    if (!mp_bluetooth_is_active()) {
+        return phys;
+    }
+    // Cached by the host during startup, so this costs no HCI traffic.
+    uint32_t feat = ble_hs_hci_get_le_supported_feat();
+    if (feat & BLE_HS_HCI_LE_FEAT_2M_PHY) {
+        phys |= MP_BLUETOOTH_PHY_2M;
+    }
+    if (feat & BLE_HS_HCI_LE_FEAT_CODED_PHY) {
+        phys |= MP_BLUETOOTH_PHY_CODED;
+    }
+    return phys;
+}
+
+int mp_bluetooth_gap_set_default_phys(uint8_t tx_phys, uint8_t rx_phys, uint16_t coded_pref) {
+    // LE Set Default PHY has no phy_options field, so coded_pref cannot be
+    // applied here; it is only used by LE Set PHY in mp_bluetooth_gap_set_phy.
+    (void)coded_pref;
+    if (!mp_bluetooth_is_active()) {
+        return ERRNO_BLUETOOTH_NOT_ACTIVE;
+    }
+    return ble_hs_err_to_errno(ble_gap_set_prefered_default_le_phy(tx_phys, rx_phys));
+}
+
+int mp_bluetooth_gap_set_phy(uint16_t conn_handle, uint8_t tx_phys, uint8_t rx_phys, uint16_t coded_pref) {
+    if (!mp_bluetooth_is_active()) {
+        return ERRNO_BLUETOOTH_NOT_ACTIVE;
+    }
+    return ble_hs_err_to_errno(ble_gap_set_prefered_le_phy(conn_handle, tx_phys, rx_phys, coded_pref));
+}
+#endif // MICROPY_PY_BLUETOOTH_ENABLE_PHY_SELECTION
 
 int mp_bluetooth_gatts_read(uint16_t value_handle, const uint8_t **value, size_t *value_len) {
     if (!mp_bluetooth_is_active()) {
