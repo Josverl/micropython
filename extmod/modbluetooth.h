@@ -66,6 +66,12 @@
 #define MICROPY_PY_BLUETOOTH_ENABLE_PAIRING_BONDING (0)
 #endif
 
+// A port can optionally enable selection of the BLE 5 PHYs (2M and Coded) for
+// connections.
+#ifndef MICROPY_PY_BLUETOOTH_ENABLE_PHY_SELECTION
+#define MICROPY_PY_BLUETOOTH_ENABLE_PHY_SELECTION (0)
+#endif
+
 // Optionally enable support for the `hci_cmd` function allowing
 // Python to directly low-level HCI commands.
 #ifndef MICROPY_PY_BLUETOOTH_ENABLE_HCI_CMD
@@ -161,6 +167,7 @@
 #define MP_BLUETOOTH_IRQ_GET_SECRET                     (29)
 #define MP_BLUETOOTH_IRQ_SET_SECRET                     (30)
 #define MP_BLUETOOTH_IRQ_PASSKEY_ACTION                 (31)
+#define MP_BLUETOOTH_IRQ_PHY_UPDATE                     (32)
 
 #define MP_BLUETOOTH_ADDRESS_MODE_PUBLIC (0)
 #define MP_BLUETOOTH_ADDRESS_MODE_RANDOM (1)
@@ -189,6 +196,20 @@
 // These are the ops for mp_bluetooth_gatts_notify_indicate.
 #define MP_BLUETOOTH_GATTS_OP_NOTIFY                    (1)
 #define MP_BLUETOOTH_GATTS_OP_INDICATE                  (2)
+
+// PHY selection masks. These match the HCI "PHY preference" bitmasks used by
+// LE Set Default PHY / LE Set PHY, so they can be passed to the stack directly.
+#define MP_BLUETOOTH_PHY_1M                             (0x01)
+#define MP_BLUETOOTH_PHY_2M                             (0x02)
+#define MP_BLUETOOTH_PHY_CODED                          (0x04)
+#define MP_BLUETOOTH_PHY_ANY                            (0x07)
+
+// Coding preference for the Coded PHY. This is the HCI phy_options field, which
+// is a separate argument to the PHY mask above and is only a hint: the
+// controller is free to use either coding regardless of what is requested.
+#define MP_BLUETOOTH_CODED_ANY                          (0x0000)
+#define MP_BLUETOOTH_CODED_S2                           (0x0001)
+#define MP_BLUETOOTH_CODED_S8                           (0x0002)
 
 /*
 These aren't included in the module for space reasons, but can be used
@@ -226,6 +247,7 @@ _IRQ_ENCRYPTION_UPDATE = const(28)
 _IRQ_GET_SECRET = const(29)
 _IRQ_SET_SECRET = const(30)
 _IRQ_PASSKEY_ACTION = const(31)
+_IRQ_PHY_UPDATE = const(32)
 
 _FLAG_BROADCAST = const(0x0001)
 _FLAG_READ = const(0x0002)
@@ -320,6 +342,21 @@ void mp_bluetooth_set_io_capability(uint8_t capability);
 // Get or set the GAP device name that will be used by service 0x1800, characteristic 0x2a00.
 size_t mp_bluetooth_gap_get_device_name(const uint8_t **buf);
 int mp_bluetooth_gap_set_device_name(const uint8_t *buf, size_t len);
+
+#if MICROPY_PY_BLUETOOTH_ENABLE_PHY_SELECTION
+// Returns the mask of PHYs this controller supports. MP_BLUETOOTH_PHY_1M is
+// always set; 2M and Coded depend on the controller.
+uint8_t mp_bluetooth_get_supported_phys(void);
+
+// Set the preferred PHYs for subsequent connections (LE Set Default PHY). Does
+// not affect connections that are already established. Returns errno on failure.
+int mp_bluetooth_gap_set_default_phys(uint8_t tx_phys, uint8_t rx_phys, uint16_t coded_pref);
+
+// Request a PHY change on an established connection (LE Set PHY). The result is
+// negotiated with the peer and reported via MP_BLUETOOTH_IRQ_PHY_UPDATE, which
+// may differ from what was requested. Returns errno on failure.
+int mp_bluetooth_gap_set_phy(uint16_t conn_handle, uint8_t tx_phys, uint8_t rx_phys, uint16_t coded_pref);
+#endif
 
 // Start advertisement. Will re-start advertisement when already enabled.
 // Returns errno on failure.
@@ -417,6 +454,11 @@ void mp_bluetooth_gap_on_connected_disconnected(uint8_t event, uint16_t conn_han
 
 // Call this when any connection parameters have been changed.
 void mp_bluetooth_gap_on_connection_update(uint16_t conn_handle, uint16_t conn_interval, uint16_t conn_latency, uint16_t supervision_timeout, uint16_t status);
+
+#if MICROPY_PY_BLUETOOTH_ENABLE_PHY_SELECTION
+// Call this when the PHY in use on a connection has changed.
+void mp_bluetooth_gap_on_phy_update(uint16_t conn_handle, uint8_t tx_phy, uint8_t rx_phy, uint16_t status);
+#endif
 
 #if MICROPY_PY_BLUETOOTH_ENABLE_PAIRING_BONDING
 // Call this when any connection encryption has been changed (e.g. during pairing).
