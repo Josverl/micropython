@@ -33,3 +33,9 @@ user.props
 # Created by ci.sh esp8266 targets
 /xtensa-lx106-elf-standalone.tar.gz
 /xtensa-lx106-elf/
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
+.beads/proxieddb/

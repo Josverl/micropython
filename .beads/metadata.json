@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "micropython",
+  "project_id": "f93e25b4-4a7d-4fc7-825f-3bc778f2c8a9"
+}
