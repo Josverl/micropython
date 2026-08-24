@@ -193,6 +193,26 @@ static bool controller_static_addr_available = false;
 static const uint8_t read_static_address_command_complete_prefix[] = { 0x0e, 0x1b, 0x01, 0x09, 0xfc };
 #endif
 
+#if MICROPY_PY_BLUETOOTH_ENABLE_PHY_SELECTION
+// LE feature bits, Core spec Vol 6 Part B 4.6.
+#define BTSTACK_LE_FEAT_2M_PHY (1 << 8)
+#define BTSTACK_LE_FEAT_CODED_PHY (1 << 11)
+
+static uint32_t btstack_le_supported_features = 0;
+
+// Command complete for LE Read Local Supported Features (opcode 0x2003).
+static const uint8_t read_le_local_supported_features_prefix[] = { 0x0e, 0x0c, 0x01, 0x03, 0x20 };
+
+// Events report the HCI PHY enum (1M=1, 2M=2, Coded=3), but the Python API uses
+// the HCI preference bitmask (1M=0x01, 2M=0x02, Coded=0x04).
+static uint8_t btstack_phy_to_mask(uint8_t phy) {
+    if (phy < 1 || phy > 3) {
+        return 0;
+    }
+    return 1 << (phy - 1);
+}
+#endif
+
 static void btstack_packet_handler_generic(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size) {
     (void)channel;
     (void)size;
@@ -236,6 +256,18 @@ static void btstack_packet_handler_generic(uint8_t packet_type, uint16_t channel
                 mp_bluetooth_gap_on_connection_update(conn_handle, conn_interval, conn_latency, supervision_timeout, status);
                 break;
             }
+            #if MICROPY_PY_BLUETOOTH_ENABLE_PHY_SELECTION
+            case HCI_SUBEVENT_LE_PHY_UPDATE_COMPLETE: {
+                uint8_t status = hci_subevent_le_phy_update_complete_get_status(packet);
+                uint16_t conn_handle = hci_subevent_le_phy_update_complete_get_connection_handle(packet);
+                uint8_t tx_phy = hci_subevent_le_phy_update_complete_get_tx_phy(packet);
+                // BTstack generates no accessor for rx_phy; it follows tx_phy at offset 7.
+                uint8_t rx_phy = packet[7];
+                DEBUG_printf("- LE Connection %04x: phy update - tx %u, rx %u, status %u\n", conn_handle, tx_phy, rx_phy, status);
+                mp_bluetooth_gap_on_phy_update(conn_handle, btstack_phy_to_mask(tx_phy), btstack_phy_to_mask(rx_phy), status);
+                break;
+            }
+            #endif
         }
     } else if (event_type == BTSTACK_EVENT_STATE) {
         uint8_t state = btstack_event_state_get_state(packet);
@@ -243,6 +275,10 @@ static void btstack_packet_handler_generic(uint8_t packet_type, uint16_t channel
         if (state == HCI_STATE_WORKING) {
             // Signal that initialisation has completed.
             mp_bluetooth_btstack_state = MP_BLUETOOTH_BTSTACK_STATE_ACTIVE;
+            #if MICROPY_PY_BLUETOOTH_ENABLE_PHY_SELECTION
+            // BTstack doesn't cache these, so ask once now and keep the answer.
+            hci_send_cmd(&hci_le_read_local_supported_features);
+            #endif
         } else if (state == HCI_STATE_HALTING) {
             // Signal that de-initialisation has begun.
             mp_bluetooth_btstack_state = MP_BLUETOOTH_BTSTACK_STATE_HALTING;
@@ -257,6 +293,13 @@ static void btstack_packet_handler_generic(uint8_t packet_type, uint16_t channel
         DEBUG_printf("  --> hci transport packet sent\n");
     } else if (event_type == HCI_EVENT_COMMAND_COMPLETE) {
         DEBUG_printf("  --> hci command complete\n");
+        #if MICROPY_PY_BLUETOOTH_ENABLE_PHY_SELECTION
+        if (memcmp(packet, read_le_local_supported_features_prefix, sizeof(read_le_local_supported_features_prefix)) == 0) {
+            // Only the first 4 bytes carry the PHY feature bits we care about.
+            btstack_le_supported_features = little_endian_read_32(packet, 6);
+            DEBUG_printf("  --> le features 0x%08x\n", (unsigned int)btstack_le_supported_features);
+        }
+        #endif
         #if MICROPY_BLUETOOTH_USE_ZEPHYR_STATIC_ADDRESS
         if (memcmp(packet, read_static_address_command_complete_prefix, sizeof(read_static_address_command_complete_prefix)) == 0) {
             DEBUG_printf("  --> static address available\n");
@@ -1256,6 +1299,41 @@ int mp_bluetooth_gap_disconnect(uint16_t conn_handle) {
     gap_disconnect(conn_handle);
     return 0;
 }
+
+#if MICROPY_PY_BLUETOOTH_ENABLE_PHY_SELECTION
+uint8_t mp_bluetooth_get_supported_phys(void) {
+    uint8_t phys = MP_BLUETOOTH_PHY_1M;
+    if (btstack_le_supported_features & BTSTACK_LE_FEAT_2M_PHY) {
+        phys |= MP_BLUETOOTH_PHY_2M;
+    }
+    if (btstack_le_supported_features & BTSTACK_LE_FEAT_CODED_PHY) {
+        phys |= MP_BLUETOOTH_PHY_CODED;
+    }
+    return phys;
+}
+
+int mp_bluetooth_gap_set_default_phys(uint8_t tx_phys, uint8_t rx_phys, uint16_t coded_pref) {
+    // LE Set Default PHY has no PHY_options field, so coded_pref cannot be
+    // applied here; it is only used by LE Set PHY in mp_bluetooth_gap_set_phy.
+    (void)coded_pref;
+    DEBUG_printf("mp_bluetooth_gap_set_default_phys\n");
+    if (!mp_bluetooth_is_active()) {
+        return ERRNO_BLUETOOTH_NOT_ACTIVE;
+    }
+    // All_PHYs == 0: we have both a TX and an RX preference.
+    hci_send_cmd(&hci_le_set_default_phy, 0, tx_phys, rx_phys);
+    return 0;
+}
+
+int mp_bluetooth_gap_set_phy(uint16_t conn_handle, uint8_t tx_phys, uint8_t rx_phys, uint16_t coded_pref) {
+    DEBUG_printf("mp_bluetooth_gap_set_phy\n");
+    if (!mp_bluetooth_is_active()) {
+        return ERRNO_BLUETOOTH_NOT_ACTIVE;
+    }
+    hci_send_cmd(&hci_le_set_phy, conn_handle, 0, tx_phys, rx_phys, coded_pref);
+    return 0;
+}
+#endif // MICROPY_PY_BLUETOOTH_ENABLE_PHY_SELECTION
 
 #if MICROPY_PY_BLUETOOTH_ENABLE_PAIRING_BONDING
 
