@@ -95,7 +95,6 @@ static mp_obj_t bluetooth_handle_errno(int err) {
 // The stacks provide no way to read these back, so cache what was last set.
 static uint8_t bluetooth_tx_phys = MP_BLUETOOTH_PHY_1M;
 static uint8_t bluetooth_rx_phys = MP_BLUETOOTH_PHY_1M;
-static uint16_t bluetooth_coded_pref = MP_BLUETOOTH_CODED_ANY;
 
 static uint8_t bluetooth_parse_phys(mp_obj_t obj) {
     mp_int_t phys = mp_obj_get_int(obj);
@@ -354,8 +353,6 @@ static mp_obj_t bluetooth_ble_config(size_t n_args, const mp_obj_t *args, mp_map
                 return mp_obj_new_int(bluetooth_tx_phys);
             case MP_QSTR_rx_phy:
                 return mp_obj_new_int(bluetooth_rx_phys);
-            case MP_QSTR_coded_pref:
-                return mp_obj_new_int(bluetooth_coded_pref);
             case MP_QSTR_phys:
                 return mp_obj_new_int(mp_bluetooth_get_supported_phys());
             #endif
@@ -463,15 +460,6 @@ static mp_obj_t bluetooth_ble_config(size_t n_args, const mp_obj_t *args, mp_map
                         phys_changed = true;
                         break;
                     }
-                    case MP_QSTR_coded_pref: {
-                        mp_int_t coded_pref = mp_obj_get_int(e->value);
-                        if (coded_pref < MP_BLUETOOTH_CODED_ANY || coded_pref > MP_BLUETOOTH_CODED_S8) {
-                            mp_raise_OSError(MP_EINVAL);
-                        }
-                        bluetooth_coded_pref = (uint16_t)coded_pref;
-                        phys_changed = true;
-                        break;
-                    }
                     #endif
                     default:
                         mp_raise_ValueError(MP_ERROR_TEXT("unknown config param"));
@@ -482,7 +470,7 @@ static mp_obj_t bluetooth_ble_config(size_t n_args, const mp_obj_t *args, mp_map
         #if MICROPY_PY_BLUETOOTH_ENABLE_PHY_SELECTION
         if (phys_changed) {
             // Applies to subsequent connections only; existing ones are untouched.
-            bluetooth_handle_errno(mp_bluetooth_gap_set_default_phys(bluetooth_tx_phys, bluetooth_rx_phys, bluetooth_coded_pref));
+            bluetooth_handle_errno(mp_bluetooth_gap_set_default_phys(bluetooth_tx_phys, bluetooth_rx_phys));
         }
         #endif
 
@@ -786,7 +774,7 @@ static mp_obj_t bluetooth_ble_gap_set_phy(size_t n_args, const mp_obj_t *pos_arg
     // Omitted arguments fall back to the configured defaults.
     uint8_t tx_phys = bluetooth_tx_phys;
     uint8_t rx_phys = bluetooth_rx_phys;
-    uint16_t coded_pref = bluetooth_coded_pref;
+    uint16_t coded_pref = MP_BLUETOOTH_CODED_ANY;
 
     if (args[ARG_tx_phy].u_obj != mp_const_none) {
         tx_phys = bluetooth_parse_phys(args[ARG_tx_phy].u_obj);

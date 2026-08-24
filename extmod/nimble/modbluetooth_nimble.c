@@ -1073,10 +1073,7 @@ uint8_t mp_bluetooth_get_supported_phys(void) {
     return phys;
 }
 
-int mp_bluetooth_gap_set_default_phys(uint8_t tx_phys, uint8_t rx_phys, uint16_t coded_pref) {
-    // LE Set Default PHY has no phy_options field, so coded_pref cannot be
-    // applied here; it is only used by LE Set PHY in mp_bluetooth_gap_set_phy.
-    (void)coded_pref;
+int mp_bluetooth_gap_set_default_phys(uint8_t tx_phys, uint8_t rx_phys) {
     if (!mp_bluetooth_is_active()) {
         return ERRNO_BLUETOOTH_NOT_ACTIVE;
     }

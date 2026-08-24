@@ -349,8 +349,10 @@ int mp_bluetooth_gap_set_device_name(const uint8_t *buf, size_t len);
 uint8_t mp_bluetooth_get_supported_phys(void);
 
 // Set the preferred PHYs for subsequent connections (LE Set Default PHY). Does
-// not affect connections that are already established. Returns errno on failure.
-int mp_bluetooth_gap_set_default_phys(uint8_t tx_phys, uint8_t rx_phys, uint16_t coded_pref);
+// not affect connections that are already established. There is no coding
+// preference here: LE Set Default PHY has no phy_options field.
+// Returns errno on failure.
+int mp_bluetooth_gap_set_default_phys(uint8_t tx_phys, uint8_t rx_phys);
 
 // Request a PHY change on an established connection (LE Set PHY). The result is
 // negotiated with the peer and reported via MP_BLUETOOTH_IRQ_PHY_UPDATE, which
