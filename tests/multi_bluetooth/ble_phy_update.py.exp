@@ -1,0 +1,14 @@
+--- instance0 ---
+gap_advertise
+_IRQ_CENTRAL_CONNECT
+_IRQ_PHY_UPDATE
+2M: (2, 2)
+_IRQ_CENTRAL_DISCONNECT
+--- instance1 ---
+gap_connect
+_IRQ_PERIPHERAL_CONNECT
+gap_set_phy
+_IRQ_PHY_UPDATE
+2M: (2, 2)
+gap_disconnect: True
+_IRQ_PERIPHERAL_DISCONNECT
