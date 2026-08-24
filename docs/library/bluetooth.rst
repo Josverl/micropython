@@ -102,6 +102,22 @@ Configuration
     - ``'le_secure'``: Sets whether "LE Secure" pairing is required. Default is
       false (i.e. allow "Legacy Pairing").
 
+    The following are only available on firmware built with PHY selection
+    enabled, and otherwise raise ``OSError(EOPNOTSUPP)``. See
+    :ref:`bluetooth_phy`.
+
+    - ``'phys'``: (read-only) A bitmask of the PHYs this controller supports.
+      ``PHY_1M`` is always set. Use this to check for ``PHY_2M`` or
+      ``PHY_CODED`` support before requesting them.
+
+    - ``'tx_phy'`` / ``'rx_phy'``: Get/set the preferred PHYs, as a bitmask of
+      ``PHY_1M``, ``PHY_2M`` and ``PHY_CODED``. Setting more than one PHY
+      indicates that any of them is acceptable.
+
+      This preference applies to connections established **after** it is set;
+      it does not re-negotiate connections that are already open. Use
+      :meth:`BLE.gap_set_phy()<BLE.gap_set_phy>` for those.
+
 Event Handling
 --------------
 
@@ -241,6 +257,10 @@ Event Handling
                 # action will be an action that is compatible with the configured "io" config.
                 # passkey will be non-zero if action is "numeric comparison".
                 conn_handle, action, passkey = data
+            elif event == _IRQ_PHY_UPDATE:
+                # The PHY in use on a connection has changed.
+                # tx_phy and rx_phy are one of PHY_1M, PHY_2M or PHY_CODED.
+                conn_handle, tx_phy, rx_phy = data
 
 
 The event codes are::
@@ -276,6 +296,8 @@ The event codes are::
     _IRQ_ENCRYPTION_UPDATE = const(28)
     _IRQ_GET_SECRET = const(29)
     _IRQ_SET_SECRET = const(30)
+    _IRQ_PASSKEY_ACTION = const(31)
+    _IRQ_PHY_UPDATE = const(32)
 
 For the ``_IRQ_GATTS_READ_REQUEST`` event, the available return codes are::
 
@@ -409,6 +431,51 @@ Central & Peripheral Roles
 
     Returns ``False`` if the connection handle wasn't connected, and ``True``
     otherwise.
+
+.. _bluetooth_phy:
+
+PHY selection
+-------------
+
+Bluetooth 5 defines three physical layers, or PHYs, which trade data rate
+against range:
+
+- ``PHY_1M`` -- 1 Mbps. The default, and the only PHY used by Bluetooth 4.x.
+- ``PHY_2M`` -- 2 Mbps. Higher throughput at slightly reduced range.
+- ``PHY_CODED`` -- 125 or 500 kbps, using forward error correction to give a
+  substantially longer range.
+
+Support for these is optional in the controller and varies by board, so query
+``BLE.config('phys')`` before requesting a PHY.
+
+This selects the PHY used by a **connection**. It does not provide long-range
+advertising or scanning: legacy advertising always uses the 1M PHY, so
+discovery and connection setup happen at ordinary range regardless of these
+settings. A connection can be moved onto the Coded PHY once established.
+
+These methods and constants are only available on firmware built with PHY
+selection enabled; otherwise they are absent or raise ``OSError(EOPNOTSUPP)``.
+
+.. method:: BLE.gap_set_phy(conn_handle, *, tx_phy=None, rx_phy=None, coded_pref=None)
+
+    Request a PHY change on an established connection.
+
+    *tx_phy* and *rx_phy* are bitmasks of ``PHY_1M``, ``PHY_2M`` and
+    ``PHY_CODED``; if omitted, the values configured via
+    :meth:`BLE.config()<BLE.config>` are used.
+
+    *coded_pref* selects the coding used when the Coded PHY is negotiated, and
+    is one of ``CODED_ANY`` (the default, letting the controller choose),
+    ``CODED_S2`` (500 kbps) or ``CODED_S8`` (125 kbps, the longest range). It
+    is only a preference and the controller may ignore it.
+
+    The PHY is negotiated with the peer, so the result may differ from what was
+    requested and is reported asynchronously via the ``_IRQ_PHY_UPDATE`` event
+    rather than being returned here. ::
+
+        ble.gap_set_phy(conn_handle, tx_phy=bluetooth.PHY_CODED,
+                        rx_phy=bluetooth.PHY_CODED,
+                        coded_pref=bluetooth.CODED_S8)
 
 
 GATT Server
