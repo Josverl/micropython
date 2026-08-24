@@ -1284,10 +1284,9 @@ int mp_bluetooth_gap_disconnect(uint16_t conn_handle) {
 uint8_t mp_bluetooth_get_supported_phys(void) {
     // BTstack neither reads LE Read Local Supported Features nor exposes the
     // result, and it rejects a raw hci_send_cmd() from here with
-    // ERROR_CODE_COMMAND_DISALLOWED.  Report every PHY as available rather than
-    // under-reporting and blocking PHYs the controller may well support; an
-    // unsupported request then fails at the controller instead.
-    return MP_BLUETOOTH_PHY_ANY;
+    // ERROR_CODE_COMMAND_DISALLOWED.  Zero means "cannot determine", which is
+    // reported to Python as EOPNOTSUPP rather than guessing a mask.
+    return 0;
 }
 
 int mp_bluetooth_gap_set_default_phys(uint8_t tx_phys, uint8_t rx_phys) {

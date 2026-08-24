@@ -110,6 +110,11 @@ Configuration
       ``PHY_1M`` is always set. Use this to check for ``PHY_2M`` or
       ``PHY_CODED`` support before requesting them.
 
+      Not every stack can ask the controller what it supports. Where the
+      answer is unavailable this raises ``OSError(EOPNOTSUPP)`` rather than
+      guessing, so portable code should be prepared to fall back to requesting
+      a PHY and handling the error.
+
     - ``'tx_phy'`` / ``'rx_phy'``: Get/set the preferred PHYs, as a bitmask of
       ``PHY_1M``, ``PHY_2M`` and ``PHY_CODED``. Setting more than one PHY
       indicates that any of them is acceptable.
@@ -447,6 +452,12 @@ against range:
 
 Support for these is optional in the controller and varies by board, so query
 ``BLE.config('phys')`` before requesting a PHY.
+
+Support is a property of the radio, not of the Bluetooth version a board
+advertises. In particular the CYW43439 used on the Raspberry Pi Pico W and
+Pico 2 W supports neither ``PHY_2M`` nor ``PHY_CODED``, despite those boards
+being described as Bluetooth 5.2, so PHY selection gains nothing there. The
+ESP32-C3 and ESP32-S3 support both; the original ESP32 supports neither.
 
 This selects the PHY used by a **connection**. It does not provide long-range
 advertising or scanning: legacy advertising always uses the 1M PHY, so

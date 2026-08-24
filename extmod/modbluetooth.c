@@ -101,7 +101,10 @@ static uint8_t bluetooth_parse_phys(mp_obj_t obj) {
     if (phys <= 0 || (phys & ~MP_BLUETOOTH_PHY_ANY)) {
         mp_raise_OSError(MP_EINVAL);
     }
-    if (phys & ~(mp_int_t)mp_bluetooth_get_supported_phys()) {
+    // Zero means the backend can't determine capability, in which case an
+    // unsupported PHY is left for the controller to reject.
+    uint8_t supported = mp_bluetooth_get_supported_phys();
+    if (supported && (phys & ~(mp_int_t)supported)) {
         mp_raise_OSError(MP_EOPNOTSUPP);
     }
     return (uint8_t)phys;
@@ -353,8 +356,14 @@ static mp_obj_t bluetooth_ble_config(size_t n_args, const mp_obj_t *args, mp_map
                 return mp_obj_new_int(bluetooth_tx_phys);
             case MP_QSTR_rx_phy:
                 return mp_obj_new_int(bluetooth_rx_phys);
-            case MP_QSTR_phys:
-                return mp_obj_new_int(mp_bluetooth_get_supported_phys());
+            case MP_QSTR_phys: {
+                uint8_t supported = mp_bluetooth_get_supported_phys();
+                if (!supported) {
+                    // This backend can't ask the controller what it supports.
+                    mp_raise_OSError(MP_EOPNOTSUPP);
+                }
+                return mp_obj_new_int(supported);
+            }
             #endif
             default:
                 mp_raise_ValueError(MP_ERROR_TEXT("unknown config param"));
