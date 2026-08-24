@@ -67,6 +67,6 @@
 
 sync.remote: "git+https://github.com/josverl/micropython.git"
 repos:
-  primary: "."
-  additional:
-    - "/home/jos/.beads-planning"
+    primary: "."
+routing:
+    mode: maintainer
