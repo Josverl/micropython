@@ -179,8 +179,9 @@ class Transport:
 
     def fs_printfile(self, src, chunk_size=256):
         cmd = (
-            "with open(%s) as f:\n while 1:\n"
-            "  b=f.read(%u)\n  if not b:break\n  print(b,end='')" % (_quote_path(src), chunk_size)
+            "import sys\nwith open(%s,'rb') as f:\n o=getattr(sys.stdout,'buffer',sys.stdout)\n"
+            " while 1:\n  b=f.read(%u)\n  if not b:break\n  o.write(b)"
+            % (_quote_path(src), chunk_size)
         )
         try:
             self.exec(cmd, data_consumer=stdout_write_bytes)
