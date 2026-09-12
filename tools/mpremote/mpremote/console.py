@@ -40,8 +40,14 @@ class ConsolePosix:
         termios.tcsetattr(self.infd, termios.TCSANOW, self.orig_attr)
 
     def waitchar(self, pyb_serial):
-        # TODO pyb_serial might not have fd
-        select.select([self.infd, pyb_serial.fd], [], [])
+        try:
+            serial_fd = pyb_serial.fileno()
+        except (AttributeError, io.UnsupportedOperation, OSError):
+            while not pyb_serial.in_waiting:
+                if select.select([self.infd], [], [], 0.01)[0]:
+                    break
+        else:
+            select.select([self.infd, serial_fd], [], [])
 
     def readchar(self):
         res = select.select([self.infd], [], [], 0)
