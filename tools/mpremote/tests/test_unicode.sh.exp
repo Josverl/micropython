@@ -31,3 +31,13 @@ Hello World
 你好
 ====================
 -----
+touch :space name.txt
+rm :space name.txt
+touch :a=b.txt
+rm :a=b.txt
+touch :日本語.txt
+rm :日本語.txt
+-----
+recursive content
+rm :目录
+-----
