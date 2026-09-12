@@ -100,3 +100,18 @@ connected device.
 Pass `-t` more than once to test multiple devices. 
 Devices can also be configured with the `MPREMOTE_DEVICE` environment 
 variable, using comma-separated values to test multiple devices. 
+## Coverage
+
+Pass `-c` to collect coverage from each `mpremote` subprocess launched by the
+bash tests:
+
+```bash
+cd tools/mpremote
+coverage erase
+./tests/run-mpremote-tests.sh -c
+coverage combine
+coverage report
+```
+
+Coverage is opt-in. A test-file name is recorded as the context for each
+subprocess, and `coverage html` can be used to inspect those contexts.

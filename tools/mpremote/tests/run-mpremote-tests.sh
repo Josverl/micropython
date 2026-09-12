@@ -7,9 +7,10 @@ MPREMOTE=${TEST_DIR}/../mpremote.py
 # Parse command line options
 DEVICE=""
 TESTS=""
+COVERAGE=false
 
 show_help() {
-    echo "Usage: $(basename $0) [-t <device>] [test_file.sh ...]"
+    echo "Usage: $(basename $0) [-t <device>] [-c] [test_file.sh ...]"
     echo ""
     echo "Run mpremote tests against a MicroPython target."
     echo ""
@@ -21,6 +22,7 @@ show_help() {
     echo "                  -t /dev/ttyACM0    Connect to specified serial port"
     echo "                  -t rfc2217://host:port  Connect via RFC2217"
     echo "                If not specified, uses mpremote's auto-detection."
+    echo "  -c            Collect coverage from mpremote subprocesses"
     echo "  -h            Show this help message"
     echo ""
     echo "Arguments:"
@@ -29,10 +31,13 @@ show_help() {
     exit 0
 }
 
-while getopts "t:h" opt; do
+while getopts "t:ch" opt; do
     case $opt in
         t)
             DEVICE="$OPTARG"
+            ;;
+        c)
+            COVERAGE=true
             ;;
         h)
             show_help
@@ -73,9 +78,20 @@ else
     TESTS="$@"
 fi
 
+if [ "$COVERAGE" = true ] && ! command -v coverage > /dev/null; then
+    echo "coverage is required when using -c" >&2
+    exit 1
+fi
+
+MPREMOTE_BASE="$MPREMOTE"
+
 for t in $TESTS; do
     TMP=$(mktemp -d)
     echo -n "${t}: "
+    if [ "$COVERAGE" = true ]; then
+        TEST_NAME=$(basename "${t}")
+        MPREMOTE="coverage run --rcfile=${TEST_DIR}/../pyproject.toml --context=${TEST_NAME} ${MPREMOTE_BASE}"
+    fi
     # Strip CR and replace the random temp dir with a token.
     if env MPREMOTE="${MPREMOTE}" TMP="${TMP}" MPREMOTE_DEVICE="${DEVICE}" "${t}" 2>&1 | tr -d '\r' | sed "s,${TMP},"'${TMP},g' > "${t}.out"; then
         # Check if test was skipped (matches main test runner convention)
@@ -92,3 +108,7 @@ for t in $TESTS; do
     fi
     rm -r "${TMP}"
 done
+
+if [ "$COVERAGE" = true ]; then
+    echo "Combine results with: coverage combine && coverage report"
+fi

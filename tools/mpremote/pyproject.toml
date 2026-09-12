@@ -34,6 +34,7 @@ dynamic = ["dependencies", "version"]
 test = [
     "pytest",
     "pytest-mock",
+    "coverage",
 ]
 
 [project.scripts]
@@ -60,3 +61,14 @@ packages = ["mpremote"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+parallel = true
+source = ["mpremote"]
+
+[tool.coverage.report]
+show_missing = true
+
+[tool.coverage.html]
+show_contexts = true
