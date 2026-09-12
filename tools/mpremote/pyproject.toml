@@ -30,6 +30,11 @@ classifiers = [
 requires-python = ">=3.4"
 dynamic = ["dependencies", "version"]
 
+[project.optional-dependencies]
+test = [
+    "pytest",
+]
+
 [project.scripts]
 mpremote = "mpremote.main:main"
 
@@ -51,3 +56,6 @@ packages = ["mpremote"]
 
 [tool.hatch.build.targets.sdist.force-include]
 "requirements.txt" = "requirements.txt"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
