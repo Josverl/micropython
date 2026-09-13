@@ -30,7 +30,7 @@ To run tests against a specific device:
     $ ./run-mpremote-tests.sh -t /dev/ttyACM0
     $ ./run-mpremote-tests.sh -t rfc2217://localhost:2217
 
-Device shortcuts are supported: `a0` → `/dev/ttyACM0`, `u0` → `/dev/ttyUSB0`, `c0` → `COM0`.
+Device shortcuts are supported: `a0` → `/dev/ttyACM0`, `u0` → `/dev/ttyUSB0`, `c1` → `COM1`.
 
 Each test should print "OK" if it passed.  Otherwise it will print "CRASH", "FAIL"
 (with a diff of expected vs actual output), or "skip" if the test was skipped.
@@ -80,3 +80,23 @@ Custom parameters can be passed via `exec`:
 ```bash
 $MPREMOTE exec "mount_path='/__ramdisk'; do_chdir=False" run "${TEST_DIR}/ramdisk.py"
 ```
+
+## Running pytest tests
+
+The pytest tests run natively on Windows, Linux, and macOS. Install the test
+dependencies and configure one or more devices:
+
+```bash
+python -m pip install -e ".[test]"
+python -m pytest 
+python -m pytest -t c3
+python -m pytest -t a0 -t u0
+```
+
+Device shortcuts match `run-mpremote-tests.sh`: `a0` expands to 
+`/dev/ttyACM0`, `u0` to `/dev/ttyUSB0`, and `c1` to `COM1`. 
+If no `-t` option is provided, pytest will default to autodetect the first
+connected device.
+Pass `-t` more than once to test multiple devices. 
+Devices can also be configured with the `MPREMOTE_DEVICE` environment 
+variable, using comma-separated values to test multiple devices. 
