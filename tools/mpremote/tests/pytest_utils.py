@@ -56,6 +56,6 @@ def run_mpremote_bytes(device: str, *args: str) -> subprocess.CompletedProcess:
     )
 
 
-def assert_success(result:subprocess.CompletedProcess, message :str|None = None) -> None:
+def require_success(result:subprocess.CompletedProcess, message :str|None = None) -> None:
     """Assert that an mpremote subprocess succeeded, reporting its stderr."""
     assert result.returncode == 0, message or result.stderr
