@@ -74,3 +74,19 @@ echo -----
 $MPREMOTE exec "print('Hello World'); print('你好'); print('=' * 20)"
 
 echo -----
+
+# Test special characters in remote filenames.
+for filename in "space name.txt" "a=b.txt" "日本語.txt"; do
+    $MPREMOTE touch ":${filename}"
+    $MPREMOTE rm ":${filename}"
+done
+
+echo -----
+# Test recursive copy with Unicode and an equals sign in the path.
+mkdir -p "${TMP}/目录"
+echo "recursive content" > "${TMP}/目录/a=b.txt"
+$MPREMOTE cp --no-verbose -r "${TMP}/目录" :
+$MPREMOTE cat ":目录/a=b.txt"
+$MPREMOTE rm -r ":目录"
+
+echo -----
