@@ -21,6 +21,11 @@ skip = """
 ACKNOWLEDGEMENTS,\
 """
 
+[tool.pytest.ini_options]
+# addopts is required to register -t option before argument parsing.
+addopts = ["tools/mpremote/tests"]
+testpaths = ["tools/mpremote/tests"]
+
 [tool.ruff]
 # Exclude third-party code from linting and formatting
 extend-exclude = [

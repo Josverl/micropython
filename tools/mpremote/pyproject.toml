@@ -30,6 +30,13 @@ classifiers = [
 requires-python = ">=3.4"
 dynamic = ["dependencies", "version"]
 
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-mock",
+    "pytest-cov",
+]
+
 [project.scripts]
 mpremote = "mpremote.main:main"
 
@@ -51,3 +58,19 @@ packages = ["mpremote"]
 
 [tool.hatch.build.targets.sdist.force-include]
 "requirements.txt" = "requirements.txt"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+parallel = true
+patch = ["subprocess"]
+relative_files = true
+source = ["mpremote"]
+
+[tool.coverage.report]
+show_missing = true
+
+[tool.coverage.html]
+show_contexts = true
