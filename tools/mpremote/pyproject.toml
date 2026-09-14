@@ -34,7 +34,7 @@ dynamic = ["dependencies", "version"]
 test = [
     "pytest",
     "pytest-mock",
-    "coverage",
+    "pytest-cov",
 ]
 
 [project.scripts]
@@ -65,6 +65,8 @@ testpaths = ["tests"]
 [tool.coverage.run]
 branch = true
 parallel = true
+patch = ["subprocess"]
+relative_files = true
 source = ["mpremote"]
 
 [tool.coverage.report]

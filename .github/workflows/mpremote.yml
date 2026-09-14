@@ -27,7 +27,89 @@ jobs:
       run: pip install -e ".[test]"
     - name: Run mpremote pytest tests
       working-directory: tools/mpremote
-      run: python -m pytest
+      run: python -m pytest --cov=mpremote --cov-report=term-missing --cov-report=xml:coverage.xml
+    - name: Upload mpremote coverage to Codecov
+      if: ${{ !cancelled() }}
+      uses: codecov/codecov-action@v7
+      with:
+        disable_search: true
+        fail_ci_if_error: ${{ secrets.CODECOV_TOKEN != '' || github.repository_owner == 'micropython' }}
+        files: tools/mpremote/coverage.xml
+        flags: mpremote,mpremote-${{ matrix.os }},mpremote-python-${{ matrix.python-version }}
+        name: mpremote-${{ matrix.os }}-python-${{ matrix.python-version }}
+        token: ${{ secrets.CODECOV_TOKEN }}
+
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        fetch-depth: 0
+    - uses: actions/setup-python@v7
+      with:
+        python-version: "3.14"
+    - name: Install mpremote test dependencies
+      working-directory: tools/mpremote
+      run: pip install -e ".[test]"
+    - name: Start mpbridge
+      run: docker run --detach --name mpbridge --publish 2217:2217 --publish 2218:2218 josverlinde/mpbridge:1.29.0.1
+    - name: Wait for mpbridge
+      run: |
+        for attempt in {1..30}; do
+          if python -c "import socket; socket.create_connection(('localhost', 2217), timeout=1).close()"; then
+            exit 0
+          fi
+          sleep 1
+        done
+        docker logs mpbridge
+        exit 1
+    - name: Reset integration coverage
+      working-directory: tools/mpremote
+      run: python -m coverage erase
+
+    - name: Run mpremote pytest integration tests
+      id: pytest_integration
+      continue-on-error: true
+      working-directory: tools/mpremote
+      run: python -m pytest -t rfc2217://localhost:2217 -t socket://localhost:2218  --cov=mpremote --cov-report=
+
+    - name: Run mpremote bash integration tests
+      id: bash_integration
+      continue-on-error: true
+      working-directory: tools/mpremote
+      run: | 
+        ./tests/run-mpremote-tests.sh -c -t rfc2217://localhost:2217
+
+    - name: Generate mpremote integration coverage report
+      if: ${{ always() && !cancelled() }}
+      working-directory: tools/mpremote
+      run: |
+        python -m coverage combine --append || true
+        python -m coverage report
+        python -m coverage xml -o coverage-integration.xml
+
+    - name: Upload mpremote integration coverage to Codecov
+      if: ${{ always() && !cancelled() }}
+      uses: codecov/codecov-action@v7
+      with:
+        disable_search: true
+        fail_ci_if_error: ${{ secrets.CODECOV_TOKEN != '' || github.repository_owner == 'micropython' }}
+        files: tools/mpremote/coverage-integration.xml
+        flags: mpremote,mpremote-integration
+        name: mpremote-integration
+        token: ${{ secrets.CODECOV_TOKEN }}
+
+    - name: Stop mpbridge
+      if: ${{ always() }}
+      run: docker rm --force mpbridge
+    - name: Check mpremote integration test results
+      if: ${{ always() && !cancelled() }}
+      env:
+        BASH_OUTCOME: ${{ steps.bash_integration.outcome }}
+        PYTEST_OUTCOME: ${{ steps.pytest_integration.outcome }}
+      run: |
+        test "${PYTEST_OUTCOME}" = success
+        test "${BASH_OUTCOME}" = success
 
   build:
     runs-on: ubuntu-latest
