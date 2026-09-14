@@ -3,6 +3,7 @@ set -e
 
 TEST_DIR=$(dirname $0)
 MPREMOTE=${TEST_DIR}/../mpremote.py
+STATUS=0
 
 # Parse command line options
 DEVICE=""
@@ -102,9 +103,11 @@ for t in $TESTS; do
         else
             echo "FAIL"
             diff "${t}.out" "${t}.exp" || true
+            STATUS=1
         fi
     else
         echo "CRASH"
+        STATUS=1
     fi
     rm -r "${TMP}"
 done
@@ -112,3 +115,5 @@ done
 if [ "$COVERAGE" = true ]; then
     echo "Combine results with: coverage combine && coverage report"
 fi
+
+exit $STATUS
