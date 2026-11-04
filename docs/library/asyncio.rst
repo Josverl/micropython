@@ -65,7 +65,7 @@ Core functions
 Additional functions
 --------------------
 
-.. function:: wait_for(awaitable, timeout)
+.. function:: wait_for(awaitable, timeout, /)
 
     Wait for the *awaitable* to complete, but cancel it if it takes longer
     than *timeout* seconds.  If *awaitable* is not a task then a task will be
@@ -80,7 +80,7 @@ Additional functions
 
     This is a coroutine.
 
-.. function:: wait_for_ms(awaitable, timeout)
+.. function:: wait_for_ms(awaitable, timeout, /)
 
     Similar to `wait_for` but *timeout* is an integer in milliseconds.
 
