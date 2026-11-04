@@ -390,7 +390,7 @@ Event Loop
     This represents the object which schedules and runs tasks.  It cannot be
     created, use `get_event_loop` instead.
 
-.. method:: Loop.create_task(coro)
+.. method:: Loop.create_task(coro, /)
 
     Create a task from the given *coro* and return the new `Task` object.
 
@@ -398,7 +398,7 @@ Event Loop
 
     Run the event loop until `stop()` is called.
 
-.. method:: Loop.run_until_complete(awaitable)
+.. method:: Loop.run_until_complete(awaitable, /)
 
     Run the given *awaitable* until it completes.  If *awaitable* is not a task
     then it will be promoted to one.
@@ -411,7 +411,7 @@ Event Loop
 
     Close the event loop.
 
-.. method:: Loop.set_exception_handler(handler)
+.. method:: Loop.set_exception_handler(handler, /)
 
     Set the exception handler to call when a Task raises an exception that is not
     caught.  The *handler* should accept two arguments: ``(loop, context)``.
