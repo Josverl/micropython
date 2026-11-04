@@ -299,7 +299,7 @@ TCP stream connections
     both a reader and a writer, and both ``StreamReader`` and ``StreamWriter`` alias to
     this class.
 
-.. method:: Stream.get_extra_info(v)
+.. method:: Stream.get_extra_info(v, /)
 
     Get extra information about the stream, given by *v*.  The valid values for *v* are:
     ``peername``.
@@ -314,7 +314,7 @@ TCP stream connections
 
     This is a coroutine.
 
-.. method:: Stream.read(n=-1)
+.. method:: Stream.read(n=-1, /)
 
     Read up to *n* bytes and return them.  If *n* is not provided or -1 then read all
     bytes until EOF.  The returned value will be an empty bytes object if EOF is
@@ -322,7 +322,7 @@ TCP stream connections
 
     This is a coroutine.
 
-.. method:: Stream.readinto(buf)
+.. method:: Stream.readinto(buf, /)
 
     Read up to n bytes into *buf* with n being equal to the length of *buf*.
 
@@ -330,7 +330,7 @@ TCP stream connections
 
     This is a coroutine, and a MicroPython extension.
 
-.. method:: Stream.readexactly(n)
+.. method:: Stream.readexactly(n, /)
 
     Read exactly *n* bytes and return them as a bytes object.
 
@@ -344,7 +344,7 @@ TCP stream connections
 
     This is a coroutine.
 
-.. method:: Stream.write(buf)
+.. method:: Stream.write(buf, /)
 
     Accumulated *buf* to the output buffer.  The data is only flushed when
     `Stream.drain` is called.  It is recommended to call `Stream.drain` immediately
