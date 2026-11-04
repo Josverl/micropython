@@ -50,13 +50,13 @@ Core functions
 
     Returns the value returned by *coro*.
 
-.. function:: sleep(t)
+.. function:: sleep(t, /)
 
     Sleep for *t* seconds (can be a float).
 
     This is a coroutine.
 
-.. function:: sleep_ms(t)
+.. function:: sleep_ms(t, /)
 
     Sleep for *t* milliseconds.
 
