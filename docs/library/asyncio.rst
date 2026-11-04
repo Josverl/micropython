@@ -281,7 +281,7 @@ TCP stream connections
 
     This is a coroutine.
 
-.. function:: start_server(callback, host, port, backlog=5, ssl=None)
+.. function:: start_server(callback, /, host, port, backlog=5, ssl=None)
 
     Start a TCP server on the given *host* and *port*.  The *callback* will be
     called with incoming, accepted connections, and be passed 2 arguments: reader
