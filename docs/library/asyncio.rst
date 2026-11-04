@@ -34,7 +34,7 @@ Example::
 Core functions
 --------------
 
-.. function:: create_task(coro)
+.. function:: create_task(coro, /)
 
     Create a new task from the given coroutine and schedule it to run.
 
@@ -44,7 +44,7 @@ Core functions
 
     Return the `Task` object associated with the currently running task.
 
-.. function:: run(coro)
+.. function:: run(coro, /)
 
     Create a new task from the given coroutine and run it until it completes.
 
