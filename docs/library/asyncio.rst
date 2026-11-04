@@ -220,14 +220,14 @@ class Queue
     Returns ``True`` if there are *maxsize* items in the queue and
     *maxsize* is greater than zero, otherwise ``False``.
 
-.. method:: Queue.put(item)
+.. method:: Queue.put(item, /)
 
     Put *item* onto the queue.  If the queue is full then wait for space to
     be available before adding the item.
 
     This is a coroutine.
 
-.. method:: Queue.put_nowait(item)
+.. method:: Queue.put_nowait(item, /)
 
     Put *item* into the queue without blocking.  If no space is available
     raise `QueueFull`.
